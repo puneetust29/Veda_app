@@ -32,20 +32,22 @@ architecture is being built so it slots in as a second graph, not a rewrite.
     (LLM) → judge (LLM-as-judge) → [retry recommend_plan | subscribe]`. This shape is
     the reusable template for future agent capabilities.
   - `Procfile` / `runtime.txt` — Railway-ready.
-- Not yet committed to git (`backend/` and `.gitignore` are untracked) and `mobile/` is
-  an empty placeholder folder — nothing in the Expo app has been started.
+- [x] Committed to git and pushed to `origin/main` (2026-08-16).
 
-## Phase 1 — Backend hardening & local proof-of-life (NEXT)
-- [ ] Commit the existing backend scaffold to git (currently untracked/unsaved in history).
+## Phase 1 — Backend hardening & local proof-of-life
+- [x] Commit the existing backend scaffold to git.
+- [x] Pytest suite (`backend/tests/`): agent graph (approve-first-try, retry-after-judge-
+      rejection, give-up-after-max-retries, subscribe) with the LLM and Supabase calls
+      mocked, plus the auth/customer-provisioning dependency (valid/invalid/missing-claim
+      JWTs, existing vs. auto-provisioned customer). `.venv/bin/python -m pytest -q` →
+      9 passed. Dev deps in `backend/requirements-dev.txt`, config in `backend/pytest.ini`.
 - [ ] Create a real Supabase project; run `0001_init.sql` then `seed.sql`.
 - [ ] Fill `backend/.env` from `.env.example` (Supabase URL/service key/JWT secret,
-      Anthropic API key).
+      Anthropic API key). **Blocked on you providing these credentials.**
 - [ ] Enable Supabase phone/OTP auth (or its test-phone-number mode) so a JWT can be
       minted for local testing without a real SMS provider.
 - [ ] `uvicorn app.main:app --reload`; smoke-test `/health`, `/me`,
       `/calendar/events`, `/roaming/recommend`, `/roaming/subscribe` with a real token.
-- [ ] Add a few pytest cases for the agent graph (mock the LLM calls) and for the
-      auth/customer-provisioning dependency.
 
 ## Phase 2 — Deploy backend to Railway
 - [ ] Create Railway project from this repo (root: `backend/`).
