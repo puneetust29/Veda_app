@@ -87,10 +87,19 @@ architecture is being built so it slots in as a second graph, not a rewrite.
       `POST /roaming/subscribe` → success state.
 - [x] Subscriptions/history screen (`SubscriptionsScreen.tsx`): `GET /subscriptions`.
 - [x] Typechecks clean (`npx tsc --noEmit`) and Metro bundles successfully
-      (`npx expo export --platform ios`, 842 modules, no errors).
-- [ ] Not yet run on a simulator/device — needs `mobile/.env` filled in from
-      `mobile/.env.example` (just `EXPO_PUBLIC_API_BASE_URL` now) pointing at the local
-      backend or Railway URL.
+      (`npx expo export --platform ios`, 836 modules, no errors).
+- [x] **Downgraded from Expo SDK 57 → 54** (2026-08-17): the App Store release of Expo Go
+      has been stuck on SDK 54 since Apple review delays starting May 2026 (SDK 55+ never
+      got approved), so a physical phone running the App Store's Expo Go could not open
+      an SDK 57 project at all ("Project is incompatible with this version of Expo Go").
+      Ran `npx expo install expo@^54.0.0 && npx expo install --fix` to realign
+      react/react-native/navigation/etc. to SDK-54-compatible versions; typechecks and
+      Metro bundle both still pass. If SDK 57+ features are ever needed, the alternative
+      is a custom dev client (`npx expo run:ios` / EAS Build) instead of Expo Go — noted
+      as an open decision below.
+- [x] Backend running locally on the LAN (`0.0.0.0:8001` — port 8000 was already taken by
+      an unrelated Docker container on this Mac) so a physical phone on the same Wi-Fi can
+      reach it via `mobile/.env`'s `EXPO_PUBLIC_API_BASE_URL`.
 
 ## Phase 4 — Polish / demo readiness
 - [ ] Loading/error states, handle judge-rejection retry loop gracefully in the UI.
@@ -107,6 +116,9 @@ architecture is being built so it slots in as a second graph, not a rewrite.
       multi-agent orchestration foundation the POC is meant to establish.
 
 ## Open decisions to confirm with stakeholder (Puneet)
+- Expo SDK 54 (Expo Go, App Store) vs. SDK 57+ with a custom dev client — currently on 54
+  purely because Expo Go's App Store release is stuck there (Apple review delays since
+  May 2026). Revisit if a newer SDK feature is needed or once Expo Go ships SDK 55+.
 - Real Supabase phone/OTP sign-in (with an SMS provider like Twilio) vs. keeping
   `/auth/dev-login` for the whole POC — currently mocked to avoid Twilio setup friction;
   swap back to real Supabase Auth in the mobile app + remove/keep the dev-login endpoint
