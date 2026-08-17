@@ -35,7 +35,7 @@ def get_current_phone_number(
     return phone
 
 
-def get_current_customer(phone_number: str = Depends(get_current_phone_number)) -> dict:
+def get_or_create_customer(phone_number: str) -> dict:
     """Look up (or lazily create) the mocked telecom customer record for this phone number."""
     supabase = get_supabase()
     existing = (
@@ -62,3 +62,7 @@ def get_current_customer(phone_number: str = Depends(get_current_phone_number)) 
         .execute()
     )
     return created.data[0]
+
+
+def get_current_customer(phone_number: str = Depends(get_current_phone_number)) -> dict:
+    return get_or_create_customer(phone_number)

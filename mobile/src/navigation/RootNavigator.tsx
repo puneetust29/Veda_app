@@ -12,7 +12,7 @@ import type { RootStackParamList } from '../types';
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function RootNavigator() {
-  const { session, loading } = useAuth();
+  const { customer, loading } = useAuth();
 
   if (loading) {
     return (
@@ -25,7 +25,7 @@ export default function RootNavigator() {
   return (
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {session ? (
+        {customer ? (
           <>
             <Stack.Screen name="Dashboard" component={DashboardScreen} />
             <Stack.Screen

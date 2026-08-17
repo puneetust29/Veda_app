@@ -22,7 +22,8 @@ architecture is being built so it slots in as a second graph, not a rewrite.
   - `deps.py` — verifies the Supabase-issued JWT, extracts phone number, lazily
     creates/looks up the linked telecom `customers` row (this **is** the sign-in
     story: no separate signup, first authenticated call auto-provisions the profile).
-  - `routers/auth.py` — `POST /auth/sync-profile`, `GET /me`.
+  - `routers/auth.py` — `POST /auth/sync-profile`, `GET /me`, `POST /auth/dev-login`
+    (POC-only mock sign-in, see Phase 1 note below).
   - `routers/calendar.py` — `GET /calendar/events`, `GET /calendar/events/{id}` (mocked
     calendar read, swappable for a real calendar API later).
   - `routers/roaming.py` — `GET /roaming/plans`, `POST /roaming/recommend`,
@@ -39,15 +40,30 @@ architecture is being built so it slots in as a second graph, not a rewrite.
 - [x] Pytest suite (`backend/tests/`): agent graph (approve-first-try, retry-after-judge-
       rejection, give-up-after-max-retries, subscribe) with the LLM and Supabase calls
       mocked, plus the auth/customer-provisioning dependency (valid/invalid/missing-claim
-      JWTs, existing vs. auto-provisioned customer). `.venv/bin/python -m pytest -q` →
-      9 passed. Dev deps in `backend/requirements-dev.txt`, config in `backend/pytest.ini`.
-- [ ] Create a real Supabase project; run `0001_init.sql` then `seed.sql`.
-- [ ] Fill `backend/.env` from `.env.example` (Supabase URL/service key/JWT secret,
-      Anthropic API key). **Blocked on you providing these credentials.**
-- [ ] Enable Supabase phone/OTP auth (or its test-phone-number mode) so a JWT can be
-      minted for local testing without a real SMS provider.
-- [ ] `uvicorn app.main:app --reload`; smoke-test `/health`, `/me`,
-      `/calendar/events`, `/roaming/recommend`, `/roaming/subscribe` with a real token.
+      JWTs, existing vs. auto-provisioned customer), plus `/auth/dev-login` (issues a
+      token the normal auth dependency accepts; disabled when `ENVIRONMENT=production`).
+      `.venv/bin/python -m pytest -q` → 11 passed. Dev deps in
+      `backend/requirements-dev.txt`, config in `backend/pytest.ini`.
+- [x] Create a real Supabase project; run `0001_init.sql` then `seed.sql` (2026-08-16/17,
+      verified via a connectivity check: customers=1, calendar_events=3, roaming_plans=11,
+      subscriptions=0).
+- [x] Fill `backend/.env` (Supabase URL/service key/JWT secret). `ANTHROPIC_API_KEY` is
+      still a placeholder — **blocked on a real key from Puneet**.
+- [x] **Pivot:** rather than fighting Supabase's hosted-dashboard Twilio requirement just
+      to use Test OTPs, added `POST /auth/dev-login` — a POC-only endpoint that mints a
+      JWT signed with the same `SUPABASE_JWT_SECRET` (so it passes the exact same
+      verification path as a real Supabase token) without any OTP round-trip. Gated to
+      non-production via `settings.environment`. The mobile app's sign-in screen now
+      calls this directly (phone number only, no OTP field) instead of going through
+      Supabase Auth. Real Supabase phone/OTP + an SMS provider is a later swap-in once
+      the POC needs real auth — tracked as an open decision below, not forgotten.
+- [x] `uvicorn app.main:app`; smoke-tested `/health` → `/auth/dev-login` → `/me` →
+      `/calendar/events` → `/roaming/plans` → `/subscriptions` against the real Supabase
+      project — all correct. `/roaming/recommend` correctly reaches the Anthropic call
+      and fails with `401 invalid x-api-key` (expected — placeholder key), confirming
+      everything up to the LLM call is wired correctly.
+- [ ] Re-test `/roaming/recommend` + `/roaming/subscribe` once a real `ANTHROPIC_API_KEY`
+      is in `backend/.env`.
 
 ## Phase 2 — Deploy backend to Railway
 - [ ] Create Railway project from this repo (root: `backend/`).
@@ -59,9 +75,10 @@ architecture is being built so it slots in as a second graph, not a rewrite.
 - [x] `create-expo-app` (TypeScript, blank template) in `mobile/`, navigation via
       `@react-navigation/native` + native-stack (auth-gated stack in
       `mobile/src/navigation/RootNavigator.tsx`).
-- [x] Supabase JS client (`mobile/src/lib/supabase.ts`) + phone-number/OTP sign-in screen
-      (`SignInScreen.tsx`); on successful OTP verify, `AuthContext` calls
-      `POST /auth/sync-profile`.
+- [x] Sign-in screen (`SignInScreen.tsx`): phone number only, calls the backend's
+      `POST /auth/dev-login` mock sign-in directly (no Supabase JS client in the mobile
+      app currently — see the Phase 1 dev-login note). Token persisted via
+      `mobile/src/lib/authToken.ts` (AsyncStorage).
 - [x] Dashboard screen (`DashboardScreen.tsx`): `GET /calendar/events`, renders upcoming
       flights as cards with a "roaming not enabled" CTA.
 - [x] Flight detail screen (`FlightDetailScreen.tsx`): "No roaming plan enabled for this
@@ -70,12 +87,10 @@ architecture is being built so it slots in as a second graph, not a rewrite.
       `POST /roaming/subscribe` → success state.
 - [x] Subscriptions/history screen (`SubscriptionsScreen.tsx`): `GET /subscriptions`.
 - [x] Typechecks clean (`npx tsc --noEmit`) and Metro bundles successfully
-      (`npx expo export --platform ios`, 891 modules, no errors).
-- [ ] Not yet run on a simulator/device or against a real Supabase project + backend —
-      needs `mobile/.env` filled in from `mobile/.env.example` (see Phase 1) and a live
-      backend URL in `EXPO_PUBLIC_API_BASE_URL`.
-- [ ] Confirm Supabase phone/OTP auth is actually enabled on the project (dashboard →
-      Authentication → Providers → Phone) before testing sign-in.
+      (`npx expo export --platform ios`, 842 modules, no errors).
+- [ ] Not yet run on a simulator/device — needs `mobile/.env` filled in from
+      `mobile/.env.example` (just `EXPO_PUBLIC_API_BASE_URL` now) pointing at the local
+      backend or Railway URL.
 
 ## Phase 4 — Polish / demo readiness
 - [ ] Loading/error states, handle judge-rejection retry loop gracefully in the UI.
@@ -92,6 +107,10 @@ architecture is being built so it slots in as a second graph, not a rewrite.
       multi-agent orchestration foundation the POC is meant to establish.
 
 ## Open decisions to confirm with stakeholder (Puneet)
+- Real Supabase phone/OTP sign-in (with an SMS provider like Twilio) vs. keeping
+  `/auth/dev-login` for the whole POC — currently mocked to avoid Twilio setup friction;
+  swap back to real Supabase Auth in the mobile app + remove/keep the dev-login endpoint
+  once real auth is actually needed (e.g. a stakeholder demo outside the team).
 - Real calendar integration (device calendar / provider API) — timing, out of scope
   for now, mocked via Supabase `calendar_events` table.
 - Real roaming product API contract — currently mocked in `roaming_plans` table;

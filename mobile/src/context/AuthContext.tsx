@@ -1,59 +1,51 @@
-import type { Session } from '@supabase/supabase-js';
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import { api } from '../lib/api';
-import { supabase } from '../lib/supabase';
+import { clearToken, loadToken, setToken } from '../lib/authToken';
+import type { Customer } from '../types';
 
 type AuthContextValue = {
-  session: Session | null;
+  customer: Customer | null;
   loading: boolean;
-  requestOtp: (phoneNumber: string) => Promise<void>;
-  verifyOtp: (phoneNumber: string, otp: string) => Promise<void>;
+  signIn: (phoneNumber: string) => Promise<void>;
   signOut: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null);
+  const [customer, setCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
+    (async () => {
+      const token = await loadToken();
+      if (token) {
+        try {
+          setCustomer(await api.getMe());
+        } catch {
+          await clearToken();
+        }
+      }
       setLoading(false);
-    });
-
-    const { data: subscription } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      setSession(newSession);
-    });
-
-    return () => subscription.subscription.unsubscribe();
+    })();
   }, []);
 
   const value = useMemo<AuthContextValue>(
     () => ({
-      session,
+      customer,
       loading,
-      requestOtp: async (phoneNumber: string) => {
-        const { error } = await supabase.auth.signInWithOtp({ phone: phoneNumber });
-        if (error) throw error;
-      },
-      verifyOtp: async (phoneNumber: string, otp: string) => {
-        const { error } = await supabase.auth.verifyOtp({
-          phone: phoneNumber,
-          token: otp,
-          type: 'sms',
-        });
-        if (error) throw error;
-        // First authenticated call: hydrates/creates the linked telecom profile.
-        await api.syncProfile();
+      signIn: async (phoneNumber: string) => {
+        const { access_token, customer: signedInCustomer } = await api.devLogin(phoneNumber);
+        await setToken(access_token);
+        setCustomer(signedInCustomer);
       },
       signOut: async () => {
-        await supabase.auth.signOut();
+        await clearToken();
+        setCustomer(null);
       },
     }),
-    [session, loading],
+    [customer, loading],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

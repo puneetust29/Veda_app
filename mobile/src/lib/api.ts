@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { loadToken } from './authToken';
 import type { CalendarEvent, Customer, RecommendResponse, RoamingPlan, Subscription } from '../types';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
@@ -9,18 +9,11 @@ if (!API_BASE_URL) {
   );
 }
 
-async function authedFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const { data } = await supabase.auth.getSession();
-  const token = data.session?.access_token;
-  if (!token) {
-    throw new Error('Not authenticated');
-  }
-
+async function rawFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
       ...init?.headers,
     },
   });
@@ -32,8 +25,28 @@ async function authedFetch<T>(path: string, init?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+async function authedFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  const token = await loadToken();
+  if (!token) {
+    throw new Error('Not authenticated');
+  }
+
+  return rawFetch<T>(path, {
+    ...init,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      ...init?.headers,
+    },
+  });
+}
+
 export const api = {
-  syncProfile: () => authedFetch<Customer>('/auth/sync-profile', { method: 'POST' }),
+  // POC-only: mints a token without a real OTP round-trip (see backend/app/routers/auth.py::dev_login).
+  devLogin: (phoneNumber: string) =>
+    rawFetch<{ access_token: string; customer: Customer }>('/auth/dev-login', {
+      method: 'POST',
+      body: JSON.stringify({ phone_number: phoneNumber }),
+    }),
   getMe: () => authedFetch<Customer>('/me'),
   listCalendarEvents: () => authedFetch<CalendarEvent[]>('/calendar/events'),
   listRoamingPlans: () => authedFetch<RoamingPlan[]>('/roaming/plans'),
