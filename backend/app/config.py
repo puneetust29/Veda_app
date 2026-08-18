@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     environment: str = "development"
     cors_origins: str = "*"
 
+    max_commit_amount_eur: float = 200.0
+    stream_heartbeat_seconds: int = 15
+
 
 @lru_cache
 def get_settings() -> Settings:

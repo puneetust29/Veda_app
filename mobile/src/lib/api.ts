@@ -1,5 +1,14 @@
 import { loadToken } from './authToken';
-import type { CalendarEvent, Customer, RecommendResponse, RoamingPlan, Subscription } from '../types';
+import { mockStreamRoamingConversation } from './mockStream';
+import { streamSse } from './sse';
+import type {
+  AgentStreamEvent,
+  CalendarEvent,
+  Customer,
+  RecommendResponse,
+  RoamingPlan,
+  Subscription,
+} from '../types';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
 
@@ -71,4 +80,41 @@ export const api = {
       }),
     }),
   listSubscriptions: () => authedFetch<Subscription[]>('/subscriptions'),
+  streamRoamingConversation: async (params: {
+    calendarEventId: string;
+    signal: AbortSignal;
+    onEvent: (event: AgentStreamEvent) => void;
+    onError: (err: unknown) => void;
+    onClose: () => void;
+  }): Promise<void> => {
+    if (process.env.EXPO_PUBLIC_CHAT_MOCK === '1') {
+      return mockStreamRoamingConversation(params);
+    }
+
+    const token = await loadToken();
+    if (!token) {
+      throw new Error('Not authenticated');
+    }
+
+    return streamSse({
+      url: `${API_BASE_URL}/chat/stream`,
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        Accept: 'text/event-stream',
+      },
+      body: JSON.stringify({ calendar_event_id: params.calendarEventId }),
+      signal: params.signal,
+      onFrame: (frame) => {
+        try {
+          params.onEvent(JSON.parse(frame.data));
+        } catch {
+          if (__DEV__) console.warn('bad frame', frame);
+        }
+      },
+      onError: params.onError,
+      onClose: params.onClose,
+    });
+  },
 };

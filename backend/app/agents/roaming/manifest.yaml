@@ -1,0 +1,21 @@
+name: roaming_agent
+version: 0.2.0
+description: Detects missing roaming coverage for an upcoming trip and recommends/activates a plan.
+enabled: true
+priority: 10
+capabilities: [roaming]
+triggers:
+  events: [trip.detected, trip.updated]
+  rules:
+    - key: calendar_event.event_type
+      op: eq
+      value: flight
+required_context: [customer, calendar_event]
+tools: [mobile.get_roaming_plans, mobile.activate_roaming_plan]
+actions:
+  - name: activate_roaming_plan
+    risk: commit
+    approval: required
+    idempotent: true
+    tool: mobile.activate_roaming_plan
+output_schema: app.agents.roaming.schemas:RoamingRecommendationCard

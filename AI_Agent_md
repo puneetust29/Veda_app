@@ -1,0 +1,552 @@
+
+
+Ai companion backend architecture · MD
+# AI Companion App — Final Backend Architecture
+ 
+**Stack:** React Native · FastAPI · LangChain/LangGraph · PostgreSQL (Supabase) · Redis · pgvector
+**Status:** Consolidated design (team proposal + review), v1.0
+**Scope:** POC with a foundation that scales to 50–100+ agents
+ 
+---
+ 
+## 1. Guiding principles
+ 
+1. **LLM ≠ Agent ≠ Tool ≠ Integration ≠ Workflow.** The LLM reasons. The agent is a workflow (LangGraph subgraph). Tools are typed operations. Integrations talk to external systems. The orchestrator coordinates. No layer reaches around another.
+2. **Agents reason. Services execute. Tools integrate. Orchestrator coordinates.** Agents never own DB access, HTTP clients, auth, or payment logic directly.
+3. **Deterministic where possible, LLM where necessary.** Trigger matching, routing, validation, and money movement are code. The LLM ranks, explains, personalizes, and converses.
+4. **Every side effect is gated, idempotent, and audited.** No LLM output flows directly into a payment or subscription call.
+5. **One agent implementation, two invocation modes.** The same agent runs in *suggestion mode* (proactive, read-only, produces cards) and *conversation mode* (interactive, can propose actions).
+6. **Modular monolith first.** One FastAPI app + one worker fleet. Extract services only when an agent proves it needs independent scaling.
+---
+ 
+## 2. High-level architecture
+ 
+```
+                        React Native App
+                 (chat UI · suggestion cards · approvals)
+                              │
+                    HTTPS / SSE / WebSocket
+                              ▼
+                  ┌───────────────────────────┐
+                  │    API Gateway (FastAPI)   │
+                  │  auth · REST · streaming   │
+                  └────────────┬──────────────┘
+                               │  enqueue tasks / subscribe to events
+              ┌────────────────┴─────────────────┐
+              ▼                                  ▼
+   Event & Trigger Service              Conversation Service
+   (calendar sync, trip detection,      (sessions, message history,
+    domain events)                       intent, response composition)
+              │                                  │
+              └───────────────┬──────────────────┘
+                              ▼
+              ┌───────────────────────────────────┐
+              │        AGENT ORCHESTRATOR          │
+              │  registry match → plan → dispatch  │
+              │  (LangGraph supervisor graph)      │
+              └───────────────┬───────────────────┘
+                              │
+        ┌──────────┬──────────┼──────────┬──────────────┐
+        ▼          ▼          ▼          ▼              ▼
+     Roaming    Transit   Insurance   Weather...    +N agents
+      Agent      Agent      Agent                  (plugins)
+        │          │          │
+        └──────────┴────┬─────┴──────────┐
+                        ▼                ▼
+              ┌──────────────────┐   ┌────────────────────┐
+              │  Policy Engine    │   │   TOOL REGISTRY     │
+              │  risk tiers,      │   │  native adapters    │
+              │  approvals,       │   │  + MCP tool bridge  │
+              │  idempotency      │   └─────────┬──────────┘
+              └──────────────────┘              │
+                                   ┌────────────┼─────────────┐
+                                   ▼            ▼             ▼
+                             Integration    MCP Servers    Web search
+                             Services       (external or
+                             (carrier,       first-party)
+                              transit,
+                              insurance,
+                              calendar,
+                              payments)
+                              │
+                              ▼
+              ┌────────────────────────────────────┐
+              │           SHARED DATA LAYER          │
+              │  Postgres (+ pgvector) · Redis ·     │
+              │  Object storage · LangGraph          │
+              │  checkpoints                          │
+              └────────────────────────────────────┘
+```
+ 
+Two planes share one agent layer:
+ 
+- **Proactive plane** — event-driven. Calendar sync → trip detection → `trip.detected` → orchestrator fans out to matching agents in suggestion mode → suggestion cards pushed to the app.
+- **Reactive plane** — user-driven. User taps a card or types in chat → conversation service → orchestrator runs the relevant agent in conversation mode with streaming and approvals.
+---
+ 
+## 3. Layer 1 — API / Experience layer (FastAPI)
+ 
+Responsibilities: authentication (Supabase Auth), conversation APIs, streaming, task lifecycle, approvals, recommendations, webhooks, notifications.
+ 
+```
+POST /conversations
+POST /conversations/{id}/messages          → returns task_id, opens SSE stream
+GET  /conversations/{id}/events            → SSE stream (typed events)
+ 
+GET  /tasks/{id}
+POST /tasks/{id}/approve                   → resumes checkpointed graph
+POST /tasks/{id}/reject
+ 
+GET  /recommendations                      → suggestion cards feed
+POST /recommendations/{id}/execute         → creates a gated task
+ 
+POST /webhooks/calendar                    → external event ingestion
+```
+ 
+**Rule: FastAPI never executes agent workflows inline.** Every agent invocation is:
+ 
+```
+FastAPI → create task row → enqueue (Redis) → worker → LangGraph → persist → notify
+```
+ 
+**Typed event stream (required for the chat UX).** Task polling alone is not acceptable for conversation. Workers publish to Redis pub/sub; the gateway relays over SSE/WebSocket as typed events the React Native UI can render as rich components:
+ 
+```json
+{ "type": "token",                 "data": "Looking at your carrier..." }
+{ "type": "tool_started",          "data": { "tool": "get_current_mobile_plan" } }
+{ "type": "recommendation_ready",  "data": { "card": { ... } } }
+{ "type": "confirmation_required", "data": { "action_id": "...", "summary": "...", "amount": "£72" } }
+{ "type": "action_completed",      "data": { "action_id": "...", "receipt": { ... } } }
+{ "type": "error",                 "data": { "code": "...", "retryable": true } }
+```
+ 
+---
+ 
+## 4. Layer 2 — Event & Trigger system
+ 
+The app is fundamentally event-driven. Chat is one entry point, not the origin of everything.
+ 
+**Event contract (Contract #5):**
+ 
+```json
+{
+  "event": "trip.detected",
+  "event_id": "evt_9f2...",
+  "user_id": "123",
+  "occurred_at": "2026-08-17T10:00:00Z",
+  "payload": {
+    "trip_id": "trip_456",
+    "origin": "Delhi",
+    "destination": "Seattle",
+    "destination_country": "US",
+    "start_date": "2026-09-10",
+    "end_date": "2026-09-20",
+    "source": "calendar"
+  }
+}
+```
+ 
+Core events for the POC: `calendar.synced`, `trip.detected`, `trip.updated`, `trip.cancelled`, `recommendation.viewed`, `action.approved`, `action.rejected`, `action.completed`.
+ 
+**Deterministic pre-filters are code/config, not LLM calls:**
+ 
+```python
+if trip.destination_country != user.home_country: evaluate("roaming")
+if trip.duration_days >= 3:                       evaluate("insurance")
+if destination_has_transit_network(trip):         evaluate("transportation")
+```
+ 
+The LLM is used *inside* agents for ranking, personalization, and explanation — never for "should this agent run at all."
+ 
+Agents subscribe to events declaratively through their manifest (§7). The orchestrator matches events against manifests; no hardcoded fan-out.
+ 
+---
+ 
+## 5. Layer 3 — Agent Orchestration
+ 
+One orchestrator component for the POC (do **not** split Intent Router / Planner / Orchestrator into three services yet — collapse them; extract later if warranted). Implemented as a LangGraph supervisor graph:
+ 
+1. **Ingest** — receives an event (proactive) or an intent-resolved message (reactive).
+2. **Match** — queries the Agent Registry: which manifests' triggers + deterministic rules match?
+3. **Plan** — orders matched agents by priority/dependency (simple priority list for POC).
+4. **Dispatch** — runs each agent as a subgraph (parallel where independent), passing only its `required_context`.
+5. **Collect** — gathers structured `AgentResult`s, hands them to the conversation layer for rendering.
+**Routing truth lives in one place: the declarative manifest.** `can_handle(context)` exists only as an optional cheap runtime refinement (e.g., "carrier not supported"), never as a second routing mechanism. Two sources of routing truth will drift.
+ 
+---
+ 
+## 6. Layer 4 — Domain agents
+ 
+Each agent is a self-contained package:
+ 
+```
+agents/roaming/
+├── agent.py        # implements the Agent contract
+├── graph.py        # LangGraph subgraph
+├── manifest.yaml   # declarative metadata (triggers, context, tools, actions)
+├── prompts.py
+├── schemas.py      # typed input/output/state extensions
+└── evals/          # golden test cases for this agent
+```
+ 
+**Agent contract (Contract #1):**
+ 
+```python
+class Agent(Protocol):
+    manifest: AgentManifest
+ 
+    async def execute(self, ctx: AgentContext, mode: Literal["suggest", "converse"]) -> AgentResult: ...
+    async def can_handle(self, ctx: AgentContext) -> bool:   # optional refinement only
+        return True
+```
+ 
+**Common agent state** (every subgraph extends this; persisted by the LangGraph Postgres checkpointer):
+ 
+```python
+class AgentState(TypedDict):
+    user_id: str
+    conversation_id: str | None
+    task_id: str
+    mode: str                      # suggest | converse
+    context: dict                  # resolved, minimal
+    messages: list
+    tool_results: list
+    recommendations: list          # structured, schema-validated
+    proposed_actions: list[ProposedAction]
+    approval_status: str           # none | pending | approved | rejected
+    status: str                    # running | waiting_approval | done | failed
+    error: str | None
+ 
+class RoamingState(AgentState):
+    destination_country: str
+    travel_days: int
+    current_plan: dict
+    candidate_plans: list
+```
+ 
+**Structured outputs only.** Every agent returns `AgentResult` validated against its manifest's `output_schema` (Pydantic). Recommendation cards, proposed actions, and prices are typed fields — never free text parsed downstream.
+ 
+---
+ 
+## 7. Agent manifest & registry
+ 
+**Manifest (the plugin descriptor):**
+ 
+```yaml
+name: roaming_agent
+version: 1.2.0
+description: Detects missing roaming coverage and recommends/activates plans
+ 
+triggers:
+  events: [trip.detected, trip.updated]
+  rules:
+    - trip.destination_country != user.home_country
+ 
+required_context:
+  - trip.destination_country
+  - trip.dates
+  - user.home_country
+  - user.mobile_provider
+  - user.current_plan
+  - user.data_usage_preference
+ 
+tools:
+  - mobile.get_current_plan          # native adapter
+  - mobile.get_roaming_plans         # native adapter
+  - mcp.carrier_x.list_addons        # MCP-provided tool (namespaced)
+  - web.search                       # native
+ 
+actions:
+  - name: activate_roaming_plan
+    risk: commit                     # read | draft | commit
+    approval: required
+    idempotent: true
+ 
+output_schema: RoamingRecommendation
+```
+ 
+**Agent Registry** loads manifests at startup, validates them (declared tools exist, declared context keys resolvable, schemas importable), and answers the orchestrator's question *"which capabilities are relevant to this event?"* Adding agent #4 = new folder + manifest. Zero orchestrator changes.
+ 
+Registry table also powers ops: enable/disable an agent per environment, per-user rollout flags, version pinning.
+ 
+---
+ 
+## 8. Tool layer — native adapters + MCP servers
+ 
+**The most important boundary in the system.** Agents never import HTTP clients or provider SDKs.
+ 
+```
+Agent → Tool (typed, registered) → Provider backend → External system
+                                     │
+                        ┌────────────┴────────────┐
+                        ▼                         ▼
+              Native Integration Service     MCP Server
+              (our code: carrier, transit,   (external vendor MCP, or
+               insurance, calendar,           our own first-party MCP
+               payments adapters)             wrapping an integration)
+```
+ 
+### 8.1 Tool contract (Contract #2)
+ 
+```python
+ToolRegistry.register(ToolSpec(
+    name="mobile.get_roaming_plans",
+    handler=mobile_service.get_roaming_plans,     # or MCP bridge callable
+    input_schema=RoamingPlanQuery,
+    output_schema=list[RoamingPlan],
+    permissions=["mobile.read"],
+    risk="read",                                   # read | draft | commit
+    provider="native",                             # native | mcp
+    cache_ttl_s=21600,                             # e.g. plans for a country: 6h
+    timeout_s=15,
+    rate_limit="30/min",
+))
+```
+ 
+Uniform behaviors for **every** tool regardless of provider: schema validation on input/output, timeouts, retries with backoff, caching, rate limiting, structured logging/tracing, permission check against the calling agent's manifest.
+ 
+### 8.2 MCP integration (new)
+ 
+Some integrations will ship their own MCP servers (carriers, insurance aggregators, transit providers, internal platform teams). Treat MCP as a **second provider type behind the same Tool Registry** — not as a separate path agents talk to directly.
+ 
+**Design:**
+ 
+- **MCPToolProvider** — a bridge service that connects to configured MCP servers (streamable HTTP for remote vendors, stdio for local/first-party), performs tool discovery, and registers each discovered tool into the ToolRegistry under a namespace: `mcp.<server>.<tool>` (e.g., `mcp.carrier_x.list_addons`). Use `langchain-mcp-adapters` to convert MCP tools into LangChain/LangGraph-compatible tools so agents consume them identically to native ones.
+- **Config-driven servers:**
+```yaml
+mcp_servers:
+  carrier_x:
+    transport: http
+    url: https://mcp.carrier-x.com/mcp
+    auth: ${CARRIER_X_MCP_TOKEN}        # from secrets manager, per-server
+    allowed_tools: [list_addons, get_plan_details]   # allowlist, not "everything"
+    default_risk: read
+  internal_profile:
+    transport: stdio
+    command: ["python", "-m", "mcp_servers.profile"]
+```
+ 
+- **Governance rules for MCP tools (important):**
+  1. **Allowlist per server.** Never auto-register every tool a server exposes; MCP servers can add tools at any time.
+  2. **Discovered tools default to `risk: read`.** Any MCP tool that performs a side effect must be explicitly promoted to `draft`/`commit` in config, which re-routes it through the Policy Engine like any native action. MCP does not bypass approvals.
+  3. **Same envelope.** Timeouts, retries, caching, tracing, and permission checks wrap MCP calls exactly like native calls (applied in the bridge).
+  4. **Treat MCP outputs as untrusted input.** Vendor MCP responses (and any web content) are data, not instructions — sanitize/schema-validate before they enter LLM context; never let tool output alter the approved action parameters (prompt-injection defense).
+  5. **Health & fallback.** Bridge pings servers, marks tools unavailable on failure; the manifest can declare a fallback native tool. Pin server versions where the protocol allows.
+  6. **Payments never via MCP** in v1. Money movement goes only through our own payment integration service with vaulted credentials.
+**Decision rule:** if a vendor offers both a REST API and an MCP server, prefer the REST API behind a native adapter for `commit`-risk operations (tighter contract, easier idempotency), and MCP for read/research-style capabilities where discovery and breadth help. First-party MCP servers (wrapping our own integrations) are a good way to expose the same tools to future surfaces (internal ops console, other apps) without duplicating adapters.
+ 
+### 8.3 Web research
+ 
+`web.search` / `web.fetch` are registry tools like any other. Note honestly in planning: "ORCA website" or "carrier website" style sources imply scraping/browser automation — fragile, possibly ToS-restricted, different reliability class. Acceptable for POC demos; label such tools `stability: experimental` in the registry and prefer official APIs or vendor MCP servers as they become available.
+ 
+---
+ 
+## 9. Policy Engine — permissions, approvals, idempotency
+ 
+### 9.1 Risk tiers
+ 
+| Tier | Examples | Behavior |
+|---|---|---|
+| `read` | read calendar, search roaming plans, get quotes | auto-run |
+| `draft` | pre-fill insurance application, pre-fill ORCA form, create calendar event | show to user; user reviews before submission |
+| `commit` | purchase insurance, activate roaming, any payment | **always** explicit user approval; deterministic validation |
+ 
+### 9.2 Action/Approval contract (Contract #4)
+ 
+```python
+class ProposedAction(BaseModel):
+    action_id: str                 # ULID
+    agent: str
+    name: str                      # must exist in agent manifest
+    risk: Literal["read", "draft", "commit"]
+    params: dict                   # schema-validated against ActionSpec
+    display: ActionDisplay         # human-readable summary, price, provider
+    idempotency_key: str           # deterministic: hash(user, action, params, trip)
+    expires_at: datetime
+```
+ 
+Flow:
+ 
+```
+Agent proposes action
+        ↓
+Policy Engine: schema-validate params, check manifest permission,
+               check risk tier, check spend limits / user consent scope
+        ↓
+risk == read  → execute
+risk == draft → surface to user, execute on submit
+risk == commit → LangGraph interrupt() → status: waiting_approval
+        ↓
+User taps Approve (seconds or days later)
+        ↓
+POST /tasks/{id}/approve → load checkpoint → resume SAME graph state
+        ↓
+Deterministic executor: re-validate params UNCHANGED since approval,
+insert action row with idempotency_key (unique constraint) BEFORE external call,
+call integration with provider idempotency key where supported
+        ↓
+Persist receipt → audit log → notify user
+```
+ 
+**Non-negotiables:**
+ 
+- **Approval = LangGraph `interrupt()` + Postgres checkpointer.** The paused graph state survives worker restarts and days of user silence; approval resumes the exact checkpoint. Never re-run the agent from scratch on approval — what was proposed must be exactly what executes.
+- **Idempotency everywhere.** The `actions` table has a unique index on `idempotency_key`. Insert-before-call means a retried worker, redelivered queue message, or double-tapped Approve button can never buy two policies. Reconciliation job resolves `in_flight` actions on crash recovery.
+- **The LLM never decides whether approval is required.** Tier lives in the manifest; the Policy Engine enforces it.
+- **Spend limits & consent scopes** per user (e.g., "auto-draft OK, never auto-commit; max £200 per action") checked in the Policy Engine.
+---
+ 
+## 10. Conversation subsystem (separate from business logic)
+ 
+The conversation layer owns sessions, message history, intent/context resolution, tone, and rendering of `AgentResult`s ("I found three roaming options for your Seattle trip"). It never contains domain logic — the roaming agent finds plans; the conversation layer presents them and routes the user's choice back as an approval or a follow-up agent run. This separation is what lets the proactive plane reuse agents without any chat machinery.
+ 
+---
+ 
+## 11. Context layer — resolver + memory (Contract #3)
+ 
+**User Context Service** owns: profile, preferences, travel history, upcoming trips, devices, subscriptions, payment preferences (references, never raw credentials), prior agent actions, consent/permissions.
+ 
+**Context Resolver:** agents declare `required_context` keys in the manifest; the resolver fetches *only those keys*, from cache where fresh. Never dump the full user context into a prompt — cost, latency, and privacy all suffer.
+ 
+**Memory:**
+- Structured facts (trips, plans, policies, dates, IDs) → Postgres. Never vector search for structured lookups.
+- Semantic memory (preferences expressed in chat, past-conversation recall, agent knowledge) → pgvector initially. Revisit a dedicated vector DB only at scale.
+- Write-back: after each run, agents may emit `MemoryFact`s (e.g., "prefers unlimited-data plans") through the context service — validated and consent-scoped, not raw transcripts.
+---
+ 
+## 12. Data layer
+ 
+### PostgreSQL (Supabase) — core tables
+ 
+```
+users, profiles, consents, integrations(oauth tokens→vault refs)
+trips, calendar_events
+conversations, messages
+agents(registry), agent_runs, tasks
+recommendations, proposed_actions, actions, approvals, audit_log
+tool_calls (per-run tool telemetry)
+langgraph_checkpoints (checkpointer schema)
+memory_facts (+ pgvector embeddings)
+```
+ 
+`agent_runs` (debugging gold): `id, agent_name, agent_version, user_id, trip_id, conversation_id, mode, status, input, output, tokens_in, tokens_out, cost_usd, latency_ms, trace_id, started_at, completed_at, error`.
+ 
+`actions`: `id, run_id, name, risk, params, idempotency_key UNIQUE, status(in_flight|succeeded|failed|reconciled), provider_ref, receipt, created_at, executed_at`.
+ 
+### Redis
+Queues (Celery/Arq), pub/sub for streaming events, tool-result cache (e.g., roaming plans per country, TTL 6h), rate limiting, distributed locks, hot context cache.
+ 
+### Object storage
+Policy documents, receipts, filled forms (PDFs).
+ 
+---
+ 
+## 13. Background execution model
+ 
+```
+Request/Event → task row (Postgres) → queue (Redis) → worker pool
+      → LangGraph run (checkpointed) → tools/integrations/MCP
+      → persist results → publish typed events → push notification if proactive
+```
+ 
+- Workers: Celery or Arq. One shared fleet for both planes; separate queues (`interactive` high priority, `proactive` batch) so chat latency never waits behind nightly calendar scans.
+- Every external call idempotent + retried with backoff; poison-message handling to a dead-letter queue.
+- Scheduler (Celery beat / cron) drives calendar sync and trip re-scans.
+---
+ 
+## 14. Security & PII
+ 
+- **Consent model:** per-data-category grants (calendar, mobile account, payment) recorded in `consents`; the Context Resolver and Policy Engine enforce them.
+- **Payment credentials vaulted** (Stripe-style tokens / provider vault). Never in Postgres plaintext, never in LLM context, never through MCP in v1.
+- **PII minimization in prompts:** resolver passes the minimum; mask account numbers; form-filling agents assemble PII in the deterministic executor, not in LLM output.
+- **Secrets:** managed secret store (not bare env vars) for provider keys and MCP server tokens; per-integration rotation.
+- **Prompt-injection defense:** web/MCP tool outputs are untrusted data; approved action params are immutable post-approval.
+- **Audit:** every approval, action, and consent change in `audit_log` with actor, timestamp, trace_id.
+---
+ 
+## 15. Observability & evals (day one, not later)
+ 
+- **Tracing:** LangSmith or Langfuse on every agent run (LLM calls, tool calls, tokens, cost, latency), `trace_id` joined to `agent_runs`.
+- **Cost guardrails:** per-agent and per-user budgets; alert on outliers.
+- **Evals per agent:** `agents/<name>/evals/` golden cases — *given this trip context, does the agent select a sane plan / correct approval tier / valid schema?* Run in CI; an agent PR without evals doesn't merge.
+- **Ops metrics:** queue depth, worker latency, tool error rates by provider (native vs MCP), approval conversion, suggestion→action funnel.
+---
+ 
+## 16. Repository structure (modular monolith)
+ 
+```
+backend/
+├── app/
+│   ├── api/                    # conversations, tasks, approvals, recommendations, users, webhooks
+│   ├── conversation/           # sessions, intent, rendering
+│   ├── orchestration/          # supervisor graph, registry match, dispatch
+│   ├── agents/
+│   │   ├── base/               # Agent contract, AgentState, AgentResult, registry loader
+│   │   ├── roaming/
+│   │   ├── transportation/
+│   │   └── insurance/
+│   ├── tools/
+│   │   ├── registry.py         # ToolRegistry, ToolSpec, envelope (retry/cache/trace)
+│   │   ├── mcp/                # MCPToolProvider bridge, server configs, allowlists
+│   │   ├── mobile/  transit/  insurance/  calendar/  payments/  web/
+│   ├── integrations/           # provider SDK adapters (carriers, transit, insurers, google/apple)
+│   ├── policy/                 # risk tiers, approval flow, spend limits, idempotent executor
+│   ├── context/                # user context service + resolver
+│   ├── memory/                 # memory facts, pgvector
+│   ├── events/                 # event contracts, trip detector, dispatcher
+│   ├── tasks/                  # task model, queue plumbing
+│   ├── db/  config/
+├── workers/                    # agent_worker, event_worker, notification_worker, scheduler
+├── mcp_servers/                # optional first-party MCP servers (e.g., profile)
+├── tests/
+├── migrations/
+└── evals/
+```
+ 
+Deployment: containers (Railway/Fly/Cloud Run initially); one API service + one worker service + Redis + Supabase. Extract a per-agent service only when profiling demands it.
+ 
+---
+ 
+## 17. The five core contracts (define before building agents)
+ 
+1. **Agent Contract** — manifest + `execute(ctx, mode) -> AgentResult` + common `AgentState`.
+2. **Tool Contract** — `ToolSpec` registration, typed I/O, provider = native | mcp, uniform envelope.
+3. **Context Contract** — declared `required_context` keys resolved by the Context Resolver, consent-checked.
+4. **Action/Approval Contract** — `ProposedAction`, risk tiers, interrupt/resume, idempotency key, audit.
+5. **Event Contract** — typed domain events, manifest-declared subscriptions, deterministic pre-filters.
+These five, expressed as code (Pydantic schemas + Protocols + migrations), *are* the platform. Agents are content.
+ 
+---
+ 
+## 18. POC build sequence & acceptance test
+ 
+**Phase 1 — Skeleton (the platform):** FastAPI gateway + auth · task/queue/worker loop · LangGraph supervisor + Postgres checkpointer · Agent & Tool registries (with MCP bridge stub) · typed SSE event stream · Policy Engine with interrupt/approve/resume · core tables + audit · tracing wired.
+ 
+**Phase 2 — Roaming agent end-to-end:** manifest → trigger on `trip.detected` → context resolve → tools (current plan, roaming plans — mock carrier first, real/MCP later) → LLM ranks → recommendation card → user approves → idempotent activation → receipt + audit + memory fact.
+ 
+**Phase 3 — Transit card agent (the architecture test):** web research for destination transit card → `draft` form pre-fill → user submits.
+**Acceptance criterion: Phase 3 must not touch orchestration, policy, or gateway code.** If it does, fix the abstraction before agent #3.
+ 
+**Phase 4 — Insurance agent + hardening:** quotes via API/MCP, draft application, commit purchase behind approval + spend limit; load-test workers; eval suites green in CI.
+ 
+---
+ 
+## 19. Component summary
+ 
+| Component | Choice |
+|---|---|
+| Mobile | React Native |
+| API | FastAPI (stateless, streaming via SSE/WebSocket) |
+| Agent framework | LangGraph (subgraphs + Postgres checkpointer + interrupt) |
+| LLM integration | LangChain / LangGraph |
+| Primary DB | Supabase PostgreSQL |
+| Vector | pgvector (initially) |
+| Cache / queue / pub-sub | Redis (+ Celery or Arq workers) |
+| Orchestration | Single orchestrator (supervisor graph) + Agent Registry |
+| Tools | Tool Registry: native adapters + MCP bridge (`langchain-mcp-adapters`) |
+| Approvals | Policy Engine: risk tiers, interrupt/resume, idempotency, audit |
+| Auth | Supabase Auth |
+| Secrets | Managed secret store |
+| Observability | LangSmith or Langfuse + structured logs + per-agent evals |
+| Deployment | Containers; modular monolith → extract services on demand |
+ 

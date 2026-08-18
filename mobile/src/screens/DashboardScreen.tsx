@@ -48,6 +48,9 @@ export default function DashboardScreen({ navigation }: Props) {
       <View style={styles.header}>
         <Text style={styles.title}>Upcoming trips</Text>
         <View style={styles.headerActions}>
+          <TouchableOpacity onPress={() => navigation.navigate('RoamingPlans')}>
+            <Text style={styles.link}>All plans</Text>
+          </TouchableOpacity>
           <TouchableOpacity onPress={() => navigation.navigate('Subscriptions')}>
             <Text style={styles.link}>My plans</Text>
           </TouchableOpacity>
@@ -69,7 +72,7 @@ export default function DashboardScreen({ navigation }: Props) {
           renderItem={({ item }) => (
             <TouchableOpacity
               style={styles.card}
-              onPress={() => navigation.navigate('FlightDetail', { event: item })}
+              onPress={() => navigation.navigate('Chat', { event: item })}
             >
               <Text style={styles.cardTitle}>{item.title}</Text>
               <Text style={styles.cardSubtitle}>

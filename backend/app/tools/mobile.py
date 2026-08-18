@@ -1,18 +1,12 @@
+"""Mocked telecom "mobile" product APIs: roaming plan catalog lookup + subscribe/activate.
+Registered in the ToolRegistry as `mobile.get_roaming_plans` (read) and
+`mobile.activate_roaming_plan` (commit) so manifests can declare them and the registry
+can validate they exist.
+"""
 from datetime import datetime, timezone
 
 from app.db.client import get_supabase
-
-
-def extract_trip_context(calendar_event: dict) -> tuple[str, int]:
-    """Derive destination country + trip length (days) from a mocked flight event."""
-    destination_country = calendar_event.get("raw_details", {}).get("destination_country")
-    if not destination_country:
-        destination_country = calendar_event.get("destination", "Unknown")
-
-    start = datetime.fromisoformat(calendar_event["start_datetime"])
-    end = datetime.fromisoformat(calendar_event["end_datetime"])
-    duration_days = max(1, (end - start).days)
-    return destination_country, duration_days
+from app.tools.registry import ToolSpec, tool_registry
 
 
 def fetch_roaming_catalog(destination_country: str) -> list[dict]:
@@ -51,3 +45,13 @@ def subscribe_roaming_plan(
         .execute()
     )
     return result.data[0]
+
+
+tool_registry.register(
+    ToolSpec(name="mobile.get_roaming_plans", handler=fetch_roaming_catalog, risk="read", provider="mobile")
+)
+tool_registry.register(
+    ToolSpec(
+        name="mobile.activate_roaming_plan", handler=subscribe_roaming_plan, risk="commit", provider="mobile"
+    )
+)

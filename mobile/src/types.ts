@@ -60,5 +60,50 @@ export type RootStackParamList = {
   SignIn: undefined;
   Dashboard: undefined;
   FlightDetail: { event: CalendarEvent };
+  Chat: { event: CalendarEvent };
   Subscriptions: undefined;
+  RoamingPlans: undefined;
 };
+
+// --- Chat / streaming agent contract ---
+
+export type RecommendationCardPayload =
+  | { kind: 'roaming_plan'; plan: RoamingPlan; reasoning: string; judge_approved: boolean; judge_feedback: string };
+
+// The wire event contract emitted by `POST /chat/stream`. This is the backend's
+// still-being-finalized shape — only `chatThread.ts` should need to know both this
+// and `ChatItem` below; everything else in the app works off the stable render model.
+export type AgentStreamEvent =
+  | { type: 'run_started'; data: { run_id: string; agents: string[] } }
+  | { type: 'status'; data: { text: string; attempt?: number } }
+  | { type: 'tool_started'; data: { tool: string; label?: string } }
+  | { type: 'tool_completed'; data: { tool: string } }
+  | { type: 'recommendation_ready'; data: { card: RecommendationCardPayload } }
+  | {
+      type: 'confirmation_required';
+      data: { action_id: string; summary: string; risk: 'commit' | 'read'; plan_id: string; calendar_event_id: string };
+    }
+  | { type: 'error'; data: { code: string; message?: string; retryable: boolean } }
+  | { type: 'done'; data?: { status?: string } | null };
+
+// The stable render model the UI works off. Derived from `AgentStreamEvent`s via
+// `chatThread.ts`'s `applyStreamEvent` reducer, plus a few client-generated items
+// (the greeting, the duplicate-subscription receipt).
+type ChatItemBase = { id: string; createdAt: number };
+
+export type ChatItem =
+  | (ChatItemBase & { kind: 'text'; role: 'agent' | 'user'; text: string })
+  | (ChatItemBase & { kind: 'status'; tool?: string; label: string; state: 'active' | 'done' })
+  | (ChatItemBase & { kind: 'card'; card: RecommendationCardPayload })
+  | (ChatItemBase & {
+      kind: 'confirmation';
+      actionId: string;
+      summary: string;
+      risk: 'commit' | 'read';
+      planId: string;
+      calendarEventId: string;
+      state: 'pending' | 'submitting' | 'confirmed' | 'declined' | 'failed';
+      error?: string;
+    })
+  | (ChatItemBase & { kind: 'receipt'; subscription: Subscription; planName: string })
+  | (ChatItemBase & { kind: 'error'; message: string; retryable: boolean });

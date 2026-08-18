@@ -1,5 +1,6 @@
-from app.agent import graph as graph_module
-from app.agent.graph import PlanRecommendation, JudgeVerdict, recommend_graph, subscribe_graph
+from app.agents.roaming import graph as graph_module
+from app.agents.roaming.graph import recommend_graph, subscribe_graph
+from app.agents.roaming.schemas import PlanRecommendation, JudgeVerdict
 
 CALENDAR_EVENT = {
     "id": "evt-1",

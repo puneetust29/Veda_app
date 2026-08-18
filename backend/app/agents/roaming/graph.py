@@ -1,22 +1,15 @@
 from langchain_anthropic import ChatAnthropic
 from langgraph.graph import END, StateGraph
-from pydantic import BaseModel, Field
+from langgraph.types import StreamWriter
 
-from app.agent.state import RoamingAgentState
-from app.agent.tools import extract_trip_context, fetch_roaming_catalog, subscribe_roaming_plan
+from app.agents.roaming.prompts import judge_prompt, recommend_prompt
+from app.agents.roaming.schemas import JudgeVerdict, PlanRecommendation
+from app.agents.roaming.state import RoamingAgentState
+from app.agents.roaming.trip import extract_trip_context
 from app.config import get_settings
+from app.tools.mobile import fetch_roaming_catalog, subscribe_roaming_plan
 
 MAX_RETRIES = 2
-
-
-class PlanRecommendation(BaseModel):
-    plan_id: str = Field(description="id of the chosen roaming_plans row")
-    reasoning: str = Field(description="why this plan fits the trip")
-
-
-class JudgeVerdict(BaseModel):
-    approved: bool
-    feedback: str = Field(description="why approved, or what is wrong if rejected")
 
 
 def _llm():
@@ -24,38 +17,44 @@ def _llm():
     return ChatAnthropic(
         model=settings.anthropic_model,
         api_key=settings.anthropic_api_key,
-        temperature=0,
     )
 
 
-def node_extract_trip_context(state: RoamingAgentState) -> dict:
+def node_extract_trip_context(state: RoamingAgentState, writer: StreamWriter) -> dict:
+    # Emitted before any Anthropic call -- this is the first user-visible event on the
+    # /chat/stream path, deliberately dependency-free so it lands well within a client's
+    # inactivity timeout even on a cold LLM start. `writer` is LangGraph's injected
+    # no-op under .invoke() (verified against langgraph/utils/runnable.py), so this is
+    # inert for the legacy blocking routes.
+    writer({"kind": "status", "text": "Reading your flight details…"})
     country, days = extract_trip_context(state["calendar_event"])
+    writer({"kind": "status", "text": f"You're going to {country} for {days} days."})
     return {"destination_country": country, "trip_duration_days": days}
 
 
-def node_fetch_catalog(state: RoamingAgentState) -> dict:
+def node_fetch_catalog(state: RoamingAgentState, writer: StreamWriter) -> dict:
+    writer({"kind": "tool_started", "tool": "mobile.get_roaming_plans"})
     catalog = fetch_roaming_catalog(state["destination_country"])
+    writer({"kind": "tool_completed", "tool": "mobile.get_roaming_plans", "count": len(catalog)})
     return {"roaming_catalog": catalog}
 
 
-def node_recommend_plan(state: RoamingAgentState) -> dict:
+def node_recommend_plan(state: RoamingAgentState, writer: StreamWriter) -> dict:
     llm = _llm().with_structured_output(PlanRecommendation)
 
-    feedback_note = ""
-    if state.get("judge_feedback"):
-        feedback_note = (
-            f"\n\nYour previous recommendation was rejected: {state['judge_feedback']}. "
-            "Pick a different, better-fitting plan."
-        )
+    prompt = recommend_prompt(
+        destination_country=state["destination_country"],
+        trip_duration_days=state["trip_duration_days"],
+        roaming_catalog=state["roaming_catalog"],
+        judge_feedback=state.get("judge_feedback", ""),
+    )
 
-    prompt = (
-        "You are a telecom roaming plan advisor. A customer is travelling to "
-        f"{state['destination_country']} for {state['trip_duration_days']} days.\n\n"
-        f"Available roaming plans (JSON):\n{state['roaming_catalog']}\n\n"
-        "Pick the single best-fitting plan id for this trip, balancing data allowance "
-        "vs. trip length vs. price. Prefer a plan whose duration_days covers the whole "
-        "trip without being wastefully long, and enough data_gb for typical use."
-        f"{feedback_note}"
+    writer(
+        {
+            "kind": "status",
+            "text": f"Comparing {len(state['roaming_catalog'])} roaming plans for a "
+            f"{state['trip_duration_days']}-day trip…",
+        }
     )
 
     result = llm.invoke(prompt)
@@ -63,24 +62,33 @@ def node_recommend_plan(state: RoamingAgentState) -> dict:
     return {"candidate_plan": chosen, "reasoning": result.reasoning}
 
 
-def node_judge(state: RoamingAgentState) -> dict:
+def node_judge(state: RoamingAgentState, writer: StreamWriter) -> dict:
     llm = _llm().with_structured_output(JudgeVerdict)
 
-    prompt = (
-        "You are reviewing a roaming-plan recommendation before it is subscribed on a "
-        "customer's behalf.\n\n"
-        f"Trip: {state['trip_duration_days']} days to {state['destination_country']}.\n"
-        f"Recommended plan: {state['candidate_plan']}\n"
-        f"Advisor's reasoning: {state['reasoning']}\n\n"
-        "Approve only if the plan's duration_days covers the trip length and the data "
-        "allowance is reasonable for the trip length. Reject with clear feedback otherwise."
+    prompt = judge_prompt(
+        trip_duration_days=state["trip_duration_days"],
+        destination_country=state["destination_country"],
+        candidate_plan=state["candidate_plan"],
+        reasoning=state["reasoning"],
     )
 
     verdict = llm.invoke(prompt)
+    retry_count = state.get("retry_count", 0) + (0 if verdict.approved else 1)
+
+    if verdict.approved:
+        writer({"kind": "status", "text": "Double-checked — this plan fits."})
+    elif retry_count < MAX_RETRIES:
+        writer(
+            {
+                "kind": "status",
+                "text": f"Second opinion: {verdict.feedback} Trying another plan…",
+            }
+        )
+
     return {
         "judge_approved": verdict.approved,
         "judge_feedback": verdict.feedback,
-        "retry_count": state.get("retry_count", 0) + (0 if verdict.approved else 1),
+        "retry_count": retry_count,
     }
 
 
