@@ -28,3 +28,11 @@ class RoamingAgentState(AgentState, total=False):
     retry_count: int
 
     subscription_result: Optional[dict]
+
+    # Follow-up chat fields
+    user_message: Optional[str]
+    prior_candidate_plan: Optional[dict]
+    prior_reasoning: str
+    prior_judge_feedback: str
+    followup_route: Optional[str]
+    followup_reply: str

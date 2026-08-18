@@ -2,8 +2,8 @@ from langchain_anthropic import ChatAnthropic
 from langgraph.graph import END, StateGraph
 from langgraph.types import StreamWriter
 
-from app.agents.roaming.prompts import judge_prompt, recommend_prompt
-from app.agents.roaming.schemas import JudgeVerdict, PlanRecommendation
+from app.agents.roaming.prompts import followup_prompt, judge_prompt, recommend_prompt
+from app.agents.roaming.schemas import FollowUpVerdict, JudgeVerdict, PlanRecommendation
 from app.agents.roaming.state import RoamingAgentState
 from app.agents.roaming.trip import extract_trip_context
 from app.config import get_settings
@@ -42,24 +42,27 @@ def node_fetch_catalog(state: RoamingAgentState, writer: StreamWriter) -> dict:
 def node_recommend_plan(state: RoamingAgentState, writer: StreamWriter) -> dict:
     llm = _llm().with_structured_output(PlanRecommendation)
 
+    # Re-fetch catalog for current destination (in case it changed during follow-up pivot)
+    catalog = fetch_roaming_catalog(state["destination_country"])
+
     prompt = recommend_prompt(
         destination_country=state["destination_country"],
         trip_duration_days=state["trip_duration_days"],
-        roaming_catalog=state["roaming_catalog"],
+        roaming_catalog=catalog,
         judge_feedback=state.get("judge_feedback", ""),
     )
 
     writer(
         {
             "kind": "status",
-            "text": f"Comparing {len(state['roaming_catalog'])} roaming plans for a "
+            "text": f"Comparing {len(catalog)} roaming plans for a "
             f"{state['trip_duration_days']}-day trip…",
         }
     )
 
     result = llm.invoke(prompt)
-    chosen = next((p for p in state["roaming_catalog"] if p["id"] == result.plan_id), None)
-    return {"candidate_plan": chosen, "reasoning": result.reasoning}
+    chosen = next((p for p in catalog if p["id"] == result.plan_id), None)
+    return {"candidate_plan": chosen, "reasoning": result.reasoning, "roaming_catalog": catalog}
 
 
 def node_judge(state: RoamingAgentState, writer: StreamWriter) -> dict:
@@ -92,6 +95,37 @@ def node_judge(state: RoamingAgentState, writer: StreamWriter) -> dict:
     }
 
 
+def node_handle_follow_up(state: RoamingAgentState, writer: StreamWriter) -> dict:
+    llm = _llm().with_structured_output(FollowUpVerdict)
+
+    prompt = followup_prompt(
+        destination_country=state["destination_country"],
+        trip_duration_days=state["trip_duration_days"],
+        roaming_catalog=state["roaming_catalog"],
+        user_message=state["user_message"],
+        prior_candidate_plan=state.get("prior_candidate_plan"),
+        prior_reasoning=state.get("prior_reasoning", ""),
+        prior_judge_feedback=state.get("prior_judge_feedback", ""),
+    )
+
+    verdict = llm.invoke(prompt)
+
+    if verdict.reply:
+        writer({"kind": "text", "role": "agent", "text": verdict.reply})
+
+    if verdict.on_topic and verdict.target_country:
+        return {"destination_country": verdict.target_country, "followup_route": "new_country"}
+
+    return {
+        "followup_route": "answered" if verdict.on_topic else "off_topic",
+        "followup_reply": verdict.reply,
+    }
+
+
+def route_after_follow_up(state: RoamingAgentState) -> str:
+    return state.get("followup_route", "answered")
+
+
 def route_after_judge(state: RoamingAgentState) -> str:
     if state.get("judge_approved"):
         return "approved"
@@ -111,6 +145,35 @@ def node_subscribe(state: RoamingAgentState) -> dict:
         },
     )
     return {"subscription_result": result}
+
+
+def build_follow_up_graph():
+    """Follow-up chat flow: extract trip context -> fetch catalog -> handle follow-up.
+    If the user wants a different country's plans, pivot to recommend/judge chain
+    (destination_country was updated by handle_follow_up, so recommend_plan will use it).
+    """
+    graph = StateGraph(RoamingAgentState)
+    graph.add_node("extract_trip_context", node_extract_trip_context)
+    graph.add_node("fetch_catalog", node_fetch_catalog)
+    graph.add_node("handle_follow_up", node_handle_follow_up)
+    graph.add_node("recommend_plan", node_recommend_plan)
+    graph.add_node("judge", node_judge)
+
+    graph.set_entry_point("extract_trip_context")
+    graph.add_edge("extract_trip_context", "fetch_catalog")
+    graph.add_edge("fetch_catalog", "handle_follow_up")
+    graph.add_conditional_edges(
+        "handle_follow_up",
+        route_after_follow_up,
+        {"answered": END, "off_topic": END, "new_country": "recommend_plan"},
+    )
+    graph.add_edge("recommend_plan", "judge")
+    graph.add_conditional_edges(
+        "judge",
+        route_after_judge,
+        {"approved": END, "retry": "recommend_plan", "give_up": END},
+    )
+    return graph.compile()
 
 
 def build_recommend_graph():
@@ -142,5 +205,6 @@ def build_subscribe_graph():
     return graph.compile()
 
 
+follow_up_graph = build_follow_up_graph()
 recommend_graph = build_recommend_graph()
 subscribe_graph = build_subscribe_graph()

@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 from jose import jwt
 
 from app.agents.roaming import graph as graph_module
-from app.agents.roaming.schemas import JudgeVerdict, PlanRecommendation
+from app.agents.roaming.schemas import FollowUpVerdict, JudgeVerdict, PlanRecommendation
 from app.config import get_settings
 from app.main import app
 
@@ -73,24 +73,30 @@ class _FakeSupabase:
 
 
 class _FakeStructuredLLM:
-    def __init__(self, model_cls, recommend_responses, judge_responses):
+    def __init__(self, model_cls, recommend_responses, judge_responses, followup_responses=None):
         self._model_cls = model_cls
         self._recommend_responses = recommend_responses
         self._judge_responses = judge_responses
+        self._followup_responses = followup_responses or []
 
     def invoke(self, _prompt):
         if self._model_cls is PlanRecommendation:
             return self._recommend_responses.pop(0)
+        elif self._model_cls is FollowUpVerdict:
+            return self._followup_responses.pop(0)
         return self._judge_responses.pop(0)
 
 
 class _FakeLLM:
-    def __init__(self, recommend_responses, judge_responses):
+    def __init__(self, recommend_responses, judge_responses, followup_responses=None):
         self._recommend_responses = recommend_responses
         self._judge_responses = judge_responses
+        self._followup_responses = followup_responses or []
 
     def with_structured_output(self, model_cls):
-        return _FakeStructuredLLM(model_cls, self._recommend_responses, self._judge_responses)
+        return _FakeStructuredLLM(
+            model_cls, self._recommend_responses, self._judge_responses, self._followup_responses
+        )
 
 
 @pytest.fixture
@@ -181,3 +187,138 @@ def test_chat_stream_event_sequence(fake_supabase, approving_llm, auth_token):
         < event_types.index("confirmation_required")
         < event_types.index("done")
     )
+
+
+def test_chat_stream_follow_up_on_topic_in_place(fake_supabase, monkeypatch, auth_token):
+    """Follow-up question answered in-place: emits text event, no recommendation_ready."""
+    followup_responses = [
+        FollowUpVerdict(on_topic=True, target_country=None, reply="Yes, that's a great plan for your trip!")
+    ]
+    recommend_responses = [PlanRecommendation(plan_id="plan-7d", reasoning="Matches the 7-day trip")]
+    judge_responses = [JudgeVerdict(approved=True, feedback="Duration and data allowance both fit")]
+    monkeypatch.setattr(
+        graph_module,
+        "_llm",
+        lambda: _FakeLLM(recommend_responses, judge_responses, followup_responses),
+    )
+    monkeypatch.setattr(graph_module, "fetch_roaming_catalog", lambda _country: CATALOG)
+
+    prior_plan = CATALOG[0]
+    with TestClient(app) as client:
+        with client.stream(
+            "POST",
+            "/chat/stream",
+            json={
+                "calendar_event_id": "evt-1",
+                "message": "Is this plan good?",
+                "prior_plan": prior_plan,
+                "prior_reasoning": "Matches the 7-day trip",
+                "prior_judge_feedback": "Duration and data allowance both fit",
+            },
+            headers={"Authorization": f"Bearer {auth_token}"},
+        ) as response:
+            event_types = [
+                line[len("event: "):] for line in response.iter_lines() if line.startswith("event: ")
+            ]
+
+    assert "text" in event_types
+    assert "recommendation_ready" not in event_types
+    assert "confirmation_required" not in event_types
+    assert event_types[-1] == "done"
+
+
+def test_chat_stream_follow_up_off_topic(fake_supabase, monkeypatch, auth_token):
+    """Follow-up question off-topic: emits text refusal, no recommendation."""
+    followup_responses = [
+        FollowUpVerdict(
+            on_topic=False,
+            target_country=None,
+            reply="I can only help with roaming plans for this trip. Please start a new chat with Veda.",
+        )
+    ]
+    recommend_responses = [PlanRecommendation(plan_id="plan-7d", reasoning="Matches the 7-day trip")]
+    judge_responses = [JudgeVerdict(approved=True, feedback="Duration and data allowance both fit")]
+    monkeypatch.setattr(
+        graph_module,
+        "_llm",
+        lambda: _FakeLLM(recommend_responses, judge_responses, followup_responses),
+    )
+    monkeypatch.setattr(graph_module, "fetch_roaming_catalog", lambda _country: CATALOG)
+
+    prior_plan = CATALOG[0]
+    with TestClient(app) as client:
+        with client.stream(
+            "POST",
+            "/chat/stream",
+            json={
+                "calendar_event_id": "evt-1",
+                "message": "Tell me a joke",
+                "prior_plan": prior_plan,
+                "prior_reasoning": "Matches the 7-day trip",
+                "prior_judge_feedback": "Duration and data allowance both fit",
+            },
+            headers={"Authorization": f"Bearer {auth_token}"},
+        ) as response:
+            event_types = [
+                line[len("event: "):] for line in response.iter_lines() if line.startswith("event: ")
+            ]
+
+    assert "text" in event_types
+    assert "recommendation_ready" not in event_types
+    assert "confirmation_required" not in event_types
+    assert event_types[-1] == "done"
+
+
+def test_chat_stream_follow_up_pivot_country(fake_supabase, monkeypatch, auth_token):
+    """Follow-up requesting a different country: pivots to recommend/judge, emits recommendation_ready."""
+    france_catalog = [
+        {
+            "id": "plan-7d-fr",
+            "country_name": "France",
+            "duration_days": 7,
+            "data_gb": 4,
+            "price": 20.0,
+            "currency": "EUR",
+            "plan_name": "7-day France",
+        }
+    ]
+    followup_responses = [
+        FollowUpVerdict(on_topic=True, target_country="France", reply="Let me check France options for you.")
+    ]
+    recommend_responses = [PlanRecommendation(plan_id="plan-7d-fr", reasoning="Matches the 7-day France trip")]
+    judge_responses = [JudgeVerdict(approved=True, feedback="Duration and data allowance both fit")]
+    monkeypatch.setattr(
+        graph_module,
+        "_llm",
+        lambda: _FakeLLM(recommend_responses, judge_responses, followup_responses),
+    )
+
+    # Monkeypatch to return France catalog for France, Japan catalog for Japan
+    def mock_fetch_catalog(country):
+        return france_catalog if country == "France" else CATALOG
+
+    monkeypatch.setattr(graph_module, "fetch_roaming_catalog", mock_fetch_catalog)
+
+    prior_plan = CATALOG[0]
+    with TestClient(app) as client:
+        with client.stream(
+            "POST",
+            "/chat/stream",
+            json={
+                "calendar_event_id": "evt-1",
+                "message": "What about France?",
+                "prior_plan": prior_plan,
+                "prior_reasoning": "Matches the 7-day trip",
+                "prior_judge_feedback": "Duration and data allowance both fit",
+            },
+            headers={"Authorization": f"Bearer {auth_token}"},
+        ) as response:
+            event_types = [
+                line[len("event: "):] for line in response.iter_lines() if line.startswith("event: ")
+            ]
+
+    assert "text" in event_types
+    assert "recommendation_ready" in event_types
+    assert "confirmation_required" in event_types
+    assert event_types[-1] == "done"
+    assert event_types.index("text") < event_types.index("recommendation_ready")

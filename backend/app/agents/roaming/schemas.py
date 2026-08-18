@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -23,3 +23,9 @@ class RoamingRecommendationCard(BaseModel):
     reasoning: str
     judge_approved: bool
     judge_feedback: str
+
+
+class FollowUpVerdict(BaseModel):
+    on_topic: bool = Field(description="whether the message is about roaming plans for this trip")
+    target_country: Optional[str] = Field(default=None, description="set only if the customer explicitly wants a different country's plans")
+    reply: str = Field(description="short natural-language reply to show the customer")

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { applyStreamEvent, nextId } from '../lib/chatThread';
 import { api } from '../lib/api';
-import type { AgentStreamEvent, CalendarEvent, ChatItem } from '../types';
+import type { AgentStreamEvent, CalendarEvent, ChatItem, RoamingPlan } from '../types';
 
 export type ChatPhase = 'idle' | 'streaming' | 'awaiting_confirmation' | 'complete' | 'failed';
 
@@ -32,6 +32,12 @@ export function useRoamingChat(event: CalendarEvent) {
   const abortControllerRef = useRef<AbortController | null>(null);
   const watchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const startedRef = useRef(false);
+  const lastRequestParamsRef = useRef<{
+    message?: string;
+    priorPlan?: RoamingPlan;
+    priorReasoning?: string;
+    priorJudgeFeedback?: string;
+  }>({});
 
   const commitItems = useCallback((next: ChatItem[]) => {
     itemsRef.current = next;
@@ -119,7 +125,18 @@ export function useRoamingChat(event: CalendarEvent) {
   );
 
   const startStream = useCallback(
-    (controller: AbortController) => {
+    (
+      controller: AbortController,
+      params?: {
+        message?: string;
+        priorPlan?: RoamingPlan;
+        priorReasoning?: string;
+        priorJudgeFeedback?: string;
+      }
+    ) => {
+      if (params) {
+        lastRequestParamsRef.current = params;
+      }
       setPhase('streaming');
       resetWatchdog();
       api
@@ -132,6 +149,7 @@ export function useRoamingChat(event: CalendarEvent) {
             handleStreamError(err);
           },
           onClose: clearWatchdog,
+          ...params,
         })
         .catch((err) => {
           if (controller.signal.aborted) return;
@@ -275,8 +293,35 @@ export function useRoamingChat(event: CalendarEvent) {
     abortControllerRef.current?.abort();
     const controller = new AbortController();
     abortControllerRef.current = controller;
-    startStream(controller);
+    startStream(controller, lastRequestParamsRef.current);
   }, [startStream]);
 
-  return { items, phase, confirm, decline, retry };
+  const sendMessage = useCallback(
+    (text: string) => {
+      if (phase === 'streaming' || !text.trim()) return;
+
+      // Append user message to items
+      appendItems([{ id: nextId(), createdAt: Date.now(), kind: 'text', role: 'user', text }]);
+
+      // Find the last card to extract plan/reasoning/feedback
+      const lastCard = [...itemsRef.current].reverse().find((item): item is CardItem => item.kind === 'card');
+      const priorPlan = lastCard?.card.kind === 'roaming_plan' ? lastCard.card.plan : undefined;
+      const priorReasoning = lastCard?.card.kind === 'roaming_plan' ? lastCard.card.reasoning : '';
+      const priorJudgeFeedback = lastCard?.card.kind === 'roaming_plan' ? lastCard.card.judge_feedback : '';
+
+      // Start a new stream with the follow-up message and prior context
+      abortControllerRef.current?.abort();
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+      startStream(controller, {
+        message: text,
+        priorPlan,
+        priorReasoning,
+        priorJudgeFeedback,
+      });
+    },
+    [phase, appendItems, startStream],
+  );
+
+  return { items, phase, confirm, decline, retry, sendMessage };
 }

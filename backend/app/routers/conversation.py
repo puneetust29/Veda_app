@@ -11,6 +11,7 @@ EventStream (a thread-safe asyncio.Queue) that this route's generator reads from
 from __future__ import annotations
 
 import asyncio
+from typing import Optional
 
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
@@ -28,6 +29,10 @@ router = APIRouter(prefix="/chat", tags=["chat"])
 
 class ChatStreamRequest(BaseModel):
     calendar_event_id: str
+    message: Optional[str] = None
+    prior_plan: Optional[dict] = None
+    prior_reasoning: Optional[str] = None
+    prior_judge_feedback: Optional[str] = None
 
 
 @router.post("/stream")
@@ -41,12 +46,20 @@ async def chat_stream(
 
     stream = EventStream(conversation_id=body.calendar_event_id)
 
+    subject = {
+        "calendar_event": event,
+        "prior_plan": body.prior_plan,
+        "prior_reasoning": body.prior_reasoning,
+        "prior_judge_feedback": body.prior_judge_feedback,
+    }
+
     orchestrator_request = OrchestratorRequest(
         principal=customer,
-        subject={"calendar_event": event},
+        subject=subject,
         intent=Intent(),
         conversation_id=body.calendar_event_id,
         mode="converse",
+        user_message=body.message,
     )
 
     orchestrator = get_orchestrator()

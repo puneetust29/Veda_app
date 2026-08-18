@@ -78,6 +78,7 @@ export type AgentStreamEvent =
   | { type: 'status'; data: { text: string; attempt?: number } }
   | { type: 'tool_started'; data: { tool: string; label?: string } }
   | { type: 'tool_completed'; data: { tool: string } }
+  | { type: 'text'; data: { role: 'agent' | 'user'; text: string } }
   | { type: 'recommendation_ready'; data: { card: RecommendationCardPayload } }
   | {
       type: 'confirmation_required';

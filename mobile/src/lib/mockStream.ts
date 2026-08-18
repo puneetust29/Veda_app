@@ -15,6 +15,10 @@ export type MockStreamParams = {
   onEvent: (event: AgentStreamEvent) => void;
   onError: (err: unknown) => void;
   onClose: () => void;
+  message?: string;
+  priorPlan?: RoamingPlan;
+  priorReasoning?: string;
+  priorJudgeFeedback?: string;
 };
 
 const MOCK_PLAN: RoamingPlan = {
@@ -81,6 +85,26 @@ function scriptedEvents(calendarEventId: string): Array<{ delayMs: number; event
   ];
 }
 
+function followupScriptedEvents(message: string): Array<{ delayMs: number; event: AgentStreamEvent }> {
+  // If message contains "weather", it's off-topic. Otherwise, it's on-topic.
+  const isOffTopic = message.toLowerCase().includes('weather');
+  const reply = isOffTopic
+    ? 'I can only help with roaming plans for this trip. Please start a new chat with Veda for anything else.'
+    : `That's a great question! Based on the catalog, the 7-day plan is excellent for your trip length and typical data usage.`;
+
+  return [
+    { delayMs: 50, event: { type: 'run_started', data: { run_id: `mock-run-${Date.now()}`, agents: ['roaming_agent'] } } },
+    {
+      delayMs: 800,
+      event: {
+        type: 'text',
+        data: { role: 'agent', text: reply },
+      },
+    },
+    { delayMs: 200, event: { type: 'done', data: { status: 'ok_no_action' } } },
+  ];
+}
+
 function delay(ms: number, signal: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
     if (signal.aborted) {
@@ -108,7 +132,8 @@ export async function mockStreamRoamingConversation(params: MockStreamParams): P
   };
 
   try {
-    for (const { delayMs, event } of scriptedEvents(params.calendarEventId)) {
+    const events = params.message ? followupScriptedEvents(params.message) : scriptedEvents(params.calendarEventId);
+    for (const { delayMs, event } of events) {
       await delay(delayMs, params.signal);
       params.onEvent(event);
     }

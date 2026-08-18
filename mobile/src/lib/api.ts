@@ -86,6 +86,10 @@ export const api = {
     onEvent: (event: AgentStreamEvent) => void;
     onError: (err: unknown) => void;
     onClose: () => void;
+    message?: string;
+    priorPlan?: RoamingPlan;
+    priorReasoning?: string;
+    priorJudgeFeedback?: string;
   }): Promise<void> => {
     if (process.env.EXPO_PUBLIC_CHAT_MOCK === '1') {
       return mockStreamRoamingConversation(params);
@@ -96,6 +100,14 @@ export const api = {
       throw new Error('Not authenticated');
     }
 
+    const body: any = { calendar_event_id: params.calendarEventId };
+    if (params.message) {
+      body.message = params.message;
+      body.prior_plan = params.priorPlan;
+      body.prior_reasoning = params.priorReasoning;
+      body.prior_judge_feedback = params.priorJudgeFeedback;
+    }
+
     return streamSse({
       url: `${API_BASE_URL}/chat/stream`,
       method: 'POST',
@@ -104,7 +116,7 @@ export const api = {
         'Content-Type': 'application/json',
         Accept: 'text/event-stream',
       },
-      body: JSON.stringify({ calendar_event_id: params.calendarEventId }),
+      body: JSON.stringify(body),
       signal: params.signal,
       onFrame: (frame) => {
         try {

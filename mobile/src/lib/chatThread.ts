@@ -77,6 +77,12 @@ export function applyStreamEvent(items: ChatItem[], event: AgentStreamEvent): Ch
       return next;
     }
 
+    case 'text':
+      return [
+        ...items,
+        { id: nextId(), createdAt: Date.now(), kind: 'text', role: event.data.role, text: event.data.text },
+      ];
+
     case 'recommendation_ready': {
       const withDone = markActiveStatusesDone(items);
       return [...withDone, { id: nextId(), createdAt: Date.now(), kind: 'card', card: event.data.card }];

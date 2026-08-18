@@ -31,3 +31,31 @@ def judge_prompt(trip_duration_days: int, destination_country: str, candidate_pl
         "Approve only if the plan's duration_days covers the trip length and the data "
         "allowance is reasonable for the trip length. Reject with clear feedback otherwise."
     )
+
+
+def followup_prompt(
+    destination_country: str,
+    trip_duration_days: int,
+    roaming_catalog: list,
+    user_message: str,
+    prior_candidate_plan: dict,
+    prior_reasoning: str,
+    prior_judge_feedback: str,
+) -> str:
+    return (
+        "You are a telecom roaming plan advisor in a follow-up conversation.\n\n"
+        f"Trip: {trip_duration_days} days to {destination_country}.\n\n"
+        f"Available roaming plans for {destination_country} (JSON):\n{roaming_catalog}\n\n"
+        f"Previously recommended plan: {prior_candidate_plan}\n"
+        f"Your reasoning: {prior_reasoning}\n"
+        f"AI reviewer's feedback: {prior_judge_feedback}\n\n"
+        f"Customer's message: {user_message}\n\n"
+        "Respond to the customer's question or request. If they ask about roaming plans for this trip, "
+        "answer directly based on the catalog and prior recommendation. If they explicitly ask for plans "
+        "from a different country (e.g., 'what about France?' or 'show me options for Germany'), set "
+        "target_country to that country's name (standard English capitalization, e.g., 'France', 'Japan'). "
+        "If the message is off-topic (not about roaming plans for this trip), set on_topic=false and write "
+        "a brief redirect in reply, e.g., 'I can only help with roaming plans for this trip — please start "
+        "a new chat with Veda for anything else.'\n\n"
+        "Always fill the 'reply' field with a short, friendly response in all cases."
+    )

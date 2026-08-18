@@ -21,7 +21,7 @@ import uuid
 from app.agents.base.contracts import AgentContext, AgentMode, AgentResult, BaseAgent
 from app.agents.base.manifest import load_manifest
 from app.agents.base.runner import run_graph_streaming
-from app.agents.roaming.graph import recommend_graph, subscribe_graph
+from app.agents.roaming.graph import follow_up_graph, recommend_graph, subscribe_graph
 from app.agents.roaming.schemas import RoamingRecommendationCard
 from app.agents.roaming.state import RoamingAgentState
 from app.agents.roaming.stream_map import (
@@ -50,11 +50,21 @@ class RoamingAgent(BaseAgent):
             "context": ctx.context,
             "customer": customer,
             "calendar_event": calendar_event,
+            "user_message": ctx.user_message,
         }
+        # If this is a follow-up call, also read the prior turn's plan/reasoning/feedback from subject
+        if ctx.user_message:
+            subject = ctx.subject or {}
+            state["prior_candidate_plan"] = subject.get("prior_plan")
+            state["prior_reasoning"] = subject.get("prior_reasoning", "")
+            state["prior_judge_feedback"] = subject.get("prior_judge_feedback", "")
         return state
 
     def execute(self, ctx: AgentContext, mode: AgentMode = "suggest") -> AgentResult:
         state = self._initial_state(ctx)
+
+        is_follow_up = mode == "converse" and bool(ctx.user_message)
+        graph = follow_up_graph if is_follow_up else recommend_graph
 
         if mode == "converse":
             def _forward_translated(payload: dict) -> None:
@@ -67,9 +77,20 @@ class RoamingAgent(BaseAgent):
             # thread here (the router wraps the whole orchestrator.run() call in
             # asyncio.to_thread), so asyncio.run() opens a fresh loop scoped to this
             # thread purely to drive that awaitable to completion.
-            final_state = asyncio.run(run_graph_streaming(recommend_graph, state, _forward_translated))
+            final_state = asyncio.run(run_graph_streaming(graph, state, _forward_translated))
         else:
             final_state = recommend_graph.invoke(state)
+
+        # Short-circuit for in-place follow-up replies (not a new recommendation)
+        if is_follow_up and final_state.get("followup_route") in ("answered", "off_topic"):
+            ctx.emit(build_done("ok_no_action"))
+            return AgentResult(
+                agent=self.manifest.name,
+                version=self.manifest.version,
+                status="ok",
+                summary=final_state.get("followup_reply", ""),
+                raw=final_state,
+            )
 
         candidate_plan = final_state.get("candidate_plan")
         judge_approved = bool(final_state.get("judge_approved"))
