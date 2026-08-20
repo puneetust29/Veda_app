@@ -8,6 +8,7 @@ import type {
   RecommendResponse,
   RoamingPlan,
   Subscription,
+  UberDeeplinkResponse,
 } from '../types';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
@@ -129,4 +130,8 @@ export const api = {
       onClose: params.onClose,
     });
   },
+  // Deep-link handoff only -- no Uber account/OAuth needed (see backend/app/tools/uber_deeplink.py).
+  // Real in-app price/booking is currently blocked pending Uber access approval.
+  getUberDeeplink: (calendarEventId: string) =>
+    authedFetch<UberDeeplinkResponse>(`/uber/deeplink?calendar_event_id=${calendarEventId}`),
 };

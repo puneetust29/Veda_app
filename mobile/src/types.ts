@@ -56,6 +56,11 @@ export type Subscription = {
   calendar_events: CalendarEvent;
 };
 
+export type UberDeeplinkResponse = {
+  deep_link_url: string;
+  destination_label: string | null;
+};
+
 export type RootStackParamList = {
   SignIn: undefined;
   Dashboard: undefined;

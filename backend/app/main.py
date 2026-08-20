@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
 from app.orchestration.orchestrator import get_orchestrator
-from app.routers import auth, calendar, conversation, roaming, subscriptions
+from app.routers import auth, calendar, conversation, roaming, subscriptions, uber
 
 settings = get_settings()
 
@@ -34,6 +34,7 @@ app.include_router(calendar.router)
 app.include_router(roaming.router)
 app.include_router(subscriptions.router)
 app.include_router(conversation.router)
+app.include_router(uber.router)
 
 
 @app.get("/health")
