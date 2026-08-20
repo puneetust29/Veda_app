@@ -1,6 +1,6 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { api } from '../lib/api';
 import type { RecommendResponse, RootStackParamList } from '../types';
@@ -12,6 +12,19 @@ export default function FlightDetailScreen({ route, navigation }: Props) {
   const [recommendation, setRecommendation] = useState<RecommendResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [subscribing, setSubscribing] = useState(false);
+  const [bookingRide, setBookingRide] = useState(false);
+
+  const handleBookRide = async () => {
+    setBookingRide(true);
+    try {
+      const { deep_link_url } = await api.getUberDeeplink(event.id);
+      await Linking.openURL(deep_link_url);
+    } catch (err) {
+      Alert.alert('Could not open Uber', err instanceof Error ? err.message : String(err));
+    } finally {
+      setBookingRide(false);
+    }
+  };
 
   const handleRecommend = async () => {
     setLoading(true);
@@ -59,6 +72,20 @@ export default function FlightDetailScreen({ route, navigation }: Props) {
 
       <View style={styles.banner}>
         <Text style={styles.bannerText}>You don't have a roaming plan enabled for this trip.</Text>
+      </View>
+
+      <View style={styles.rideCard}>
+        <Text style={styles.sectionLabel}>Need a ride when you land?</Text>
+        <Text style={styles.reasoning}>
+          Book with Uber, using your current location as pickup{event.destination ? ` — set ${event.destination} as your destination once you're in the app` : ''}.
+        </Text>
+        <TouchableOpacity style={styles.buttonSecondary} onPress={handleBookRide} disabled={bookingRide}>
+          {bookingRide ? (
+            <ActivityIndicator color="#111" />
+          ) : (
+            <Text style={styles.buttonSecondaryText}>Book with Uber</Text>
+          )}
+        </TouchableOpacity>
       </View>
 
       {!recommendation && (
@@ -125,6 +152,14 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   bannerText: { color: '#c0392b', fontWeight: '600' },
+  rideCard: {
+    borderWidth: 1,
+    borderColor: '#eee',
+    borderRadius: 12,
+    padding: 16,
+    backgroundColor: '#fafafa',
+    marginBottom: 20,
+  },
   button: {
     backgroundColor: '#111',
     borderRadius: 10,

@@ -1,10 +1,11 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useRef, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Linking, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import ChatItemView from '../components/ChatItemView';
 import { useRoamingChat } from '../hooks/useRoamingChat';
+import { api } from '../lib/api';
 import type { RootStackParamList } from '../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Chat'>;
@@ -14,6 +15,23 @@ export default function ChatScreen({ route, navigation }: Props) {
   const { items, phase, confirm, decline, retry, sendMessage } = useRoamingChat(event);
   const scrollViewRef = useRef<ScrollView>(null);
   const [draft, setDraft] = useState('');
+  const [bookingRide, setBookingRide] = useState(false);
+
+  const handleBookRide = async () => {
+    setBookingRide(true);
+    try {
+      const { uber_app_url, deep_link_url } = await api.getUberDeeplink(event.id);
+      // Try the native uber:// scheme first — it reliably pre-fills pickup/dropoff
+      // fields in the Uber app. Fall back to the https:// universal link if the
+      // Uber app is not installed (will open the App Store or Uber web).
+      const canOpenUber = await Linking.canOpenURL(uber_app_url);
+      await Linking.openURL(canOpenUber ? uber_app_url : deep_link_url);
+    } catch (err) {
+      Alert.alert('Could not open Uber', err instanceof Error ? err.message : String(err));
+    } finally {
+      setBookingRide(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
@@ -26,6 +44,13 @@ export default function ChatScreen({ route, navigation }: Props) {
           {new Date(event.start_datetime).toLocaleDateString()} –{' '}
           {new Date(event.end_datetime).toLocaleDateString()}
         </Text>
+        <TouchableOpacity style={styles.rideButton} onPress={handleBookRide} disabled={bookingRide}>
+          {bookingRide ? (
+            <ActivityIndicator color="#111" size="small" />
+          ) : (
+            <Text style={styles.rideButtonText}>🚗 Book a ride with Uber</Text>
+          )}
+        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -97,6 +122,16 @@ const styles = StyleSheet.create({
   title: { fontSize: 20, fontWeight: '700' },
   subtitle: { color: '#444', marginTop: 4, fontSize: 15 },
   date: { color: '#888', marginTop: 2, fontSize: 13 },
+  rideButton: {
+    marginTop: 10,
+    alignSelf: 'flex-start',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#111',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  rideButtonText: { color: '#111', fontSize: 14, fontWeight: '600' },
   thread: { flex: 1 },
   threadContent: { padding: 20, paddingBottom: 12 },
   footer: {
