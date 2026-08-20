@@ -56,13 +56,78 @@ export type Subscription = {
   calendar_events: CalendarEvent;
 };
 
+// --- Google Calendar ---
+
+// `configured: false` means the backend has no GOOGLE_CLIENT_ID/SECRET, so every
+// /calendar/google/* route answers 503. Distinct from `connected: false`, which
+// means the backend is set up but this customer hasn't consented yet.
+export type GoogleCalendarStatus = {
+  configured: boolean;
+  connected: boolean;
+  google_account_email?: string | null;
+  scope?: string | null;
+};
+
+// A raw Google Calendar API event resource, passed through untouched by
+// GET /calendar/google/events. Only the fields the UI reads are typed.
+export type GoogleCalendarEvent = {
+  id: string;
+  summary?: string;
+  description?: string;
+  location?: string;
+  htmlLink?: string;
+  status?: string;
+  start?: { dateTime?: string; date?: string };
+  end?: { dateTime?: string; date?: string };
+};
+
+export type GoogleSyncResult = {
+  fetched: number;
+  synced: number;
+  skipped_all_day: number;
+  skipped_non_flight: number;
+};
+
+export type DeviceCalendarEvent = {
+  device_event_id: string;
+  title: string;
+  location?: string;
+  notes?: string;
+  start: string;
+  end: string;
+};
+
+export type DeviceSyncResult = {
+  fetched: number;
+  synced: number;
+  skipped_non_flight: number;
+};
+
 export type RootStackParamList = {
-  SignIn: undefined;
+  Onboarding: undefined;
   Dashboard: undefined;
   FlightDetail: { event: CalendarEvent };
   Chat: { event: CalendarEvent };
   Subscriptions: undefined;
   RoamingPlans: undefined;
+  GoogleCalendar: undefined;
+  DeviceCalendar: undefined;
+};
+
+// --- Onboarding flow (pre-auth) ---
+
+export type PlanTier = 'lite' | 'balanced' | 'complete';
+
+export type OnboardingStackParamList = {
+  Landing: undefined;
+  PhoneEntry: undefined;
+  OtpVerification: undefined;
+  Welcome: undefined;
+  PlanSelection: undefined;
+  AppPermissions: undefined;
+  AccountSelection: undefined;
+  Consent: undefined;
+  Success: undefined;
 };
 
 // --- Chat / streaming agent contract ---

@@ -5,6 +5,11 @@ import type {
   AgentStreamEvent,
   CalendarEvent,
   Customer,
+  DeviceCalendarEvent,
+  DeviceSyncResult,
+  GoogleCalendarEvent,
+  GoogleCalendarStatus,
+  GoogleSyncResult,
   RecommendResponse,
   RoamingPlan,
   Subscription,
@@ -80,6 +85,43 @@ export const api = {
       }),
     }),
   listSubscriptions: () => authedFetch<Subscription[]>('/subscriptions'),
+
+  // --- Google Calendar ---
+  // The app never touches a Google token: it asks the backend for a consent URL,
+  // opens it, and afterwards re-reads status. See backend/app/routers/calendar.py.
+  googleCalendarStatus: () => authedFetch<GoogleCalendarStatus>('/calendar/google/status'),
+  // `appRedirect` is where the backend's callback page sends the browser once
+  // consent finishes, which is what lets the in-app auth session close itself.
+  // It varies by runtime (exp:// under Expo Go, veda:// in a build), so the caller
+  // computes it with Linking.createURL rather than either side hardcoding it.
+  startGoogleCalendarAuth: (appRedirect: string) =>
+    authedFetch<{ authorization_url: string }>('/calendar/google/connect', {
+      method: 'POST',
+      body: JSON.stringify({ app_redirect: appRedirect }),
+    }),
+  disconnectGoogleCalendar: () =>
+    authedFetch<{ disconnected: boolean }>('/calendar/google/connection', { method: 'DELETE' }),
+  listGoogleCalendarEvents: (maxResults = 20, flightsOnly = false) =>
+    authedFetch<GoogleCalendarEvent[]>(
+      `/calendar/google/events?max_results=${maxResults}&flights_only=${flightsOnly}`,
+    ),
+  // Mirrors Google events into calendar_events, which is what the agents read.
+  syncGoogleCalendar: (maxResults = 20, flightsOnly = true) =>
+    authedFetch<GoogleSyncResult>(
+      `/calendar/google/sync?max_results=${maxResults}&flights_only=${flightsOnly}`,
+      { method: 'POST' },
+    ),
+
+  // --- Device calendar (Apple Calendar via expo-calendar) ---
+  // The app reads events straight off the device (no OAuth, no token) and
+  // forwards them here to be classified and merged into calendar_events
+  // alongside whatever Google already synced. See routers/calendar.py's
+  // /calendar/device-events.
+  syncDeviceCalendar: (events: DeviceCalendarEvent[], flightsOnly = true) =>
+    authedFetch<DeviceSyncResult>('/calendar/device-events', {
+      method: 'POST',
+      body: JSON.stringify({ events, flights_only: flightsOnly }),
+    }),
   streamRoamingConversation: async (params: {
     calendarEventId: string;
     signal: AbortSignal;
