@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     supabase_jwt_secret: str
 
     anthropic_api_key: str
-    anthropic_model: str = "claude-sonnet-5"
+    anthropic_model: str = "claude-haiku-4-5-20251001"
 
     environment: str = "development"
     cors_origins: str = "*"

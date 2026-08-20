@@ -19,9 +19,17 @@
   },
   "scripts": {
     "start": "expo start",
+    "start:local": "cp .env.local .env && expo start",
+    "start:dev": "cp .env.dev .env && expo start",
     "android": "expo start --android",
+    "android:local": "cp .env.local .env && expo start --android",
+    "android:dev": "cp .env.dev .env && expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "ios:local": "cp .env.local .env && expo start --ios",
+    "ios:dev": "cp .env.dev .env && expo start --ios",
+    "web": "expo start --web",
+    "web:local": "cp .env.local .env && expo start --web",
+    "web:dev": "cp .env.dev .env && expo start --web"
   },
   "private": true
 }
