@@ -57,7 +57,8 @@ export type Subscription = {
 };
 
 export type UberDeeplinkResponse = {
-  deep_link_url: string;
+  uber_app_url: string;    // uber:// scheme — opens native app, reliably pre-fills fields
+  deep_link_url: string;   // https://m.uber.com/ul/ — web fallback if app not installed
   destination_label: string | null;
 };
 

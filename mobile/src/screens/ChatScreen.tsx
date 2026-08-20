@@ -20,8 +20,12 @@ export default function ChatScreen({ route, navigation }: Props) {
   const handleBookRide = async () => {
     setBookingRide(true);
     try {
-      const { deep_link_url } = await api.getUberDeeplink(event.id);
-      await Linking.openURL(deep_link_url);
+      const { uber_app_url, deep_link_url } = await api.getUberDeeplink(event.id);
+      // Try the native uber:// scheme first — it reliably pre-fills pickup/dropoff
+      // fields in the Uber app. Fall back to the https:// universal link if the
+      // Uber app is not installed (will open the App Store or Uber web).
+      const canOpenUber = await Linking.canOpenURL(uber_app_url);
+      await Linking.openURL(canOpenUber ? uber_app_url : deep_link_url);
     } catch (err) {
       Alert.alert('Could not open Uber', err instanceof Error ? err.message : String(err));
     } finally {
