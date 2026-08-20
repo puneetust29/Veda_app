@@ -1,5 +1,6 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
+import * as Calendar from 'expo-calendar';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -11,17 +12,48 @@ import GreetingWeather from '../components/dashboard/GreetingWeather';
 import SuggestionGrid, { type Suggestion } from '../components/dashboard/SuggestionGrid';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
+import { readDeviceCalendarEvents } from '../lib/deviceCalendar';
+import { FALLBACK_WEATHER, getDeviceWeatherSummary } from '../lib/weather';
 import { colors, spacing, typography } from '../theme';
-import type { CalendarEvent, RootStackParamList } from '../types';
+import type { CalendarEvent, RootStackParamList, WeatherSummary } from '../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Dashboard'>;
 
-// Static placeholder until a real weather integration exists.
-const PLACEHOLDER_WEATHER = { temperatureC: 13, location: 'England, UK' };
+// Used when location permission is denied or weather cannot be fetched.
+const PLACEHOLDER_WEATHER = FALLBACK_WEATHER;
+
+// Silently mirrors both calendar sources into calendar_events before the
+// dashboard reads them, so a returning user sees up-to-date flights without
+// an extra "sync" tap on the Calendars screen. Deliberately non-blocking on
+// failure (best-effort background refresh) and never prompts for anything
+// the user hasn't already granted -- it only acts on connections/permissions
+// that already exist:
+//   - Google: only synced if the customer already completed OAuth consent
+//     (status.connected), so this never triggers a browser popup.
+//   - Device: only read if calendar permission is already GRANTED, so this
+//     never triggers the OS permission dialog on a fresh install.
+async function silentlySyncCalendars(): Promise<void> {
+  await Promise.allSettled([
+    (async () => {
+      const status = await api.googleCalendarStatus();
+      if (status.configured && status.connected) {
+        await api.syncGoogleCalendar();
+      }
+    })(),
+    (async () => {
+      const { status } = await Calendar.getCalendarPermissionsAsync();
+      if (status === Calendar.PermissionStatus.GRANTED) {
+        const events = await readDeviceCalendarEvents();
+        await api.syncDeviceCalendar(events, true);
+      }
+    })(),
+  ]);
+}
 
 export default function DashboardScreen({ navigation }: Props) {
   const { customer, signOut } = useAuth();
   const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [weather, setWeather] = useState<WeatherSummary>(PLACEHOLDER_WEATHER);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -30,16 +62,40 @@ export default function DashboardScreen({ navigation }: Props) {
     setEvents(data);
   }, []);
 
+  const loadWeather = useCallback(async () => {
+    try {
+      setWeather(await getDeviceWeatherSummary());
+    } catch (err) {
+      console.warn('[Dashboard] weather fetch failed', err);
+      setWeather(PLACEHOLDER_WEATHER);
+    }
+  }, []);
+
+
+  const syncAndLoadEvents = useCallback(async () => {
+    // Best-effort: a sync failure (offline, expired Google token, etc.)
+    // shouldn't block showing whatever calendar_events already has.
+    await Promise.allSettled([
+      (async () => {
+        await silentlySyncCalendars().catch((err) =>
+          console.warn('[Dashboard] background calendar sync failed', err),
+        );
+        await loadEvents();
+      })(),
+      loadWeather(),
+    ]);
+  }, [loadEvents, loadWeather]);
+
   useFocusEffect(
     useCallback(() => {
       setLoading(true);
-      loadEvents().finally(() => setLoading(false));
-    }, [loadEvents]),
+      syncAndLoadEvents().finally(() => setLoading(false));
+    }, [syncAndLoadEvents]),
   );
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await loadEvents();
+    await syncAndLoadEvents();
     setRefreshing(false);
   };
 
@@ -58,7 +114,7 @@ export default function DashboardScreen({ navigation }: Props) {
       icon: 'calendar-outline',
       label: "Plan next week's meetings",
       connectApps: true,
-      onPress: () => navigation.navigate('GoogleCalendar'),
+      onPress: () => navigation.navigate('DeviceCalendar'),
     },
     { id: 'food', icon: 'fast-food-outline', label: 'Order food', connectApps: true },
   ];
@@ -71,7 +127,7 @@ export default function DashboardScreen({ navigation }: Props) {
     {
       id: 'device-calendar',
       icon: 'calendar-outline',
-      label: 'Device Calendar',
+      label: 'Calendars',
       onPress: () => navigation.navigate('DeviceCalendar'),
     },
     { id: 'sign-out', icon: 'log-out-outline', label: 'Sign out', onPress: signOut, destructive: true },
@@ -88,7 +144,7 @@ export default function DashboardScreen({ navigation }: Props) {
           contentContainerStyle={styles.scrollContent}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
         >
-          <GreetingWeather name={firstName} weather={PLACEHOLDER_WEATHER} />
+          <GreetingWeather name={firstName} weather={weather} />
 
           <View style={styles.attentionHeader}>
             <Text style={styles.attentionTitle}>What needs your attention</Text>

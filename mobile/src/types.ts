@@ -21,6 +21,12 @@ export type CalendarEvent = {
   created_at: string;
 };
 
+export type WeatherSummary = {
+  temperatureC: number;
+  location: string;
+  weatherCode: number | null;
+};
+
 export type RoamingPlan = {
   id: string;
   country_code: string;
@@ -88,6 +94,15 @@ export type GoogleSyncResult = {
   skipped_non_flight: number;
 };
 
+// `source` distinguishes which account synced the underlying calendar to the
+// device: 'google' when expo-calendar's Calendar.Source looks like a Google
+// account (source.type === 'com.google' on Android, or a CalDAV source named
+// after a gmail.com address on iOS), 'apple' for the device's local/iCloud
+// calendars, 'other' for anything else (Outlook, Yahoo, etc.). This is
+// client-side display metadata only -- the backend's /calendar/device-events
+// ignores unrecognized fields and always stores these as source: "device".
+export type DeviceCalendarSource = 'google' | 'apple' | 'other';
+
 export type DeviceCalendarEvent = {
   device_event_id: string;
   title: string;
@@ -95,6 +110,8 @@ export type DeviceCalendarEvent = {
   notes?: string;
   start: string;
   end: string;
+  calendarTitle: string;
+  source: DeviceCalendarSource;
 };
 
 export type DeviceSyncResult = {
@@ -110,7 +127,9 @@ export type RootStackParamList = {
   Chat: { event: CalendarEvent };
   Subscriptions: undefined;
   RoamingPlans: undefined;
-  GoogleCalendar: undefined;
+  // Single merged calendar screen: reads every calendar expo-calendar exposes
+  // on-device (Apple Calendar, plus Google/Outlook/etc. if the user added
+  // those accounts in the OS Settings app) and displays them together.
   DeviceCalendar: undefined;
 };
 

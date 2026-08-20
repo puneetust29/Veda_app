@@ -14,7 +14,7 @@ import type { GoogleCalendarStatus, OnboardingStackParamList } from '../../types
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'AccountSelection'>;
 
-// Same return-path scheme as the standalone GoogleCalendarScreen -- Linking
+// Same return-path scheme used by the Google OAuth connect flow -- Linking
 // createURL resolves to whatever the current runtime uses (exp:// under
 // Expo Go, veda:// in a build).
 const RETURN_PATH = 'google-calendar';
@@ -30,10 +30,12 @@ function hasCalendarScope(status: GoogleCalendarStatus): boolean {
   return !!status.scope?.includes(CALENDAR_SCOPE);
 }
 
-// Real Google OAuth connect (reusing the same api.startGoogleCalendarAuth +
-// WebBrowser.openAuthSessionAsync flow as GoogleCalendarScreen), rather than
-// a hardcoded list of fake accounts. Outlook has no backend integration yet,
-// so it's shown as "Coming soon" instead of faking data for it too.
+// Real Google OAuth connect (api.startGoogleCalendarAuth +
+// WebBrowser.openAuthSessionAsync), rather than a hardcoded list of fake
+// accounts. This is separate from the flight-detection calendar screen,
+// which reads calendars straight off the device via expo-calendar instead.
+// Outlook has no backend integration yet, so it's shown as "Coming soon"
+// instead of faking data for it too.
 export default function AccountSelectionScreen({ navigation }: Props) {
   const { refreshCustomer } = useAuth();
   const [status, setStatus] = useState<GoogleCalendarStatus | null>(null);
@@ -177,14 +179,6 @@ export default function AccountSelectionScreen({ navigation }: Props) {
             </TouchableOpacity>
           </View>
         )}
-
-        <View style={[styles.groupCard, styles.groupCardDisabled]}>
-          <View style={styles.groupHeader}>
-            <Ionicons name="mail-outline" size={18} color={colors.textMuted} />
-            <Text style={[styles.groupTitle, styles.groupTitleDisabled]}>Outlook</Text>
-            <Text style={styles.comingSoon}>Coming soon</Text>
-          </View>
-        </View>
       </View>
 
       <View style={styles.footer}>
@@ -212,12 +206,9 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     marginBottom: spacing.lg,
   },
-  groupCardDisabled: { opacity: 0.6 },
   groupHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
   groupTitle: { ...typography.bodyBold, color: colors.textPrimary },
-  groupTitleDisabled: { color: colors.textMuted },
   groupEmpty: { ...typography.caption, color: colors.textMuted, marginBottom: spacing.md },
-  comingSoon: { ...typography.small, color: colors.textMuted, marginLeft: 'auto' },
   accountRow: {
     flexDirection: 'row',
     alignItems: 'center',

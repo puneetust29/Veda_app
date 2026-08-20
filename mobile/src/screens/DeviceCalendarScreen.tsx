@@ -13,18 +13,40 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 
 import { api } from '../lib/api';
-import type { DeviceCalendarEvent, RootStackParamList } from '../types';
+import { countDeviceEventsBySource, readDeviceCalendarEvents } from '../lib/deviceCalendar';
+import { colors, radii, spacing, typography } from '../theme';
+import type { DeviceCalendarEvent, DeviceCalendarSource, RootStackParamList } from '../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DeviceCalendar'>;
 
-// How far ahead to read. expo-calendar has no "upcoming" concept of its own --
-// getEventsAsync needs an explicit window, and events don't need syncing once
-// they're in the past anyway.
-const LOOKAHEAD_DAYS = 180;
+const SOURCE_LABELS: Record<DeviceCalendarSource, string> = {
+  google: 'Google',
+  apple: 'Apple',
+  other: 'Other',
+};
 
+const SOURCE_COLORS: Record<DeviceCalendarSource, string> = {
+  google: '#1a73e8',
+  apple: colors.textSecondary,
+  other: colors.textMuted,
+};
+
+// This screen is the single source of truth for "flights from my calendars":
+// expo-calendar's getCalendarsAsync/getEventsAsync already merge every account
+// the OS has synced onto the device -- Apple Calendar plus, if the user added
+// them under Settings > Calendar, Google, Outlook, Yahoo, etc. -- into one
+// flat event list. There is no separate Google OAuth flow in this app; if a
+// user wants their Google events here, they add the Google account at the OS
+// level and iOS/Android mirrors it into the calendar database this screen
+// reads, same as Apple Calendar.
 export default function DeviceCalendarScreen({ navigation }: Props) {
   const [permission, setPermission] = useState<Calendar.PermissionStatus | null>(null);
   const [events, setEvents] = useState<DeviceCalendarEvent[]>([]);
+  const [sourceCounts, setSourceCounts] = useState<Record<DeviceCalendarSource, number>>({
+    google: 0,
+    apple: 0,
+    other: 0,
+  });
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [lastSyncSummary, setLastSyncSummary] = useState<string | null>(null);
@@ -36,7 +58,9 @@ export default function DeviceCalendarScreen({ navigation }: Props) {
       setEvents([]);
       return;
     }
-    setEvents(await readDeviceEvents());
+    const fresh = await readDeviceCalendarEvents();
+    setEvents(fresh);
+    setSourceCounts(countDeviceEventsBySource(fresh));
   }, []);
 
   useFocusEffect(
@@ -54,7 +78,9 @@ export default function DeviceCalendarScreen({ navigation }: Props) {
       const { status } = await Calendar.requestCalendarPermissionsAsync();
       setPermission(status);
       if (status === Calendar.PermissionStatus.GRANTED) {
-        setEvents(await readDeviceEvents());
+        const fresh = await readDeviceCalendarEvents();
+        setEvents(fresh);
+        setSourceCounts(countDeviceEventsBySource(fresh));
       }
     } catch (err) {
       Alert.alert('Could not request permission', String(err));
@@ -66,12 +92,15 @@ export default function DeviceCalendarScreen({ navigation }: Props) {
   const handleSync = async () => {
     setBusy(true);
     try {
-      const fresh = await readDeviceEvents();
+      const fresh = await readDeviceCalendarEvents();
       setEvents(fresh);
-      // flights_only=true: unlike Google sync (which mirrors every event so the
-      // list view stays useful), device calendars can include every personal and
-      // work calendar on the phone, so only persisting detected flights keeps
-      // calendar_events from filling up with noise the agents don't care about.
+      setSourceCounts(countDeviceEventsBySource(fresh));
+      // flights_only=true: calendars on-device can include every personal and
+      // work calendar synced to the phone, so only persisting detected
+      // flights keeps calendar_events from filling up with noise the agents
+      // don't care about. This one call persists flights found in Apple
+      // Calendar and any other synced account (Google included) together --
+      // there's no separate per-provider sync anymore.
       const result = await api.syncDeviceCalendar(fresh, true);
       setLastSyncSummary(
         `Read ${result.fetched} event(s), found ${result.synced} flight(s).` +
@@ -96,8 +125,9 @@ export default function DeviceCalendarScreen({ navigation }: Props) {
         <View style={styles.notice}>
           <Text style={styles.noticeTitle}>Calendar access needed</Text>
           <Text style={styles.noticeBody}>
-            Veda reads your device calendars (including Apple Calendar) locally to detect
-            upcoming flights. Nothing leaves your phone except the flights Veda finds.
+            Veda reads your device calendars locally to detect upcoming flights -- Apple
+            Calendar, plus Google, Outlook or any other calendar account you've added in
+            Settings. Nothing leaves your phone except the flights Veda finds.
           </Text>
         </View>
         <View style={styles.actions}>
@@ -117,10 +147,22 @@ export default function DeviceCalendarScreen({ navigation }: Props) {
   return (
     <View style={styles.container}>
       <View style={styles.statusCard}>
-        <Text style={styles.statusLabel}>Device calendars connected</Text>
+        <Text style={styles.statusLabel}>Calendars connected</Text>
         <Text style={styles.statusDetail}>
-          Reads Apple Calendar and any other calendar account synced to this device.
+          Merging events from every calendar synced to this device.
         </Text>
+        <View style={styles.sourceBadgeRow}>
+          {(Object.keys(SOURCE_LABELS) as DeviceCalendarSource[])
+            .filter((source) => sourceCounts[source] > 0)
+            .map((source) => (
+              <View key={source} style={[styles.sourceBadge, { borderColor: SOURCE_COLORS[source] }]}>
+                <View style={[styles.sourceDot, { backgroundColor: SOURCE_COLORS[source] }]} />
+                <Text style={[styles.sourceBadgeText, { color: SOURCE_COLORS[source] }]}>
+                  {SOURCE_LABELS[source]} · {sourceCounts[source]}
+                </Text>
+              </View>
+            ))}
+        </View>
         {lastSyncSummary ? <Text style={styles.statusDetail}>{lastSyncSummary}</Text> : null}
       </View>
 
@@ -139,13 +181,21 @@ export default function DeviceCalendarScreen({ navigation }: Props) {
         data={events}
         keyExtractor={(item) => item.device_event_id}
         contentContainerStyle={styles.list}
-        ListHeaderComponent={<Text style={styles.sectionTitle}>On this device</Text>}
+        ListHeaderComponent={<Text style={styles.sectionTitle}>Upcoming events</Text>}
         ListEmptyComponent={<Text style={styles.empty}>No upcoming events found.</Text>}
         renderItem={({ item }) => (
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>{item.title || '(no title)'}</Text>
+            <View style={styles.cardHeaderRow}>
+              <Text style={styles.cardTitle} numberOfLines={1}>
+                {item.title || '(no title)'}
+              </Text>
+              <View style={[styles.sourcePill, { backgroundColor: SOURCE_COLORS[item.source] }]}>
+                <Text style={styles.sourcePillText}>{SOURCE_LABELS[item.source]}</Text>
+              </View>
+            </View>
             <Text style={styles.cardDate}>{new Date(item.start).toLocaleString()}</Text>
             {item.location ? <Text style={styles.cardSubtitle}>{item.location}</Text> : null}
+            <Text style={styles.cardCalendarName}>{item.calendarTitle}</Text>
           </View>
         )}
       />
@@ -153,65 +203,55 @@ export default function DeviceCalendarScreen({ navigation }: Props) {
   );
 }
 
-// Reads every calendar the OS exposes (Apple Calendar plus any other account
-// synced to the device) and flattens them into the shape the backend expects.
-// Unlike Google, there's no per-calendar OAuth scope here -- once permission is
-// granted, all local calendars are visible, so this always queries all of them
-// rather than letting the user pick one.
-async function readDeviceEvents(): Promise<DeviceCalendarEvent[]> {
-  const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
-  const now = new Date();
-  const end = new Date(now.getTime() + LOOKAHEAD_DAYS * 24 * 60 * 60 * 1000);
-
-  const rawEvents = await Calendar.getEventsAsync(
-    calendars.map((cal) => cal.id),
-    now,
-    end,
-  );
-
-  return rawEvents.map((event) => ({
-    device_event_id: event.id,
-    title: event.title ?? '',
-    location: event.location ?? '',
-    notes: event.notes ?? '',
-    start: new Date(event.startDate).toISOString(),
-    end: new Date(event.endDate).toISOString(),
-  }));
-}
-
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  container: { flex: 1, backgroundColor: colors.background },
   loading: { marginTop: 40 },
-  notice: { margin: 20, padding: 16, borderRadius: 12, backgroundColor: '#fff4e5' },
-  noticeTitle: { fontSize: 16, fontWeight: '700', color: '#8a4b00' },
-  noticeBody: { color: '#8a4b00', marginTop: 6, lineHeight: 20 },
+  notice: { margin: spacing.xl, padding: spacing.lg, borderRadius: radii.md, backgroundColor: '#fff4e5' },
+  noticeTitle: { ...typography.bodyBold, color: '#8a4b00' },
+  noticeBody: { color: '#8a4b00', marginTop: spacing.sm, lineHeight: 20 },
   statusCard: {
-    margin: 20,
+    margin: spacing.xl,
     marginBottom: 0,
-    padding: 16,
-    borderRadius: 12,
-    backgroundColor: '#fafafa',
+    padding: spacing.lg,
+    borderRadius: radii.md,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: '#eee',
+    borderColor: colors.border,
   },
-  statusLabel: { fontSize: 17, fontWeight: '700' },
-  statusDetail: { color: '#444', marginTop: 4 },
-  actions: { paddingHorizontal: 20, paddingTop: 16, gap: 12, alignItems: 'flex-start' },
-  button: { backgroundColor: '#0a66c2', paddingVertical: 12, paddingHorizontal: 20, borderRadius: 10 },
+  statusLabel: { ...typography.bodyBold, fontSize: 17, color: colors.textPrimary },
+  statusDetail: { color: colors.textSecondary, marginTop: spacing.xs },
+  sourceBadgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.sm },
+  sourceBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    borderWidth: 1,
+    borderRadius: radii.pill,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+  },
+  sourceDot: { width: 6, height: 6, borderRadius: 3 },
+  sourceBadgeText: { ...typography.small, fontWeight: '600' },
+  actions: { paddingHorizontal: spacing.xl, paddingTop: spacing.lg, gap: spacing.md, alignItems: 'flex-start' },
+  button: { backgroundColor: colors.brand, paddingVertical: spacing.md, paddingHorizontal: spacing.xl, borderRadius: radii.md },
   buttonDisabled: { opacity: 0.5 },
-  buttonText: { color: '#fff', fontWeight: '600', fontSize: 15 },
-  sectionTitle: { fontSize: 15, fontWeight: '700', marginBottom: 12, color: '#333' },
-  list: { padding: 20 },
-  empty: { color: '#666', marginTop: 8 },
+  buttonText: { color: colors.white, fontWeight: '600', fontSize: 15 },
+  sectionTitle: { ...typography.bodyBold, fontSize: 15, marginBottom: spacing.md, color: colors.textPrimary },
+  list: { padding: spacing.xl },
+  empty: { color: colors.textMuted, marginTop: spacing.sm },
   card: {
     borderWidth: 1,
-    borderColor: '#eee',
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 10,
-    backgroundColor: '#fafafa',
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    backgroundColor: colors.surface,
   },
-  cardTitle: { fontSize: 16, fontWeight: '600' },
-  cardSubtitle: { color: '#444', marginTop: 4 },
-  cardDate: { color: '#888', marginTop: 4, fontSize: 13 },
+  cardHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
+  cardTitle: { fontSize: 16, fontWeight: '600', color: colors.textPrimary, flexShrink: 1 },
+  sourcePill: { borderRadius: radii.pill, paddingHorizontal: spacing.sm, paddingVertical: 2 },
+  sourcePillText: { ...typography.small, color: colors.white, fontWeight: '700' },
+  cardSubtitle: { color: colors.textSecondary, marginTop: spacing.xs },
+  cardDate: { color: colors.textMuted, marginTop: spacing.xs, fontSize: 13 },
+  cardCalendarName: { color: colors.textDisabled, marginTop: spacing.xs, fontSize: 12 },
 });

@@ -7,7 +7,6 @@ import ChatScreen from '../screens/ChatScreen';
 import DashboardScreen from '../screens/DashboardScreen';
 import DeviceCalendarScreen from '../screens/DeviceCalendarScreen';
 import FlightDetailScreen from '../screens/FlightDetailScreen';
-import GoogleCalendarScreen from '../screens/GoogleCalendarScreen';
 import RoamingPlansScreen from '../screens/RoamingPlansScreen';
 import SubscriptionsScreen from '../screens/SubscriptionsScreen';
 import OnboardingNavigator from './OnboardingNavigator';
@@ -65,14 +64,9 @@ export default function RootNavigator() {
               options={{ headerShown: true, title: 'Available Plans' }}
             />
             <Stack.Screen
-              name="GoogleCalendar"
-              component={GoogleCalendarScreen}
-              options={{ headerShown: true, title: 'Google Calendar' }}
-            />
-            <Stack.Screen
               name="DeviceCalendar"
               component={DeviceCalendarScreen}
-              options={{ headerShown: true, title: 'Device Calendar' }}
+              options={{ headerShown: true, title: 'Calendars' }}
             />
           </>
         )}

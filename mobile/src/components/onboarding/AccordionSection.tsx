@@ -15,7 +15,7 @@ type Props = {
   /** Called after an expand/collapse, so parents relying on content height
    * (e.g. a "scroll to enable" button) can re-check after the layout
    * change settles. */
-  onToggle?: () => void;
+  onToggle?: (expanded: boolean) => void;
 };
 
 // Expand/collapse section with a rotating chevron — matches the "How Veda
@@ -27,9 +27,10 @@ export default function AccordionSection({ title, children, defaultExpanded = fa
   const rotation = useRef(new Animated.Value(defaultExpanded ? 1 : 0)).current;
 
   const toggle = () => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut, onToggle);
-    Animated.timing(rotation, { toValue: expanded ? 0 : 1, duration: 220, useNativeDriver: true }).start();
-    setExpanded((prev) => !prev);
+    const nextExpanded = !expanded;
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut, () => onToggle?.(nextExpanded));
+    Animated.timing(rotation, { toValue: nextExpanded ? 1 : 0, duration: 220, useNativeDriver: true }).start();
+    setExpanded(nextExpanded);
   };
 
   const rotate = rotation.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '180deg'] });

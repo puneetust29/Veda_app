@@ -1,15 +1,6 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useRef, useState } from 'react';
-import {
-  Animated,
-  LayoutChangeEvent,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import AccordionSection from '../../components/onboarding/AccordionSection';
 import StepHeader from '../../components/onboarding/StepHeader';
@@ -30,48 +21,28 @@ const BULLETS = [
   'Detect fraud, misuse and security issues',
 ];
 
-// The "Agree & Continue" button animates from a disabled tint to solid
-// brand-red as the user scrolls to the bottom of the consent copy — matches
-// the scroll-gated enable animation in the Figma "Your data belongs to you"
-// screen (single accordion, no separate "how Veda shares" etc. sections).
+type AccordionId = 'use' | 'safe' | 'ai';
+
+// Consent step now uses three collapsed accordions. The CTA stays disabled
+// until each accordion has been opened at least once.
 export default function ConsentScreen({ navigation }: Props) {
-  const [reachedEnd, setReachedEnd] = useState(false);
+  const [openedAccordions, setOpenedAccordions] = useState<Record<AccordionId, boolean>>({
+    use: false,
+    safe: false,
+    ai: false,
+  });
   const ctaAnim = useRef(new Animated.Value(0)).current;
-  // Track both the scroll viewport and content heights so we can tell
-  // whether there's anything to scroll at all — with the accordion
-  // collapsed by default the content can fit on-screen, and a ScrollView
-  // never fires onScroll in that case, which previously left the button
-  // permanently disabled.
-  const viewportHeight = useRef(0);
-  const contentHeight = useRef(0);
+  const openedCount = Object.values(openedAccordions).filter(Boolean).length;
+  const allOpened = openedCount === 3;
 
-  const unlock = () => {
-    if (reachedEnd) return;
-    setReachedEnd(true);
-    Animated.timing(ctaAnim, { toValue: 1, duration: 300, useNativeDriver: false }).start();
+  const handleAccordionToggle = (id: AccordionId, expanded: boolean) => {
+    if (!expanded) return;
+    setOpenedAccordions((prev) => (prev[id] ? prev : { ...prev, [id]: true }));
   };
 
-  const checkFitsWithoutScrolling = () => {
-    if (viewportHeight.current > 0 && contentHeight.current > 0 && contentHeight.current <= viewportHeight.current) {
-      unlock();
-    }
-  };
-
-  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
-    const nearBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - 24;
-    if (nearBottom) unlock();
-  };
-
-  const handleLayout = (event: LayoutChangeEvent) => {
-    viewportHeight.current = event.nativeEvent.layout.height;
-    checkFitsWithoutScrolling();
-  };
-
-  const handleContentSizeChange = (_width: number, height: number) => {
-    contentHeight.current = height;
-    checkFitsWithoutScrolling();
-  };
+  useEffect(() => {
+    Animated.timing(ctaAnim, { toValue: allOpened ? 1 : 0, duration: 300, useNativeDriver: false }).start();
+  }, [allOpened, ctaAnim]);
 
   const ctaBackground = ctaAnim.interpolate({ inputRange: [0, 1], outputRange: [colors.brandTint, colors.brand] });
   const ctaTextColor = ctaAnim.interpolate({ inputRange: [0, 1], outputRange: [colors.brand, colors.white] });
@@ -80,20 +51,17 @@ export default function ConsentScreen({ navigation }: Props) {
     <View style={styles.container}>
       <StepHeader onBack={() => navigation.goBack()} />
 
-      <Animated.ScrollView
-        contentContainerStyle={styles.body}
-        onScroll={handleScroll}
-        scrollEventThrottle={32}
-        onLayout={handleLayout}
-        onContentSizeChange={handleContentSizeChange}
-      >
+      <Animated.ScrollView contentContainerStyle={styles.body}>
         <StepProgressBar step={4} />
         <Text style={styles.title}>Your data belongs to you.</Text>
         <Text style={styles.subtitle}>
           Veda only accesses information you've approved, and you can change or remove permissions anytime.
         </Text>
 
-        <AccordionSection title="How I'll use your information" defaultExpanded onToggle={checkFitsWithoutScrolling}>
+        <AccordionSection
+          title="How I'll use your information"
+          onToggle={(expanded) => handleAccordionToggle('use', expanded)}
+        >
           <Text style={styles.sectionIntro}>Veda uses information you choose to provide or connect to:</Text>
           {BULLETS.map((bullet) => (
             <View key={bullet} style={styles.bulletRow}>
@@ -111,6 +79,26 @@ export default function ConsentScreen({ navigation }: Props) {
             necessary for those purposes.
           </Text>
         </AccordionSection>
+        <AccordionSection title="How I'll protect your information" onToggle={(expanded) => handleAccordionToggle('safe', expanded)}>
+          <Text style={styles.sectionExtra}>
+            Your data is handled using secure systems and access controls. We only use approved information for the
+            purposes described and review safeguards to reduce misuse or unauthorized access.
+          </Text>
+          <Text style={styles.sectionExtra}>
+            You can review or change connected permissions in app settings. Removing access stops future syncing from
+            that source.
+          </Text>
+        </AccordionSection>
+        <AccordionSection title="How AI recommendations work" onToggle={(expanded) => handleAccordionToggle('ai', expanded)}>
+          <Text style={styles.sectionExtra}>
+            AI helps summarize signals from your approved data and suggest useful next actions. Suggestions are
+            optional and are designed to support your decisions.
+          </Text>
+          <Text style={styles.sectionExtra}>
+            Important actions, such as purchases or service changes, always require your explicit confirmation before
+            anything is applied.
+          </Text>
+        </AccordionSection>
 
         <Text style={styles.agreement}>
           By selecting <Text style={styles.agreementBold}>Agree & Continue</Text>, you agree to Veda's terms and
@@ -124,11 +112,12 @@ export default function ConsentScreen({ navigation }: Props) {
       </Animated.ScrollView>
 
       <View style={styles.footer}>
-        <TouchableOpacity disabled={!reachedEnd} onPress={() => navigation.navigate('Success')}>
+        <TouchableOpacity disabled={!allOpened} onPress={() => navigation.navigate('Success')}>
           <Animated.View style={[styles.cta, { backgroundColor: ctaBackground }]}>
             <Animated.Text style={[styles.ctaText, { color: ctaTextColor }]}>Agree & Continue</Animated.Text>
           </Animated.View>
         </TouchableOpacity>
+        <Text style={styles.counterText}>{openedCount}/3 Terms read.</Text>
       </View>
     </View>
   );
@@ -152,4 +141,5 @@ const styles = StyleSheet.create({
   footer: { paddingHorizontal: spacing.xl, paddingBottom: spacing.xl, paddingTop: spacing.sm },
   cta: { borderRadius: radii.pill, paddingVertical: spacing.lg, alignItems: 'center' },
   ctaText: { ...typography.bodyBold, fontSize: 16 },
+  counterText: { ...typography.small, color: colors.textMuted, textAlign: 'center', marginTop: spacing.sm },
 });
