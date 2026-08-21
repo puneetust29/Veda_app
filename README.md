@@ -2,7 +2,7 @@
 
 A telecom AI roaming companion POC with a FastAPI backend and React Native mobile frontend.
 
-## Prerequisites 1
+## Prerequisites
 
 - **Python 3.9+** (for backend)
 - **Node.js 18+** (for mobile app)
