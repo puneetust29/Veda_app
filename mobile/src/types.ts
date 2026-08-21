@@ -131,6 +131,7 @@ export type RootStackParamList = {
   // on-device (Apple Calendar, plus Google/Outlook/etc. if the user added
   // those accounts in the OS Settings app) and displays them together.
   DeviceCalendar: undefined;
+  Gmail: undefined;
 };
 
 // --- Onboarding flow (pre-auth) ---

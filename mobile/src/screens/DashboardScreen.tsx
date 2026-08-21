@@ -130,6 +130,12 @@ export default function DashboardScreen({ navigation }: Props) {
       label: 'Calendars',
       onPress: () => navigation.navigate('DeviceCalendar'),
     },
+    {
+      id: 'gmail',
+      icon: 'mail-outline',
+      label: 'Gmail',
+      onPress: () => navigation.navigate('Gmail'),
+    },
     { id: 'sign-out', icon: 'log-out-outline', label: 'Sign out', onPress: signOut, destructive: true },
   ];
 

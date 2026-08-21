@@ -83,15 +83,17 @@ def _post_token(payload: dict) -> dict:
     return response.json()
 
 
-def exchange_code(code: str, code_verifier: str) -> dict:
+def exchange_code(code: str, code_verifier: str, redirect_uri: str | None = None) -> dict:
     """Swap an authorization code for tokens. Includes refresh_token on first consent."""
     settings = get_settings()
+    if redirect_uri is None:
+        redirect_uri = settings.google_redirect_uri
     return _post_token(
         {
             "code": code,
             "code_verifier": code_verifier,
             "grant_type": "authorization_code",
-            "redirect_uri": settings.google_redirect_uri,
+            "redirect_uri": redirect_uri,
         }
     )
 
