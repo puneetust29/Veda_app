@@ -14,6 +14,7 @@ import {
 
 import CheckableTag from '../common/CheckableTag';
 import IconCircle from '../common/IconCircle';
+import SourceBadge from '../common/SourceBadge';
 import { colors, radii, spacing, typography } from '../../theme';
 import type { CalendarEvent } from '../../types';
 
@@ -178,6 +179,10 @@ function AttentionCard({
         {flight.title} · {formatDateRange(flight.start_datetime, flight.end_datetime)}
       </Text>
 
+      <View style={styles.sourceBadgeRow}>
+        <SourceBadge source={flight.source} />
+      </View>
+
       <View style={styles.tagRow}>
         <CheckableTag
           icon="cellular-outline"
@@ -242,6 +247,10 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.textMuted,
     marginTop: spacing.xs,
+    marginHorizontal: spacing.lg,
+  },
+  sourceBadgeRow: {
+    marginTop: spacing.sm,
     marginHorizontal: spacing.lg,
   },
   tagRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md, marginHorizontal: spacing.lg },

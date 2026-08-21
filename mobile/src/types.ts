@@ -17,6 +17,7 @@ export type CalendarEvent = {
   destination: string | null;
   start_datetime: string;
   end_datetime: string;
+  source: 'google' | 'device' | 'mock';
   raw_details: Record<string, unknown>;
   created_at: string;
 };
