@@ -1,0 +1,29 @@
+# Chat flow 04 — "View my plans" navigates to Subscriptions after activation
+
+appId: com.vedaapp.companion
+
+---
+- launchApp:
+    clearState: true
+
+- runFlow: ../../subflows/sign-in.yaml
+
+- tapOn:
+    text: "Flight to Tokyo"
+
+- assertVisible:
+    text: "Activate this plan"
+    timeout: 12000
+
+- tapOn:
+    text: "Activate this plan"
+
+- assertVisible:
+    text: "View my plans"
+    timeout: 5000
+
+- tapOn:
+    text: "View my plans"
+
+# Subscriptions screen
+- assertVisible: "My plans"

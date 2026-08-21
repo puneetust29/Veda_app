@@ -1,0 +1,38 @@
+# Subscriptions flow 02 — Subscription card appears after activating a plan
+# This is an end-to-end journey: sign in → open flight → activate plan →
+# tap "View my plans" → confirm the subscription card is shown.
+
+appId: com.vedaapp.companion
+
+---
+- launchApp:
+    clearState: true
+
+- runFlow: ../../subflows/sign-in.yaml
+
+- tapOn:
+    text: "Flight to Tokyo"
+
+# Wait for the confirmation prompt from the mock stream
+- assertVisible:
+    text: "Activate this plan"
+    timeout: 12000
+
+- tapOn:
+    text: "Activate this plan"
+
+# Navigate to subscriptions via footer button
+- assertVisible:
+    text: "View my plans"
+    timeout: 5000
+
+- tapOn:
+    text: "View my plans"
+
+# The subscription card should show the plan name and the flight title
+- assertVisible: "My plans"
+- assertVisible: "Japan 7-day · 5GB"
+- assertVisible: "Flight to Tokyo"
+
+# Status shows as active (SubscriptionsScreen renders status with capitalize)
+- assertVisible: "active"

@@ -1,0 +1,16 @@
+# Maestro global configuration
+# Docs: https://maestro.mobile.dev/reference/configuration
+#
+# appId must match the bundle ID used when building the Expo dev client.
+#   iOS     → com.vedaapp.companion
+#   Android → com.vedaapp.companion
+#
+# Point Maestro at this directory:
+#   maestro test e2e-native/
+#
+# Or run a single flow:
+#   maestro test e2e-native/auth/01-sign-in.yaml
+#
+# Override appId for a specific build:
+#   maestro test --env APP_ID=com.myorg.veda e2e-native/
+appId: com.vedaapp.companion

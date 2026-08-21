@@ -74,7 +74,16 @@ export type RootStackParamList = {
 // --- Chat / streaming agent contract ---
 
 export type RecommendationCardPayload =
-  | { kind: 'roaming_plan'; plan: RoamingPlan; reasoning: string; judge_approved: boolean; judge_feedback: string };
+  | { kind: 'roaming_plan'; plan: RoamingPlan; reasoning: string; judge_approved: boolean; judge_feedback: string }
+  | {
+      kind: 'uber_ride';
+      suggested_message: string;
+      reasoning: string;
+      pickup_label: string | null;
+      dropoff_label: string | null;
+      uber_app_url: string | null;
+      deep_link_url: string | null;
+    };
 
 // The wire event contract emitted by `POST /chat/stream`. This is the backend's
 // still-being-finalized shape — only `chatThread.ts` should need to know both this

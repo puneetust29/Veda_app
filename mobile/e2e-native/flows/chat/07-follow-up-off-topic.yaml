@@ -1,0 +1,30 @@
+# Chat flow 07 — Off-topic follow-up gets a polite redirect
+# followupScriptedEvents() returns the off-topic reply when "weather" is in
+# the message (matches the mock's isOffTopic check).
+
+appId: com.vedaapp.companion
+
+---
+- launchApp:
+    clearState: true
+
+- runFlow: ../../subflows/sign-in.yaml
+
+- tapOn:
+    text: "Flight to Tokyo"
+
+# Wait for stream to settle
+- assertVisible:
+    text: "Activate this plan"
+    timeout: 12000
+
+- tapOn:
+    text: "Ask a follow-up question…"
+- inputText: "What's the weather like in Tokyo?"
+- tapOn:
+    text: "Send"
+
+# Off-topic reply
+- assertVisible:
+    text: "I can only help with roaming plans"
+    timeout: 10000

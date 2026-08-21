@@ -1,0 +1,16 @@
+# Subscriptions flow 01 — Empty state
+# When the user has no active subscriptions the screen shows the empty copy.
+
+appId: com.vedaapp.companion
+
+---
+- launchApp:
+    clearState: true
+
+- runFlow: ../../subflows/sign-in.yaml
+
+- tapOn:
+    text: "My plans"
+
+- assertVisible: "My plans"
+- assertVisible: "No roaming plans subscribed yet."

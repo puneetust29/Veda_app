@@ -69,6 +69,25 @@ function scriptedEvents(calendarEventId: string): Array<{ delayMs: number; event
       },
     },
     {
+      delayMs: 400,
+      event: {
+        type: 'recommendation_ready',
+        data: {
+          card: {
+            kind: 'uber_ride',
+            suggested_message: 'Need a ride to Heathrow before your Tokyo flight?',
+            reasoning: 'Flight detected from London Heathrow to Tokyo Narita — booking an airport transfer in advance is recommended.',
+            pickup_label: 'London Heathrow (LHR)',
+            dropoff_label: 'Tokyo Narita (NRT)',
+            uber_app_url:
+              'uber://?action=setPickup&pickup[latitude]=51.47&pickup[longitude]=-0.4543&pickup[nickname]=LHR&dropoff[latitude]=35.772&dropoff[longitude]=140.3929&dropoff[nickname]=NRT',
+            deep_link_url:
+              'https://m.uber.com/ul/?action=setPickup&pickup[latitude]=51.47&pickup[longitude]=-0.4543&pickup[nickname]=LHR&dropoff[latitude]=35.772&dropoff[longitude]=140.3929&dropoff[nickname]=NRT',
+          },
+        },
+      },
+    },
+    {
       delayMs: 500,
       event: {
         type: 'confirmation_required',

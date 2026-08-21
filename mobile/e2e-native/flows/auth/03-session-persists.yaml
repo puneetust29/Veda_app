@@ -1,0 +1,19 @@
+# Auth flow 03 — Session persists across app restarts
+# Signs in, backgrounds the app, brings it back, and confirms the user
+# is still authenticated (lands on Dashboard, not sign-in).
+
+appId: com.vedaapp.companion
+
+---
+- launchApp:
+    clearState: true
+
+- runFlow: ../../subflows/sign-in.yaml
+
+# Background then foreground the app — token should survive via AsyncStorage
+- pressKey: Home
+- launchApp:
+    clearState: false
+
+- assertVisible: "Upcoming trips"
+- assertNotVisible: "Welcome back"

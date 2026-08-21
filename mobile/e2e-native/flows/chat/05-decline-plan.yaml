@@ -1,0 +1,23 @@
+# Chat flow 05 — "Not now" declines the plan and shows agent acknowledgement
+
+appId: com.vedaapp.companion
+
+---
+- launchApp:
+    clearState: true
+
+- runFlow: ../../subflows/sign-in.yaml
+
+- tapOn:
+    text: "Flight to Tokyo"
+
+- assertVisible:
+    text: "Not now"
+    timeout: 12000
+
+- tapOn:
+    text: "Not now"
+
+# ConfirmationPrompt switches to declined state
+# useRoamingChat.decline() also appends an agent text bubble
+- assertVisible: "No problem — let me know if you change your mind."

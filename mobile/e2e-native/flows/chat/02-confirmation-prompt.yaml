@@ -1,0 +1,23 @@
+# Chat flow 02 — Confirmation prompt renders correctly
+# After the mock stream completes, a confirmation_required event is emitted.
+# This flow checks the prompt UI elements are all present.
+
+appId: com.vedaapp.companion
+
+---
+- launchApp:
+    clearState: true
+
+- runFlow: ../../subflows/sign-in.yaml
+
+- tapOn:
+    text: "Flight to Tokyo"
+
+# Wait for confirmation prompt
+- assertVisible:
+    text: "Activate Japan 7-day"
+    timeout: 12000
+
+# Both CTA buttons must be present
+- assertVisible: "Activate this plan"
+- assertVisible: "Not now"

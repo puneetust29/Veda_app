@@ -1,0 +1,23 @@
+# Dashboard flow 04 — Tap flight card opens Chat screen
+# Tapping a flight card should push the Chat screen with trip header.
+
+appId: com.vedaapp.companion
+
+---
+- launchApp:
+    clearState: true
+
+- runFlow: ../../subflows/sign-in.yaml
+
+- tapOn:
+    text: "Flight to Tokyo"
+
+# Chat screen trip header
+- assertVisible: "Flight to Tokyo"
+- assertVisible: "FRA → NRT"
+
+# The Uber ride button is part of the chat header
+- assertVisible: "🚗 Book a ride with Uber"
+
+# Follow-up input is present
+- assertVisible: "Ask a follow-up question…"

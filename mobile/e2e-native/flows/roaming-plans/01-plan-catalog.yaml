@@ -1,0 +1,31 @@
+# Roaming Plans flow 01 — Plan catalog renders correctly
+# Navigates to the Available Plans screen and checks plan cards,
+# country section headers, and spec chips.
+
+appId: com.vedaapp.companion
+
+---
+- launchApp:
+    clearState: true
+
+- runFlow: ../../subflows/sign-in.yaml
+
+- tapOn:
+    text: "All plans"
+
+# Screen title (set in RootNavigator options)
+- assertVisible: "Available Plans"
+
+# Country section header
+- assertVisible: "Japan"
+
+# Plan card
+- assertVisible: "Japan 7-day · 5GB"
+
+# Spec chips
+- assertVisible: "7 days"
+- assertVisible: "5GB"
+- assertVisible: "Asia"
+
+# Price
+- assertVisible: "€25.00"

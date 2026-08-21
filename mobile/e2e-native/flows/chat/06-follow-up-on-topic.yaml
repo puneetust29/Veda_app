@@ -1,0 +1,31 @@
+# Chat flow 06 — On-topic follow-up message gets an agent reply
+# followupScriptedEvents() in mockStream.ts returns an on-topic reply for any
+# message that does NOT contain "weather".
+
+appId: com.vedaapp.companion
+
+---
+- launchApp:
+    clearState: true
+
+- runFlow: ../../subflows/sign-in.yaml
+
+- tapOn:
+    text: "Flight to Tokyo"
+
+# Wait for the stream to finish (input becomes enabled)
+- assertVisible:
+    text: "Activate this plan"
+    timeout: 12000
+
+# Type and send a follow-up
+- tapOn:
+    text: "Ask a follow-up question…"
+- inputText: "Is 5GB enough for a week?"
+- tapOn:
+    text: "Send"
+
+# On-topic reply from followupScriptedEvents()
+- assertVisible:
+    text: "7-day plan is excellent"
+    timeout: 10000

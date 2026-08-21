@@ -1,4 +1,5 @@
 from langchain_anthropic import ChatAnthropic
+from langchain_openai import ChatOpenAI
 from langgraph.graph import END, StateGraph
 from langgraph.types import StreamWriter
 
@@ -14,14 +15,31 @@ MAX_RETRIES = 2
 
 def _llm():
     settings = get_settings()
-    return ChatAnthropic(
-        model=settings.anthropic_model,
-        api_key=settings.anthropic_api_key,
-    )
+    provider = (settings.llm_provider or "openai").strip().lower()
+
+    if provider == "openai":
+        if not settings.openai_api_key:
+            raise RuntimeError("OpenAI is the default LLM provider, but OPENAI_API_KEY is missing")
+        return ChatOpenAI(
+            model=settings.openai_model,
+            api_key=settings.openai_api_key,
+            temperature=0,
+        )
+
+    if provider == "anthropic":
+        if not settings.anthropic_api_key:
+            raise RuntimeError("LLM_PROVIDER=anthropic but ANTHROPIC_API_KEY is missing")
+        return ChatAnthropic(
+            model=settings.anthropic_model,
+            api_key=settings.anthropic_api_key,
+            temperature=0,
+        )
+
+    raise RuntimeError(f"Unsupported LLM_PROVIDER: {provider}")
 
 
 def node_extract_trip_context(state: RoamingAgentState, writer: StreamWriter) -> dict:
-    # Emitted before any Anthropic call -- this is the first user-visible event on the
+    # Emitted before any LLM call -- this is the first user-visible event on the
     # /chat/stream path, deliberately dependency-free so it lands well within a client's
     # inactivity timeout even on a cold LLM start. `writer` is LangGraph's injected
     # no-op under .invoke() (verified against langgraph/utils/runnable.py), so this is

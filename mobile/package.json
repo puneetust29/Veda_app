@@ -16,6 +16,7 @@
     "react-native-web": "^0.21.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@types/react": "~19.1.10",
     "typescript": "~5.9.2"
   },
@@ -23,7 +24,16 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:report": "playwright show-report",
+    "test:native": "maestro test e2e-native/",
+    "test:native:auth": "maestro test e2e-native/flows/auth/",
+    "test:native:dashboard": "maestro test e2e-native/flows/dashboard/",
+    "test:native:chat": "maestro test e2e-native/flows/chat/",
+    "test:native:subscriptions": "maestro test e2e-native/flows/subscriptions/",
+    "test:native:roaming-plans": "maestro test e2e-native/flows/roaming-plans/"
   },
   "private": true
 }

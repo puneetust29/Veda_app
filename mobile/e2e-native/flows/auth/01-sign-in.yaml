@@ -1,0 +1,27 @@
+# Auth flow 01 — Sign in
+# Verifies the sign-in screen renders correctly and a valid phone number
+# navigates to the Dashboard.
+
+appId: com.vedaapp.companion
+
+---
+- launchApp:
+    clearState: true
+
+# Sign-in screen elements
+- assertVisible: "Welcome back"
+- assertVisible: "Sign in with your mobile number"
+- assertVisible:
+    text: "+15550001111"   # placeholder
+- assertVisible:
+    text: "Sign in"
+
+# Fill in phone number and submit
+- tapOn:
+    text: "+15550001111"
+- inputText: "+15550001111"
+- tapOn:
+    text: "Sign in"
+
+# Should land on Dashboard
+- assertVisible: "Upcoming trips"

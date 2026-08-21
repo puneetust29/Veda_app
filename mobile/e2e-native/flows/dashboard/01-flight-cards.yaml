@@ -1,0 +1,18 @@
+# Dashboard flow 01 — Flight cards
+# Confirms the Dashboard renders flight cards with the expected content.
+
+appId: com.vedaapp.companion
+
+---
+- launchApp:
+    clearState: true
+
+- runFlow: ../../subflows/sign-in.yaml
+
+# Heading
+- assertVisible: "Upcoming trips"
+
+# Flight card content — values come from the seeded test data
+- assertVisible: "Flight to Tokyo"
+- assertVisible: "FRA → NRT"
+- assertVisible: "Roaming not enabled for this trip →"

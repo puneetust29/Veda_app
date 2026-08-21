@@ -9,8 +9,10 @@ import pytest
 from fastapi.testclient import TestClient
 from jose import jwt
 
-from app.agents.roaming import graph as graph_module
+from app.agents.roaming import graph as roaming_graph_module
 from app.agents.roaming.schemas import FollowUpVerdict, JudgeVerdict, PlanRecommendation
+from app.agents.uber import graph as uber_graph_module
+from app.agents.uber.schemas import RideSuggestion
 from app.config import get_settings
 from app.main import app
 
@@ -84,6 +86,8 @@ class _FakeStructuredLLM:
             return self._recommend_responses.pop(0)
         elif self._model_cls is FollowUpVerdict:
             return self._followup_responses.pop(0)
+        elif self._model_cls is RideSuggestion:
+            return self._recommend_responses.pop(0)
         return self._judge_responses.pop(0)
 
 
@@ -124,8 +128,22 @@ def fake_supabase(monkeypatch):
 def approving_llm(monkeypatch):
     recommend_responses = [PlanRecommendation(plan_id="plan-7d", reasoning="Matches the 7-day trip")]
     judge_responses = [JudgeVerdict(approved=True, feedback="Duration and data allowance both fit")]
-    monkeypatch.setattr(graph_module, "_llm", lambda: _FakeLLM(recommend_responses, judge_responses))
-    monkeypatch.setattr(graph_module, "fetch_roaming_catalog", lambda _country: CATALOG)
+    monkeypatch.setattr(roaming_graph_module, "_llm", lambda: _FakeLLM(recommend_responses, judge_responses))
+    monkeypatch.setattr(roaming_graph_module, "fetch_roaming_catalog", lambda _country: CATALOG)
+
+    # Also mock the Uber agent LLM so it never calls real Anthropic.
+    uber_ride_response = RideSuggestion(
+        should_suggest=True,
+        reasoning="Flight detected from FRA to NRT — airport transfer makes sense.",
+        pickup_label="FRA",
+        dropoff_label="NRT",
+        suggested_message="Need a ride to Frankfurt Airport before your Tokyo flight?",
+    )
+    monkeypatch.setattr(
+        uber_graph_module,
+        "_llm",
+        lambda: _FakeLLM([uber_ride_response], []),
+    )
 
 
 def test_chat_stream_requires_auth(fake_supabase):
@@ -174,14 +192,20 @@ def test_chat_stream_event_sequence(fake_supabase, approving_llm, auth_token):
                 line[len("event: "):] for line in response.iter_lines() if line.startswith("event: ")
             ]
 
+    # Both roaming_agent and uber_agent match a flight event -- each emits its own
+    # done event, so the stream now contains exactly 2 done events (one per agent).
     assert event_types[0] == "run_started"
+    assert event_types[-1] == "done"
+    assert event_types.count("done") == 2
+
+    # roaming_agent events: recommendation_ready + confirmation_required
     assert "recommendation_ready" in event_types
     assert "confirmation_required" in event_types
-    assert event_types[-1] == "done"
-    assert event_types.count("done") == 1
 
-    # recommendation_ready must come before confirmation_required, which must come
-    # before the final done -- the stream closes right after these per the plan.
+    # uber_agent event: a second recommendation_ready (the ride suggestion card)
+    assert event_types.count("recommendation_ready") == 2
+
+    # roaming ordering: recommendation_ready -> confirmation_required -> (first) done
     assert (
         event_types.index("recommendation_ready")
         < event_types.index("confirmation_required")
@@ -197,11 +221,11 @@ def test_chat_stream_follow_up_on_topic_in_place(fake_supabase, monkeypatch, aut
     recommend_responses = [PlanRecommendation(plan_id="plan-7d", reasoning="Matches the 7-day trip")]
     judge_responses = [JudgeVerdict(approved=True, feedback="Duration and data allowance both fit")]
     monkeypatch.setattr(
-        graph_module,
+        roaming_graph_module,
         "_llm",
         lambda: _FakeLLM(recommend_responses, judge_responses, followup_responses),
     )
-    monkeypatch.setattr(graph_module, "fetch_roaming_catalog", lambda _country: CATALOG)
+    monkeypatch.setattr(roaming_graph_module, "fetch_roaming_catalog", lambda _country: CATALOG)
 
     prior_plan = CATALOG[0]
     with TestClient(app) as client:
@@ -239,11 +263,11 @@ def test_chat_stream_follow_up_off_topic(fake_supabase, monkeypatch, auth_token)
     recommend_responses = [PlanRecommendation(plan_id="plan-7d", reasoning="Matches the 7-day trip")]
     judge_responses = [JudgeVerdict(approved=True, feedback="Duration and data allowance both fit")]
     monkeypatch.setattr(
-        graph_module,
+        roaming_graph_module,
         "_llm",
         lambda: _FakeLLM(recommend_responses, judge_responses, followup_responses),
     )
-    monkeypatch.setattr(graph_module, "fetch_roaming_catalog", lambda _country: CATALOG)
+    monkeypatch.setattr(roaming_graph_module, "fetch_roaming_catalog", lambda _country: CATALOG)
 
     prior_plan = CATALOG[0]
     with TestClient(app) as client:
@@ -288,7 +312,7 @@ def test_chat_stream_follow_up_pivot_country(fake_supabase, monkeypatch, auth_to
     recommend_responses = [PlanRecommendation(plan_id="plan-7d-fr", reasoning="Matches the 7-day France trip")]
     judge_responses = [JudgeVerdict(approved=True, feedback="Duration and data allowance both fit")]
     monkeypatch.setattr(
-        graph_module,
+        roaming_graph_module,
         "_llm",
         lambda: _FakeLLM(recommend_responses, judge_responses, followup_responses),
     )
@@ -297,7 +321,7 @@ def test_chat_stream_follow_up_pivot_country(fake_supabase, monkeypatch, auth_to
     def mock_fetch_catalog(country):
         return france_catalog if country == "France" else CATALOG
 
-    monkeypatch.setattr(graph_module, "fetch_roaming_catalog", mock_fetch_catalog)
+    monkeypatch.setattr(roaming_graph_module, "fetch_roaming_catalog", mock_fetch_catalog)
 
     prior_plan = CATALOG[0]
     with TestClient(app) as client:

@@ -1,0 +1,15 @@
+# Dashboard flow 02 — Navigate to All plans
+# Taps the "All plans" link and confirms the Roaming Plans screen appears.
+
+appId: com.vedaapp.companion
+
+---
+- launchApp:
+    clearState: true
+
+- runFlow: ../../subflows/sign-in.yaml
+
+- tapOn:
+    text: "All plans"
+
+- assertVisible: "Available Plans"

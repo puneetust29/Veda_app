@@ -1,0 +1,33 @@
+# Chat flow 03 — Activate this plan happy path
+# Taps "Activate this plan", confirms the receipt card and completion
+# message appear, and then verifies the "View my plans" button is shown.
+
+appId: com.vedaapp.companion
+
+---
+- launchApp:
+    clearState: true
+
+- runFlow: ../../subflows/sign-in.yaml
+
+- tapOn:
+    text: "Flight to Tokyo"
+
+# Wait for confirmation prompt
+- assertVisible:
+    text: "Activate this plan"
+    timeout: 12000
+
+- tapOn:
+    text: "Activate this plan"
+
+# Receipt card from ReceiptCard component (✓ prefix from the component)
+- assertVisible:
+    text: "Japan 7-day · 5GB"
+    timeout: 5000
+
+# Completion agent message
+- assertVisible: "You're all set"
+
+# Footer button appears after phase === 'complete'
+- assertVisible: "View my plans"

@@ -1,0 +1,42 @@
+# Chat flow 01 — Greeting and mock stream plays back
+# With EXPO_PUBLIC_CHAT_MOCK=1 the scripted event sequence from mockStream.ts
+# plays automatically on mount. This flow verifies the key render milestones.
+#
+# Prerequisite: app built with EXPO_PUBLIC_CHAT_MOCK=1 in the environment
+# (bake this into the Expo dev-client build used for native E2E runs).
+
+appId: com.vedaapp.companion
+
+---
+- launchApp:
+    clearState: true
+
+- runFlow: ../../subflows/sign-in.yaml
+
+- tapOn:
+    text: "Flight to Tokyo"
+
+# Greeting bubble from useRoamingChat.greetingText()
+- assertVisible:
+    text: "flying to NRT"
+    enabled: true
+
+# Status events from mock stream
+- assertVisible:
+    text: "Reading your flight details…"
+    timeout: 5000
+
+# Recommendation card — wait up to 12 s for the full mock sequence to finish
+- assertVisible:
+    text: "Japan 7-day · 5GB"
+    timeout: 12000
+
+# Plan metadata
+- assertVisible: "5GB"
+- assertVisible: "7 days"
+
+# AI reviewer badge
+- assertVisible: "Approved ✅"
+
+# Reasoning section
+- assertVisible: "Why the AI picked this"

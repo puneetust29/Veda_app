@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import get_settings
 from app.orchestration.orchestrator import get_orchestrator
 from app.routers import auth, calendar, conversation, roaming, subscriptions, uber
+import app.tools.uber  # noqa: F401 -- registers uber.get_deeplink in ToolRegistry at startup
 
 settings = get_settings()
 

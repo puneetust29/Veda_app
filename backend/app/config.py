@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Optional
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -10,7 +11,12 @@ class Settings(BaseSettings):
     supabase_service_role_key: str
     supabase_jwt_secret: str
 
-    anthropic_api_key: str
+    llm_provider: str = "openai"
+
+    openai_api_key: Optional[str] = None
+    openai_model: str = "gpt-4"
+
+    anthropic_api_key: Optional[str] = None
     anthropic_model: str = "claude-sonnet-5"
 
     environment: str = "development"

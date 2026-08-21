@@ -1,0 +1,16 @@
+name: uber_agent
+version: 0.1.0
+description: Detects an upcoming flight and suggests a deep-link Uber ride from the departure airport to the destination airport.
+enabled: true
+priority: 20
+capabilities: [uber]
+triggers:
+  events: [trip.detected, trip.updated]
+  rules:
+    - key: calendar_event.event_type
+      op: eq
+      value: flight
+required_context: [customer, calendar_event]
+tools: [uber.get_deeplink]
+actions: []
+output_schema: app.agents.uber.schemas:UberRideSuggestionCard

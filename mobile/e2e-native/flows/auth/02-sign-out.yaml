@@ -1,0 +1,18 @@
+# Auth flow 02 — Sign out
+# Signs in, then signs out and confirms the app returns to the sign-in screen.
+
+appId: com.vedaapp.companion
+
+---
+- launchApp:
+    clearState: true
+
+- runFlow: ../../subflows/sign-in.yaml
+
+# Sign out from the Dashboard header
+- tapOn:
+    text: "Sign out"
+
+# Should return to sign-in screen
+- assertVisible: "Welcome back"
+- assertVisible: "Sign in with your mobile number"

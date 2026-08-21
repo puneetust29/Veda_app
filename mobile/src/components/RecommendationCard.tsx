@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import type { RecommendationCardPayload } from '../types';
 
@@ -28,17 +28,62 @@ export default function RecommendationCard({ card }: Props) {
           <Text style={styles.reasoning}>{card.judge_feedback}</Text>
         </View>
       );
-    default:
-      // `RecommendationCardPayload` only has one member today (`roaming_plan`).
-      // Unlike `ChatItemView`'s switch (a true multi-member union), TS can't
-      // narrow a single-member union to `never` here, so this branch is a
-      // plain fallback rather than a `never`-checked exhaustiveness guard —
-      // it becomes live again the moment a second card kind is added above.
-      return null;
+    case 'uber_ride': {
+      const url = card.uber_app_url ?? card.deep_link_url;
+      return (
+        <View style={styles.uberCard}>
+          <Text style={styles.uberHeading}>🚗 Uber Ride Suggestion</Text>
+          {card.pickup_label && card.dropoff_label && (
+            <Text style={styles.uberRoute}>
+              {card.pickup_label} → {card.dropoff_label}
+            </Text>
+          )}
+          <Text style={styles.uberMessage}>{card.suggested_message}</Text>
+          {url && (
+            <TouchableOpacity
+              style={styles.uberButton}
+              onPress={() => Linking.openURL(url)}
+            >
+              <Text style={styles.uberButtonText}>Open in Uber</Text>
+            </TouchableOpacity>
+          )}
+          <Text style={styles.uberDisclaimer}>
+            Opens the Uber app with pickup and dropoff pre-filled.
+          </Text>
+        </View>
+      );
+    }
+
+    default: {
+      // Exhaustiveness guard — TS will error here if a new card kind is added
+      // to RecommendationCardPayload without a matching case above.
+      const _exhaustive: never = card;
+      return _exhaustive;
+    }
   }
 }
 
 const styles = StyleSheet.create({
+  uberCard: {
+    borderWidth: 1,
+    borderColor: '#ffe0b2',
+    borderRadius: 12,
+    padding: 16,
+    backgroundColor: '#fff8f0',
+    marginBottom: 10,
+  },
+  uberHeading: { fontSize: 16, fontWeight: '700', color: '#111', marginBottom: 6 },
+  uberRoute: { fontSize: 13, color: '#555', marginBottom: 8 },
+  uberMessage: { fontSize: 15, color: '#333', lineHeight: 21, marginBottom: 14 },
+  uberButton: {
+    backgroundColor: '#000',
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  uberButtonText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  uberDisclaimer: { fontSize: 11, color: '#999', textAlign: 'center' },
   planCard: {
     borderWidth: 1,
     borderColor: '#eee',

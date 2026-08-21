@@ -1,0 +1,26 @@
+# Chat flow 08 — "Book a ride with Uber" button is visible and tappable
+# The button lives in the ChatScreen trip header (always present, regardless
+# of stream state). Tapping it triggers api.getUberDeeplink() + Linking.openURL().
+# On a simulator the deep link will either open the Uber app or be silently
+# swallowed — we only assert the button is present and reachable, not the
+# external app launch.
+
+appId: com.vedaapp.companion
+
+---
+- launchApp:
+    clearState: true
+
+- runFlow: ../../subflows/sign-in.yaml
+
+- tapOn:
+    text: "Flight to Tokyo"
+
+- assertVisible: "🚗 Book a ride with Uber"
+
+# Tap it — should not crash or show an error in the UI
+- tapOn:
+    text: "🚗 Book a ride with Uber"
+
+# The trip header is still visible after the tap (screen did not pop)
+- assertVisible: "FRA → NRT"

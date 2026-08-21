@@ -11,6 +11,23 @@ import type {
   UberDeeplinkResponse,
 } from '../types';
 
+const IS_MOCK = process.env.EXPO_PUBLIC_CHAT_MOCK === '1';
+
+// Shared mock plan — mirrors MOCK_PLAN in mockStream.ts so the receipt card
+// renders correctly in mock mode without touching the real database.
+const MOCK_PLAN: RoamingPlan = {
+  id: 'mock-plan-jp-7d-5gb',
+  country_code: 'JP',
+  country_name: 'Japan',
+  region: 'Asia',
+  duration_days: 7,
+  data_gb: 5,
+  price: 25,
+  currency: 'EUR',
+  plan_name: 'Japan 7-day · 5GB',
+  description: 'High-speed data for a week in Japan, no daily cap.',
+};
+
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
 
 if (!API_BASE_URL) {
@@ -70,8 +87,23 @@ export const api = {
     roamingPlanId: string;
     reasoning: string;
     judgeFeedback: string;
-  }) =>
-    authedFetch<Subscription>('/roaming/subscribe', {
+  }): Promise<Subscription> => {
+    if (IS_MOCK) {
+      // Return a synthetic subscription so the receipt card and completion
+      // message render correctly without hitting the real database.
+      return Promise.resolve({
+        id: `mock-sub-${Date.now()}`,
+        customer_id: 'mock-customer',
+        roaming_plan_id: params.roamingPlanId,
+        calendar_event_id: params.calendarEventId,
+        status: 'active',
+        agent_reasoning: { reasoning: params.reasoning },
+        subscribed_at: new Date().toISOString(),
+        roaming_plans: MOCK_PLAN,
+        calendar_events: {} as CalendarEvent,
+      });
+    }
+    return authedFetch<Subscription>('/roaming/subscribe', {
       method: 'POST',
       body: JSON.stringify({
         calendar_event_id: params.calendarEventId,
@@ -79,8 +111,16 @@ export const api = {
         reasoning: params.reasoning,
         judge_feedback: params.judgeFeedback,
       }),
-    }),
-  listSubscriptions: () => authedFetch<Subscription[]>('/subscriptions'),
+    });
+  },
+  listSubscriptions: (): Promise<Subscription[]> => {
+    // In mock mode, skip the real DB — pre-existing real subscriptions would
+    // short-circuit useRoamingChat and hide the entire stream (roaming card,
+    // Uber card, confirmation prompt). The mock plan ID is also not a valid
+    // UUID so any subscribe call would 500.
+    if (IS_MOCK) return Promise.resolve([]);
+    return authedFetch<Subscription[]>('/subscriptions');
+  },
   streamRoamingConversation: async (params: {
     calendarEventId: string;
     signal: AbortSignal;

@@ -1,0 +1,19 @@
+# Reusable subflow: sign in with a phone number and land on the Dashboard.
+# Imported by any flow that needs an authenticated session.
+#
+# Usage:
+#   - runFlow: ../subflows/sign-in.yaml
+#
+# Required env vars (set in the calling flow or via --env):
+#   PHONE_NUMBER  (default: +15550001111)
+
+appId: com.vedaapp.companion
+
+---
+- assertVisible: "Welcome back"
+- tapOn:
+    text: "+15550001111"   # placeholder text targets the TextInput
+- inputText: ${PHONE_NUMBER:-+15550001111}
+- tapOn:
+    text: "Sign in"
+- assertVisible: "Upcoming trips"

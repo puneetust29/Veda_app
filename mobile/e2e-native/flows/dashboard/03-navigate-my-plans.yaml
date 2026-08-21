@@ -1,0 +1,15 @@
+# Dashboard flow 03 — Navigate to My plans
+# Taps the "My plans" link and confirms the Subscriptions screen appears.
+
+appId: com.vedaapp.companion
+
+---
+- launchApp:
+    clearState: true
+
+- runFlow: ../../subflows/sign-in.yaml
+
+- tapOn:
+    text: "My plans"
+
+- assertVisible: "My plans"
