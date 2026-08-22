@@ -76,3 +76,39 @@ INFO:     192.168.1.151:62209 - "POST /chat/stream HTTP/1.1" 200 OK
 2026-08-22 16:04:11,447 INFO app.orchestration.orchestrator | orchestrator run complete | run_id=10759fad-44db-4088-925c-cf49de744bf4 | conversation_id=d48b7d62-cc56-43cc-9f5f-badaebc49b2d | result_count=2
 2026-08-22 16:04:11,447 INFO app.routers.conversation | chat stream orchestration complete | customer_id=4df28ba6-e5b1-4465-8d59-d1ba49bacb7a | conversation_id=d48b7d62-cc56-43cc-9f5f-badaebc49b2d | agent_count=2
 2026-08-22 16:04:11,448 INFO app.routers.conversation | chat stream completed | customer_id=4df28ba6-e5b1-4465-8d59-d1ba49bacb7a | conversation_id=d48b7d62-cc56-43cc-9f5f-badaebc49b2d
+2026-08-22 16:07:32,396 INFO httpx | HTTP Request: GET https://mcukcuinjgtgczrpxfby.supabase.co/rest/v1/customers?select=%2A&phone_number=eq.%2B15550001111&limit=1 "HTTP/1.1 200 OK"
+INFO:     192.168.1.151:62213 - "GET /me HTTP/1.1" 200 OK
+2026-08-22 16:07:32,704 INFO httpx | HTTP Request: GET https://mcukcuinjgtgczrpxfby.supabase.co/rest/v1/customers?select=%2A&phone_number=eq.%2B15550001111&limit=1 "HTTP/1.1 200 OK"
+2026-08-22 16:07:32,969 INFO httpx | HTTP Request: GET https://mcukcuinjgtgczrpxfby.supabase.co/rest/v1/calendar_events?select=%2A&customer_id=eq.4df28ba6-e5b1-4465-8d59-d1ba49bacb7a&order=start_datetime "HTTP/1.1 200 OK"
+INFO:     192.168.1.151:62213 - "GET /calendar/events HTTP/1.1" 200 OK
+2026-08-22 16:07:57,196 INFO httpx | HTTP Request: GET https://mcukcuinjgtgczrpxfby.supabase.co/rest/v1/customers?select=%2A&phone_number=eq.%2B15550001111&limit=1 "HTTP/1.1 200 OK"
+2026-08-22 16:07:57,340 INFO httpx | HTTP Request: GET https://mcukcuinjgtgczrpxfby.supabase.co/rest/v1/subscriptions?select=%2A%2C%20roaming_plans%28%2A%29%2C%20calendar_events%28%2A%29&customer_id=eq.4df28ba6-e5b1-4465-8d59-d1ba49bacb7a&order=subscribed_at.desc "HTTP/1.1 200 OK"
+INFO:     192.168.1.151:62214 - "GET /subscriptions HTTP/1.1" 200 OK
+2026-08-22 16:07:57,517 INFO httpx | HTTP Request: GET https://mcukcuinjgtgczrpxfby.supabase.co/rest/v1/customers?select=%2A&phone_number=eq.%2B15550001111&limit=1 "HTTP/1.1 200 OK"
+2026-08-22 16:07:57,519 INFO app.routers.conversation | chat stream request | customer_id=4df28ba6-e5b1-4465-8d59-d1ba49bacb7a | calendar_event_id=cb28c186-5698-4939-8e70-d866acd95f1c | has_message=False | has_pickup_coords=True | pickup_label='Current location'
+2026-08-22 16:07:57,637 INFO httpx | HTTP Request: GET https://mcukcuinjgtgczrpxfby.supabase.co/rest/v1/calendar_events?select=%2A&id=eq.cb28c186-5698-4939-8e70-d866acd95f1c&customer_id=eq.4df28ba6-e5b1-4465-8d59-d1ba49bacb7a&limit=1 "HTTP/1.1 200 OK"
+2026-08-22 16:07:57,639 INFO app.routers.conversation | chat stream subject prepared | customer_id=4df28ba6-e5b1-4465-8d59-d1ba49bacb7a | calendar_event_type=flight | device_location_present=True
+2026-08-22 16:07:57,639 INFO app.routers.conversation | chat stream orchestration start | customer_id=4df28ba6-e5b1-4465-8d59-d1ba49bacb7a | conversation_id=cb28c186-5698-4939-8e70-d866acd95f1c
+INFO:     192.168.1.151:62214 - "POST /chat/stream HTTP/1.1" 200 OK
+2026-08-22 16:07:57,641 INFO app.orchestration.orchestrator | orchestrator run start | run_id=b680311f-a4c4-486a-b9b1-cd3794d811b9 | conversation_id=cb28c186-5698-4939-8e70-d866acd95f1c | mode=converse | user_id=4df28ba6-e5b1-4465-8d59-d1ba49bacb7a
+2026-08-22 16:07:57,642 INFO app.orchestration.orchestrator | orchestrator match | conversation_id=cb28c186-5698-4939-8e70-d866acd95f1c | coarse_agents=['roaming_agent', 'uber_agent'] | resolved_keys=['calendar_event', 'customer', 'device_location'] | matched_agents=['roaming_agent', 'uber_agent']
+2026-08-22 16:07:57,642 INFO app.orchestration.orchestrator | orchestrator dispatch | run_id=b680311f-a4c4-486a-b9b1-cd3794d811b9 | agent=roaming_agent | context_keys=['calendar_event', 'customer']
+2026-08-22 16:07:57,784 INFO httpx | HTTP Request: GET https://mcukcuinjgtgczrpxfby.supabase.co/rest/v1/roaming_plans?select=%2A&country_name=eq.France&order=duration_days "HTTP/1.1 200 OK"
+2026-08-22 16:07:57,933 INFO httpx | HTTP Request: GET https://mcukcuinjgtgczrpxfby.supabase.co/rest/v1/roaming_plans?select=%2A&country_name=eq.France&order=duration_days "HTTP/1.1 200 OK"
+2026-08-22 16:08:01,054 INFO httpx | HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-22 16:08:03,382 INFO httpx | HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-22 16:08:03,391 INFO app.orchestration.orchestrator | orchestrator agent complete | run_id=b680311f-a4c4-486a-b9b1-cd3794d811b9 | agent=roaming_agent | status=awaiting_approval | card_count=1 | proposed_action_count=1
+2026-08-22 16:08:03,391 INFO app.orchestration.orchestrator | orchestrator dispatch | run_id=b680311f-a4c4-486a-b9b1-cd3794d811b9 | agent=uber_agent | context_keys=['calendar_event', 'customer', 'device_location']
+2026-08-22 16:08:03,393 INFO app.agents.uber.agent | uber agent execute start | run_id=b680311f-a4c4-486a-b9b1-cd3794d811b9 | conversation_id=cb28c186-5698-4939-8e70-d866acd95f1c | mode=converse | customer_id=4df28ba6-e5b1-4465-8d59-d1ba49bacb7a | has_calendar_event=True | has_device_location=True
+2026-08-22 16:08:03,397 INFO app.agents.uber.graph | uber graph extract context | customer_id=4df28ba6-e5b1-4465-8d59-d1ba49bacb7a | origin='London St Pancras' | destination='Paris Gare du Nord' | destination_country='France' | has_device_location=True
+2026-08-22 16:08:06,159 INFO httpx | HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-22 16:08:06,164 INFO app.agents.uber.graph | uber graph suggest ride complete | customer_id=4df28ba6-e5b1-4465-8d59-d1ba49bacb7a | should_suggest=False | reasoning='The customer is not departing from an airport, but from a train station (London St Pancras). Uber rides are not typically necessary for train station departures.' | suggested_message="Looks like you're departing from London St Pancras train station. No need for an Uber ride, public transport should get you there easily. Safe travels!"
+2026-08-22 16:08:06,168 INFO app.agents.uber.agent | uber agent graph complete | run_id=b680311f-a4c4-486a-b9b1-cd3794d811b9 | should_suggest=False | has_deeplink=False | airport_option_count=0
+2026-08-22 16:08:06,168 INFO app.agents.uber.agent | uber agent no suggestion | run_id=b680311f-a4c4-486a-b9b1-cd3794d811b9 | reason='The customer is not departing from an airport, but from a train station (London St Pancras). Uber rides are not typically necessary for train station departures.'
+2026-08-22 16:08:06,169 INFO app.orchestration.orchestrator | orchestrator agent complete | run_id=b680311f-a4c4-486a-b9b1-cd3794d811b9 | agent=uber_agent | status=ok | card_count=0 | proposed_action_count=0
+2026-08-22 16:08:06,169 INFO app.orchestration.orchestrator | orchestrator run complete | run_id=b680311f-a4c4-486a-b9b1-cd3794d811b9 | conversation_id=cb28c186-5698-4939-8e70-d866acd95f1c | result_count=2
+2026-08-22 16:08:06,169 INFO app.routers.conversation | chat stream orchestration complete | customer_id=4df28ba6-e5b1-4465-8d59-d1ba49bacb7a | conversation_id=cb28c186-5698-4939-8e70-d866acd95f1c | agent_count=2
+2026-08-22 16:08:06,170 INFO app.routers.conversation | chat stream completed | customer_id=4df28ba6-e5b1-4465-8d59-d1ba49bacb7a | conversation_id=cb28c186-5698-4939-8e70-d866acd95f1c
+2026-08-22 16:08:09,601 INFO httpx | HTTP Request: GET https://mcukcuinjgtgczrpxfby.supabase.co/rest/v1/customers?select=%2A&phone_number=eq.%2B15550001111&limit=1 "HTTP/1.1 200 OK"
+2026-08-22 16:08:09,743 INFO httpx | HTTP Request: GET https://mcukcuinjgtgczrpxfby.supabase.co/rest/v1/calendar_events?select=%2A&customer_id=eq.4df28ba6-e5b1-4465-8d59-d1ba49bacb7a&order=start_datetime "HTTP/1.1 200 OK"
+INFO:     192.168.1.151:62214 - "GET /calendar/events HTTP/1.1" 200 OK
