@@ -14,7 +14,6 @@ import {
 
 import CheckableTag from '../common/CheckableTag';
 import IconCircle from '../common/IconCircle';
-import SourceBadge from '../common/SourceBadge';
 import { colors, radii, spacing, typography } from '../../theme';
 import type { CalendarEvent } from '../../types';
 
@@ -30,10 +29,36 @@ const CARD_WIDTH = SCREEN_WIDTH - 64;
 const CARD_SPACING = spacing.md;
 const SNAP_INTERVAL = CARD_WIDTH + CARD_SPACING;
 
-// Small circular badges shown over the banner image indicating which
-// connected sources contributed to this recommendation (calendar sync,
-// email confirmation, Google account, etc.) — matches the Figma card design.
-const SOURCE_BADGES: (keyof typeof Ionicons.glyphMap)[] = ['calendar', 'mail', 'logo-google'];
+// Map event source to its icon and color
+function getSourceIcon(source: 'google' | 'device' | 'gmail' | 'mock'): keyof typeof Ionicons.glyphMap {
+  switch (source) {
+    case 'google':
+      return 'calendar-outline';
+    case 'device':
+      return 'phone-portrait-outline';
+    case 'gmail':
+      return 'mail-outline';
+    case 'mock':
+      return 'alert-circle-outline';
+    default:
+      return 'help-circle-outline';
+  }
+}
+
+function getSourceIconColor(source: 'google' | 'device' | 'gmail' | 'mock'): string {
+  switch (source) {
+    case 'google':
+      return '#4285F4';  // Google blue
+    case 'device':
+      return '#34C759';  // Apple green
+    case 'gmail':
+      return '#EA4335';  // Gmail red
+    case 'mock':
+      return '#FBBC04';  // Yellow
+    default:
+      return colors.brand;
+  }
+}
 
 function cityFromLocation(location: string | null): string {
   if (!location) return 'your trip';
@@ -155,17 +180,13 @@ function AttentionCard({
           resizeMode="cover"
         />
         <View style={styles.badgeRow}>
-          {SOURCE_BADGES.map((icon, index) => (
-            <IconCircle
-              key={icon}
-              icon={icon}
-              size={26}
-              iconSize={14}
-              iconColor={colors.textPrimary}
-              backgroundColor={colors.white}
-              style={index > 0 ? styles.badgeOverlap : undefined}
-            />
-          ))}
+          <IconCircle
+            icon={getSourceIcon(flight.source)}
+            size={26}
+            iconSize={14}
+            iconColor={colors.white}
+            backgroundColor={getSourceIconColor(flight.source)}
+          />
         </View>
       </View>
 
@@ -178,10 +199,6 @@ function AttentionCard({
       <Text style={styles.cardDate}>
         {flight.title} · {formatDateRange(flight.start_datetime, flight.end_datetime)}
       </Text>
-
-      <View style={styles.sourceBadgeRow}>
-        <SourceBadge source={flight.source} />
-      </View>
 
       <View style={styles.tagRow}>
         <CheckableTag
@@ -247,10 +264,6 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.textMuted,
     marginTop: spacing.xs,
-    marginHorizontal: spacing.lg,
-  },
-  sourceBadgeRow: {
-    marginTop: spacing.sm,
     marginHorizontal: spacing.lg,
   },
   tagRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md, marginHorizontal: spacing.lg },

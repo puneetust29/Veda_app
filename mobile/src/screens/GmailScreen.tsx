@@ -39,9 +39,9 @@ export default function GmailScreen(_: Props) {
 
   const checkStatus = useCallback(async () => {
     try {
-      const status = await api.gmailStatus();
-      setConnected(status.connected);
-      if (status.connected) {
+      const status = await api.googleAuthStatus();
+      setConnected(status.connected && !!status.gmail_connected);
+      if (status.connected && status.gmail_connected) {
         await loadMessages();
       }
     } catch (err) {
@@ -71,8 +71,8 @@ export default function GmailScreen(_: Props) {
   const handleConnect = async () => {
     try {
       setSyncing(true);
-      const deepLink = Linking.createURL('gmail');
-      const response = await api.startGmailAuth(deepLink);
+      const deepLink = Linking.createURL('google-auth-complete');
+      const response = await api.startGoogleAuth(deepLink);
       const { authorization_url } = response;
 
       const result = await WebBrowser.openAuthSessionAsync(
@@ -86,7 +86,7 @@ export default function GmailScreen(_: Props) {
       }
     } catch (err) {
       console.error('[Gmail] Auth failed:', err);
-      Alert.alert('Connection Failed', 'Could not connect to Gmail. Please try again.');
+      Alert.alert('Connection Failed', 'Could not connect Gmail. Please try again.');
     } finally {
       setSyncing(false);
     }
@@ -107,23 +107,27 @@ export default function GmailScreen(_: Props) {
   };
 
   const handleDisconnect = () => {
-    Alert.alert('Disconnect Gmail?', 'This will remove your Gmail connection from Veda.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Disconnect',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await api.disconnectGmail();
-            setConnected(false);
-            setMessages([]);
-          } catch (err) {
-            console.error('[Gmail] Disconnect failed:', err);
-            Alert.alert('Error', 'Failed to disconnect Gmail');
-          }
+    Alert.alert(
+      'Disconnect Google account?',
+      'This will disconnect both Gmail and Calendar from Veda.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Disconnect',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.disconnectGoogleAuth();
+              setConnected(false);
+              setMessages([]);
+            } catch (err) {
+              console.error('[Gmail] Disconnect failed:', err);
+              Alert.alert('Error', 'Failed to disconnect');
+            }
+          },
         },
-      },
-    ]);
+      ],
+    );
   };
 
   const handleRefresh = async () => {

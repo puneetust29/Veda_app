@@ -17,7 +17,7 @@ export type CalendarEvent = {
   destination: string | null;
   start_datetime: string;
   end_datetime: string;
-  source: 'google' | 'device' | 'mock';
+  source: 'google' | 'device' | 'gmail' | 'mock';
   raw_details: Record<string, unknown>;
   created_at: string;
 };
@@ -66,11 +66,15 @@ export type Subscription = {
 // --- Google Calendar ---
 
 // `configured: false` means the backend has no GOOGLE_CLIENT_ID/SECRET, so every
-// /calendar/google/* route answers 503. Distinct from `connected: false`, which
-// means the backend is set up but this customer hasn't consented yet.
+// Google route answers 503. Distinct from `connected: false`, which means the
+// backend is set up but this customer hasn't consented yet.
+// `calendar_connected` and `gmail_connected` indicate which individual services
+// are authenticated (both are set after unified /auth/google auth).
 export type GoogleCalendarStatus = {
   configured: boolean;
   connected: boolean;
+  calendar_connected?: boolean;
+  gmail_connected?: boolean;
   google_account_email?: string | null;
   scope?: string | null;
 };

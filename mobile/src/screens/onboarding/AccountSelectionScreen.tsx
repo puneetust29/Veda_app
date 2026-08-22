@@ -14,28 +14,10 @@ import type { GoogleCalendarStatus, OnboardingStackParamList } from '../../types
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'AccountSelection'>;
 
-// Same return-path scheme used by the Google OAuth connect flow -- Linking
-// createURL resolves to whatever the current runtime uses (exp:// under
-// Expo Go, veda:// in a build).
-const RETURN_PATH = 'google-calendar';
+const RETURN_PATH = 'google-auth-complete';
 
-// The calendar.events scope Google must grant for sync to work. Google's
-// consent screen can let a user grant only some of the requested scopes
-// (e.g. just profile/email, not Calendar) -- when that happens the OAuth
-// "succeeds" but every calendar API call 403s, so we check for this
-// specifically rather than trusting `connected` alone.
-const CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.events';
-
-function hasCalendarScope(status: GoogleCalendarStatus): boolean {
-  return !!status.scope?.includes(CALENDAR_SCOPE);
-}
-
-// Real Google OAuth connect (api.startGoogleCalendarAuth +
-// WebBrowser.openAuthSessionAsync), rather than a hardcoded list of fake
-// accounts. This is separate from the flight-detection calendar screen,
-// which reads calendars straight off the device via expo-calendar instead.
-// Outlook has no backend integration yet, so it's shown as "Coming soon"
-// instead of faking data for it too.
+// Unified Google OAuth connect: requests both Calendar and Gmail scopes
+// in a single consent. Users authenticate once instead of twice.
 export default function AccountSelectionScreen({ navigation }: Props) {
   const { refreshCustomer } = useAuth();
   const [status, setStatus] = useState<GoogleCalendarStatus | null>(null);
@@ -43,7 +25,7 @@ export default function AccountSelectionScreen({ navigation }: Props) {
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
-    setStatus(await api.googleCalendarStatus());
+    setStatus(await api.googleAuthStatus());
   }, []);
 
   useFocusEffect(
@@ -59,30 +41,15 @@ export default function AccountSelectionScreen({ navigation }: Props) {
     setBusy(true);
     try {
       const returnUrl = Linking.createURL(RETURN_PATH);
-      const { authorization_url } = await api.startGoogleCalendarAuth(returnUrl);
+      const { authorization_url } = await api.startGoogleAuth(returnUrl);
       const result = await WebBrowser.openAuthSessionAsync(authorization_url, returnUrl);
-      const next = await api.googleCalendarStatus();
+      const next = await api.googleAuthStatus();
       setStatus(next);
       if (result.type === 'success' && next.connected) {
-        // The connect may have filled in the customer's real name from their
-        // Google profile (see backend _adopt_google_name) -- refetch so the
-        // rest of onboarding (and the Dashboard greeting) reflects it.
         await refreshCustomer().catch(() => {});
 
-        if (!hasCalendarScope(next)) {
-          // Google let the user grant profile/email but not Calendar access
-          // (its consent screen allows picking scopes individually) -- sync
-          // would just 403, so say so plainly instead of silently showing
-          // "No upcoming flights found" with no explanation.
-          Alert.alert(
-            'Calendar access not granted',
-            "Google connected your account, but Calendar access wasn't granted, so Veda can't read your events yet. Disconnect and reconnect, making sure to allow Calendar access this time.",
-          );
-          return;
-        }
-
-        // Mirror upcoming flights into Veda immediately so the Dashboard
-        // shows real travel events instead of "No upcoming flights found."
+        // OAuth succeeded and credentials are stored, so scopes were granted
+        // Mirror upcoming flights into Veda immediately
         try {
           await api.syncGoogleCalendar();
         } catch (err) {
@@ -97,24 +64,28 @@ export default function AccountSelectionScreen({ navigation }: Props) {
   };
 
   const handleDisconnectGoogle = () => {
-    Alert.alert('Disconnect Google account?', 'Veda will revoke its access at Google and forget your credentials.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Disconnect',
-        style: 'destructive',
-        onPress: async () => {
-          setBusy(true);
-          try {
-            await api.disconnectGoogleCalendar();
-            await load();
-          } catch (err) {
-            Alert.alert('Could not disconnect', err instanceof Error ? err.message : String(err));
-          } finally {
-            setBusy(false);
-          }
+    Alert.alert(
+      'Disconnect Google account?',
+      'Veda will revoke access to Calendar and Gmail.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Disconnect',
+          style: 'destructive',
+          onPress: async () => {
+            setBusy(true);
+            try {
+              await api.disconnectGoogleAuth();
+              await load();
+            } catch (err) {
+              Alert.alert('Could not disconnect', err instanceof Error ? err.message : String(err));
+            } finally {
+              setBusy(false);
+            }
+          },
         },
-      },
-    ]);
+      ],
+    );
   };
 
   return (
@@ -141,8 +112,10 @@ export default function AccountSelectionScreen({ navigation }: Props) {
           <View style={styles.groupCard}>
             <View style={styles.groupHeader}>
               <Ionicons name="mail-outline" size={18} color={colors.textSecondary} />
-              <Text style={styles.groupTitle}>Gmail</Text>
+              <Text style={styles.groupTitle}>Google Account</Text>
+              <Text style={styles.groupSubtitle}>(Calendar + Gmail)</Text>
             </View>
+
             {status.connected ? (
               <View style={styles.accountRow}>
                 <Text style={styles.accountEmail}>{status.google_account_email ?? 'Connected'}</Text>
@@ -151,15 +124,26 @@ export default function AccountSelectionScreen({ navigation }: Props) {
             ) : (
               <Text style={styles.groupEmpty}>No account connected yet.</Text>
             )}
-            {status.connected && !hasCalendarScope(status) ? (
-              <View style={styles.scopeWarning}>
-                <Ionicons name="warning-outline" size={16} color="#8a4b00" />
-                <Text style={styles.scopeWarningText}>
-                  Calendar access wasn't granted. Disconnect and reconnect, allowing Calendar this time,
-                  to see your travel events.
-                </Text>
+
+            {status.connected && (
+              <View style={styles.servicesContainer}>
+                <View style={styles.serviceRow}>
+                  <View style={styles.serviceInfo}>
+                    <Ionicons name="calendar-outline" size={16} color={colors.textSecondary} />
+                    <Text style={styles.serviceName}>Calendar</Text>
+                  </View>
+                  <Ionicons name="checkmark-circle" size={18} color={colors.brand} />
+                </View>
+                <View style={styles.serviceRow}>
+                  <View style={styles.serviceInfo}>
+                    <Ionicons name="mail-outline" size={16} color={colors.textSecondary} />
+                    <Text style={styles.serviceName}>Gmail</Text>
+                  </View>
+                  <Ionicons name="checkmark-circle" size={18} color={colors.brand} />
+                </View>
               </View>
-            ) : null}
+            )}
+
             <TouchableOpacity
               style={[
                 styles.connectButton,
@@ -173,7 +157,7 @@ export default function AccountSelectionScreen({ navigation }: Props) {
                 <ActivityIndicator color={status.connected ? colors.brand : colors.white} />
               ) : (
                 <Text style={[styles.connectButtonText, status.connected && styles.disconnectButtonText]}>
-                  {status.connected ? 'Disconnect' : 'Connect Gmail'}
+                  {status.connected ? 'Disconnect' : 'Connect Google'}
                 </Text>
               )}
             </TouchableOpacity>
@@ -208,15 +192,36 @@ const styles = StyleSheet.create({
   },
   groupHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
   groupTitle: { ...typography.bodyBold, color: colors.textPrimary },
+  groupSubtitle: { ...typography.caption, color: colors.textSecondary, fontSize: 11 },
   groupEmpty: { ...typography.caption, color: colors.textMuted, marginBottom: spacing.md },
   accountRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: spacing.sm,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
   },
   accountEmail: { ...typography.body, color: colors.textPrimary, flex: 1 },
+  servicesContainer: {
+    backgroundColor: colors.background,
+    borderRadius: radii.sm,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    gap: spacing.sm,
+  },
+  serviceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.xs,
+  },
+  serviceInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    flex: 1,
+  },
+  serviceName: { ...typography.body, color: colors.textPrimary },
   scopeWarning: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -233,9 +238,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     alignItems: 'center',
   },
-  // Outlined (not solid-red) so the "Disconnect" label stays legible --
-  // reusing the solid brand-red button for both states previously put red
-  // text on a red background, making the label invisible.
   disconnectButton: {
     backgroundColor: colors.background,
     borderWidth: 1,

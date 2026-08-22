@@ -35,8 +35,8 @@ const PLACEHOLDER_WEATHER = FALLBACK_WEATHER;
 async function silentlySyncCalendars(): Promise<void> {
   await Promise.allSettled([
     (async () => {
-      const status = await api.googleCalendarStatus();
-      if (status.configured && status.connected) {
+      const status = await api.googleAuthStatus();
+      if (status.configured && status.calendar_connected) {
         await api.syncGoogleCalendar();
       }
     })(),

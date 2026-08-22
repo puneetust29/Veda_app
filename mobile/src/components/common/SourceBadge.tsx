@@ -2,7 +2,7 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { colors } from '../../theme';
 
-type SourceType = 'google' | 'device' | 'mock';
+type SourceType = 'google' | 'device' | 'gmail' | 'mock';
 
 interface SourceBadgeProps {
   source: SourceType;
@@ -11,6 +11,7 @@ interface SourceBadgeProps {
 const SOURCE_CONFIG: Record<SourceType, { label: string; icon: string; color: string }> = {
   google: { label: 'Google Calendar', icon: '📅', color: colors.link },
   device: { label: 'Device Calendar', icon: '📱', color: colors.success },
+  gmail: { label: 'Gmail', icon: '✉️', color: '#EA4335' },
   mock: { label: 'Mock Data', icon: '🔧', color: colors.textMuted },
 };
 

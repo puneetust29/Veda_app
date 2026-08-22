@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
 from app.orchestration.orchestrator import get_orchestrator
-from app.routers import auth, calendar, conversation, gmail, roaming, subscriptions
+from app.routers import auth, calendar, conversation, gmail, google_auth, roaming, subscriptions
 
 settings = get_settings()
 
@@ -31,6 +31,7 @@ app.add_middleware(
 
 app.include_router(auth.router)
 app.include_router(auth.me_router)
+app.include_router(google_auth.router)
 app.include_router(calendar.router)
 app.include_router(gmail.router)
 app.include_router(roaming.router)

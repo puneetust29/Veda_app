@@ -86,14 +86,24 @@ export const api = {
     }),
   listSubscriptions: () => authedFetch<Subscription[]>('/subscriptions'),
 
-  // --- Google Calendar ---
+  // --- Google Authentication (unified for Calendar + Gmail) ---
   // The app never touches a Google token: it asks the backend for a consent URL,
-  // opens it, and afterwards re-reads status. See backend/app/routers/calendar.py.
+  // opens it, and afterwards re-reads status. Single auth flow for both services.
+  // See backend/app/routers/google_auth.py.
+  googleAuthStatus: () => authedFetch<GoogleCalendarStatus>('/auth/google/status'),
+  startGoogleAuth: (appRedirect: string) =>
+    authedFetch<{ authorization_url: string }>('/auth/google/connect', {
+      method: 'POST',
+      body: JSON.stringify({ app_redirect: appRedirect }),
+    }),
+  disconnectGoogleAuth: () =>
+    authedFetch<{ calendar_disconnected: boolean; gmail_disconnected: boolean }>(
+      '/auth/google/connection',
+      { method: 'DELETE' },
+    ),
+
+  // --- Google Calendar ---
   googleCalendarStatus: () => authedFetch<GoogleCalendarStatus>('/calendar/google/status'),
-  // `appRedirect` is where the backend's callback page sends the browser once
-  // consent finishes, which is what lets the in-app auth session close itself.
-  // It varies by runtime (exp:// under Expo Go, veda:// in a build), so the caller
-  // computes it with Linking.createURL rather than either side hardcoding it.
   startGoogleCalendarAuth: (appRedirect: string) =>
     authedFetch<{ authorization_url: string }>('/calendar/google/connect', {
       method: 'POST',
@@ -105,7 +115,6 @@ export const api = {
     authedFetch<GoogleCalendarEvent[]>(
       `/calendar/google/events?max_results=${maxResults}&flights_only=${flightsOnly}`,
     ),
-  // Mirrors Google events into calendar_events, which is what the agents read.
   syncGoogleCalendar: (maxResults = 20, flightsOnly = true) =>
     authedFetch<GoogleSyncResult>(
       `/calendar/google/sync?max_results=${maxResults}&flights_only=${flightsOnly}`,
@@ -113,10 +122,6 @@ export const api = {
     ),
 
   // --- Device calendar (Apple Calendar via expo-calendar) ---
-  // The app reads events straight off the device (no OAuth, no token) and
-  // forwards them here to be classified and merged into calendar_events
-  // alongside whatever Google already synced. See routers/calendar.py's
-  // /calendar/device-events.
   syncDeviceCalendar: (events: DeviceCalendarEvent[], flightsOnly = true) =>
     authedFetch<DeviceSyncResult>('/calendar/device-events', {
       method: 'POST',
