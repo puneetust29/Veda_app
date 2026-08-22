@@ -6,13 +6,11 @@ from pydantic import BaseModel, Field
 
 from app.deps import get_current_customer
 from app.routers._shared import get_owned_calendar_event
-from app.tools.mcp_client import McpClientError
 from app.tools.uber_deeplink import (
     build_airport_deeplink_options,
     build_uber_deeplink,
     lookup_airport_coordinates,
 )
-from app.tools.uber_mcp import get_uber_auth_url, uber_mcp_is_configured
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/uber", tags=["uber"])
@@ -39,29 +37,11 @@ class UberAuthUrlResponse(BaseModel):
 
 @router.get("/auth-url", response_model=UberAuthUrlResponse)
 def get_auth_url(customer: dict = Depends(get_current_customer)) -> UberAuthUrlResponse:
-    """Return an Uber MCP authorization URL when the MCP integration is configured."""
-    logger.info("[uber] auth-url request | customer_id=%s", customer.get("id"))
-    if not uber_mcp_is_configured():
-        logger.info("[uber] auth-url unavailable | customer_id=%s | reason=not_configured", customer.get("id"))
-        return UberAuthUrlResponse(
-            available=False,
-            message="Uber account connection is not configured on this server.",
-        )
-
-    try:
-        auth_url = get_uber_auth_url(user_id=customer["id"])
-    except McpClientError as exc:
-        logger.warning("[uber] auth-url lookup failed | customer_id=%s | error=%s", customer.get("id"), exc)
-        return UberAuthUrlResponse(
-            available=False,
-            message="Uber account connection is unavailable right now.",
-        )
-
-    logger.info("[uber] auth-url success | customer_id=%s", customer.get("id"))
+    """Uber OAuth is not available in this implementation (uses deep links only)."""
+    logger.info("[uber] auth-url request | customer_id=%s | reason=not_available", customer.get("id"))
     return UberAuthUrlResponse(
-        available=True,
-        auth_url=auth_url,
-        message="Connect your Uber account to unlock live ride estimates.",
+        available=False,
+        message="Uber integration uses deep links. OAuth not available.",
     )
 
 

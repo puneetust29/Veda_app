@@ -7,8 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import get_settings
 from app.orchestration.orchestrator import get_orchestrator
 from app.routers import auth, calendar, conversation, roaming, subscriptions, uber
-from app.tools.uber_mcp import uber_mcp_is_configured
-import app.tools.uber  # noqa: F401 -- registers Uber deep-link + MCP tools at startup
+import app.tools.uber  # noqa: F401 -- registers Uber deep-link tools at startup
 
 settings = get_settings()
 
@@ -39,10 +38,9 @@ async def lifespan(_app: FastAPI):
     # manifest (unregistered tool, missing context resolver, etc.) raises here, at
     # boot, instead of failing on the first request that happens to hit it.
     logger.info(
-        "app startup | environment=%s | log_level=%s | uber_mcp_configured=%s",
+        "app startup | environment=%s | log_level=%s",
         settings.environment,
         settings.app_log_level,
-        uber_mcp_is_configured(),
     )
     get_orchestrator()
     logger.info("app startup complete | orchestrator_ready=true")

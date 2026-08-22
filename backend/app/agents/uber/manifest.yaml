@@ -1,6 +1,6 @@
 name: uber_agent
 version: 0.1.0
-description: Detects an upcoming flight, uses Uber MCP for auth/quote enrichment when available, and falls back to a deep-link Uber handoff.
+description: Detects an upcoming flight and suggests an Uber ride via deep-link handoff to the native app.
 enabled: true
 priority: 20
 capabilities: [uber]
@@ -16,6 +16,6 @@ triggers:
 # key, not that the value is non-null. The agent and graph handle None gracefully
 # throughout (falls back to Uber's pickup=my_location deep-link behaviour).
 required_context: [customer, calendar_event, device_location]
-tools: [uber.get_auth_url, uber.get_price_estimates, uber.get_deeplink]
+tools: [uber.get_deeplink]
 actions: []
 output_schema: app.agents.uber.schemas:UberRideSuggestionCard

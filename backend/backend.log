@@ -1,0 +1,78 @@
+INFO:     Will watch for changes in these directories: ['/Users/287262/Documents/Snehashis/repo/Veda_app/backend']
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [73533] using WatchFiles
+/Users/287262/Documents/Snehashis/repo/Veda_app/backend/.venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [73536]
+INFO:     Waiting for application startup.
+2026-08-22 16:02:56,989 INFO app.main | app startup | environment=development | log_level=INFO
+2026-08-22 16:02:56,999 INFO app.main | app startup complete | orchestrator_ready=true
+INFO:     Application startup complete.
+2026-08-22 16:03:23,946 INFO httpx | HTTP Request: GET https://mcukcuinjgtgczrpxfby.supabase.co/rest/v1/roaming_plans?select=%2A "HTTP/1.1 200 OK"
+INFO:     192.168.1.151:62205 - "GET /roaming/plans HTTP/1.1" 200 OK
+2026-08-22 16:03:26,659 INFO httpx | HTTP Request: GET https://mcukcuinjgtgczrpxfby.supabase.co/rest/v1/customers?select=%2A&phone_number=eq.%2B15550001111&limit=1 "HTTP/1.1 200 OK"
+2026-08-22 16:03:26,789 INFO httpx | HTTP Request: GET https://mcukcuinjgtgczrpxfby.supabase.co/rest/v1/calendar_events?select=%2A&customer_id=eq.4df28ba6-e5b1-4465-8d59-d1ba49bacb7a&order=start_datetime "HTTP/1.1 200 OK"
+INFO:     192.168.1.151:62205 - "GET /calendar/events HTTP/1.1" 200 OK
+2026-08-22 16:03:30,039 INFO httpx | HTTP Request: GET https://mcukcuinjgtgczrpxfby.supabase.co/rest/v1/customers?select=%2A&phone_number=eq.%2B15550001111&limit=1 "HTTP/1.1 200 OK"
+2026-08-22 16:03:30,178 INFO httpx | HTTP Request: GET https://mcukcuinjgtgczrpxfby.supabase.co/rest/v1/subscriptions?select=%2A%2C%20roaming_plans%28%2A%29%2C%20calendar_events%28%2A%29&customer_id=eq.4df28ba6-e5b1-4465-8d59-d1ba49bacb7a&order=subscribed_at.desc "HTTP/1.1 200 OK"
+INFO:     192.168.1.151:62205 - "GET /subscriptions HTTP/1.1" 200 OK
+2026-08-22 16:03:30,376 INFO httpx | HTTP Request: GET https://mcukcuinjgtgczrpxfby.supabase.co/rest/v1/customers?select=%2A&phone_number=eq.%2B15550001111&limit=1 "HTTP/1.1 200 OK"
+2026-08-22 16:03:30,382 INFO app.routers.conversation | chat stream request | customer_id=4df28ba6-e5b1-4465-8d59-d1ba49bacb7a | calendar_event_id=d48b7d62-cc56-43cc-9f5f-badaebc49b2d | has_message=False | has_pickup_coords=True | pickup_label='Current location'
+2026-08-22 16:03:30,519 INFO httpx | HTTP Request: GET https://mcukcuinjgtgczrpxfby.supabase.co/rest/v1/calendar_events?select=%2A&id=eq.d48b7d62-cc56-43cc-9f5f-badaebc49b2d&customer_id=eq.4df28ba6-e5b1-4465-8d59-d1ba49bacb7a&limit=1 "HTTP/1.1 200 OK"
+2026-08-22 16:03:30,520 INFO app.routers.conversation | chat stream subject prepared | customer_id=4df28ba6-e5b1-4465-8d59-d1ba49bacb7a | calendar_event_type=flight | device_location_present=True
+2026-08-22 16:03:30,521 INFO app.routers.conversation | chat stream orchestration start | customer_id=4df28ba6-e5b1-4465-8d59-d1ba49bacb7a | conversation_id=d48b7d62-cc56-43cc-9f5f-badaebc49b2d
+INFO:     192.168.1.151:62205 - "POST /chat/stream HTTP/1.1" 200 OK
+2026-08-22 16:03:30,521 INFO app.orchestration.orchestrator | orchestrator run start | run_id=c5adb821-8d57-4891-ade3-ab86055de47e | conversation_id=d48b7d62-cc56-43cc-9f5f-badaebc49b2d | mode=converse | user_id=4df28ba6-e5b1-4465-8d59-d1ba49bacb7a
+2026-08-22 16:03:30,522 INFO app.orchestration.orchestrator | orchestrator match | conversation_id=d48b7d62-cc56-43cc-9f5f-badaebc49b2d | coarse_agents=['roaming_agent', 'uber_agent'] | resolved_keys=['calendar_event', 'customer', 'device_location'] | matched_agents=['roaming_agent', 'uber_agent']
+2026-08-22 16:03:30,522 INFO app.orchestration.orchestrator | orchestrator dispatch | run_id=c5adb821-8d57-4891-ade3-ab86055de47e | agent=roaming_agent | context_keys=['calendar_event', 'customer']
+2026-08-22 16:03:30,656 INFO httpx | HTTP Request: GET https://mcukcuinjgtgczrpxfby.supabase.co/rest/v1/roaming_plans?select=%2A&country_name=eq.Japan&order=duration_days "HTTP/1.1 200 OK"
+2026-08-22 16:03:31,079 INFO httpx | HTTP Request: GET https://mcukcuinjgtgczrpxfby.supabase.co/rest/v1/roaming_plans?select=%2A&country_name=eq.Japan&order=duration_days "HTTP/1.1 200 OK"
+2026-08-22 16:03:35,070 INFO httpx | HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-22 16:03:37,911 INFO httpx | HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-22 16:03:37,920 INFO app.orchestration.orchestrator | orchestrator agent complete | run_id=c5adb821-8d57-4891-ade3-ab86055de47e | agent=roaming_agent | status=awaiting_approval | card_count=1 | proposed_action_count=1
+2026-08-22 16:03:37,921 INFO app.orchestration.orchestrator | orchestrator dispatch | run_id=c5adb821-8d57-4891-ade3-ab86055de47e | agent=uber_agent | context_keys=['calendar_event', 'customer', 'device_location']
+2026-08-22 16:03:37,921 INFO app.agents.uber.agent | uber agent execute start | run_id=c5adb821-8d57-4891-ade3-ab86055de47e | conversation_id=d48b7d62-cc56-43cc-9f5f-badaebc49b2d | mode=converse | customer_id=4df28ba6-e5b1-4465-8d59-d1ba49bacb7a | has_calendar_event=True | has_device_location=True
+2026-08-22 16:03:37,924 INFO app.agents.uber.graph | uber graph extract context | customer_id=4df28ba6-e5b1-4465-8d59-d1ba49bacb7a | origin='London Heathrow (LHR)' | destination='Tokyo Narita (NRT)' | destination_country='Japan' | has_device_location=True
+2026-08-22 16:03:41,046 INFO httpx | HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-22 16:03:41,050 INFO app.agents.uber.graph | uber graph suggest ride complete | customer_id=4df28ba6-e5b1-4465-8d59-d1ba49bacb7a | should_suggest=True | reasoning='The customer is departing from a known airport, London Heathrow, and a ride to the airport would be useful.' | suggested_message="Need a ride to Heathrow for your flight to Tokyo? Let's get you there without any hassle!"
+2026-08-22 16:03:41,053 INFO app.tools.uber_deeplink | [uber] coords HIT  'London Heathrow (LHR)' -> (51.47, -0.4543)
+2026-08-22 16:03:41,054 INFO app.agents.uber.graph | uber graph deeplink start | customer_id=4df28ba6-e5b1-4465-8d59-d1ba49bacb7a | origin_label='London Heathrow (LHR)' | pickup_coords_present=True | dropoff_coords_present=True
+2026-08-22 16:03:41,055 INFO app.tools.uber_deeplink | [uber] build_deeplink pickup=(47.7900, -122.2100, 'Current location') dropoff=(51.4700, -0.4543, 'London Heathrow (LHR)')
+2026-08-22 16:03:41,055 INFO app.tools.uber_deeplink | [uber] uber_app_url:      uber://?client_id=J9bU_EJkrbz3sCdMnfbgOIlhTP2gCh5E&action=setPickup&pickup[latitude]=47.79003748069428&pickup[longitude]=-122.20999313484727&pickup[nickname]=Current%20location&dropoff[latitude]=51.47&dropoff[longitude]=-0.4543&dropoff[nickname]=London%20Heathrow%20%28LHR%29
+2026-08-22 16:03:41,056 INFO app.tools.uber_deeplink | [uber] web_fallback_url:  https://m.uber.com/ul/?client_id=J9bU_EJkrbz3sCdMnfbgOIlhTP2gCh5E&action=setPickup&pickup[latitude]=47.79003748069428&pickup[longitude]=-122.20999313484727&pickup[nickname]=Current%20location&dropoff[latitude]=51.47&dropoff[longitude]=-0.4543&dropoff[nickname]=London%20Heathrow%20%28LHR%29
+2026-08-22 16:03:41,056 INFO app.agents.uber.graph | uber graph deeplink complete | customer_id=4df28ba6-e5b1-4465-8d59-d1ba49bacb7a | has_uber_app_url=True | has_deep_link_url=True | airport_option_count=0
+2026-08-22 16:03:41,058 INFO app.agents.uber.agent | uber agent graph complete | run_id=c5adb821-8d57-4891-ade3-ab86055de47e | should_suggest=True | has_deeplink=True | airport_option_count=0
+2026-08-22 16:03:41,058 INFO app.agents.uber.agent | uber agent emitting recommendation | run_id=c5adb821-8d57-4891-ade3-ab86055de47e | pickup_label='Current location' | dropoff_label='London Heathrow (LHR)'
+2026-08-22 16:03:41,059 INFO app.orchestration.orchestrator | orchestrator agent complete | run_id=c5adb821-8d57-4891-ade3-ab86055de47e | agent=uber_agent | status=ok | card_count=1 | proposed_action_count=0
+2026-08-22 16:03:41,059 INFO app.orchestration.orchestrator | orchestrator run complete | run_id=c5adb821-8d57-4891-ade3-ab86055de47e | conversation_id=d48b7d62-cc56-43cc-9f5f-badaebc49b2d | result_count=2
+2026-08-22 16:03:41,059 INFO app.routers.conversation | chat stream orchestration complete | customer_id=4df28ba6-e5b1-4465-8d59-d1ba49bacb7a | conversation_id=d48b7d62-cc56-43cc-9f5f-badaebc49b2d | agent_count=2
+2026-08-22 16:03:41,059 INFO app.routers.conversation | chat stream completed | customer_id=4df28ba6-e5b1-4465-8d59-d1ba49bacb7a | conversation_id=d48b7d62-cc56-43cc-9f5f-badaebc49b2d
+2026-08-22 16:04:05,625 INFO httpx | HTTP Request: GET https://mcukcuinjgtgczrpxfby.supabase.co/rest/v1/customers?select=%2A&phone_number=eq.%2B15550001111&limit=1 "HTTP/1.1 200 OK"
+2026-08-22 16:04:05,633 INFO app.routers.conversation | chat stream request | customer_id=4df28ba6-e5b1-4465-8d59-d1ba49bacb7a | calendar_event_id=d48b7d62-cc56-43cc-9f5f-badaebc49b2d | has_message=True | has_pickup_coords=True | pickup_label='Current location'
+2026-08-22 16:04:05,774 INFO httpx | HTTP Request: GET https://mcukcuinjgtgczrpxfby.supabase.co/rest/v1/calendar_events?select=%2A&id=eq.d48b7d62-cc56-43cc-9f5f-badaebc49b2d&customer_id=eq.4df28ba6-e5b1-4465-8d59-d1ba49bacb7a&limit=1 "HTTP/1.1 200 OK"
+2026-08-22 16:04:05,775 INFO app.routers.conversation | chat stream subject prepared | customer_id=4df28ba6-e5b1-4465-8d59-d1ba49bacb7a | calendar_event_type=flight | device_location_present=True
+2026-08-22 16:04:05,776 INFO app.routers.conversation | chat stream orchestration start | customer_id=4df28ba6-e5b1-4465-8d59-d1ba49bacb7a | conversation_id=d48b7d62-cc56-43cc-9f5f-badaebc49b2d
+INFO:     192.168.1.151:62209 - "POST /chat/stream HTTP/1.1" 200 OK
+2026-08-22 16:04:05,777 INFO app.orchestration.orchestrator | orchestrator run start | run_id=10759fad-44db-4088-925c-cf49de744bf4 | conversation_id=d48b7d62-cc56-43cc-9f5f-badaebc49b2d | mode=converse | user_id=4df28ba6-e5b1-4465-8d59-d1ba49bacb7a
+2026-08-22 16:04:05,778 INFO app.orchestration.orchestrator | orchestrator match | conversation_id=d48b7d62-cc56-43cc-9f5f-badaebc49b2d | coarse_agents=['roaming_agent', 'uber_agent'] | resolved_keys=['calendar_event', 'customer', 'device_location'] | matched_agents=['roaming_agent', 'uber_agent']
+2026-08-22 16:04:05,778 INFO app.orchestration.orchestrator | orchestrator dispatch | run_id=10759fad-44db-4088-925c-cf49de744bf4 | agent=roaming_agent | context_keys=['calendar_event', 'customer']
+2026-08-22 16:04:05,923 INFO httpx | HTTP Request: GET https://mcukcuinjgtgczrpxfby.supabase.co/rest/v1/roaming_plans?select=%2A&country_name=eq.Japan&order=duration_days "HTTP/1.1 200 OK"
+2026-08-22 16:04:08,427 INFO httpx | HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-22 16:04:08,435 INFO app.orchestration.orchestrator | orchestrator agent complete | run_id=10759fad-44db-4088-925c-cf49de744bf4 | agent=roaming_agent | status=ok | card_count=0 | proposed_action_count=0
+2026-08-22 16:04:08,435 INFO app.orchestration.orchestrator | orchestrator dispatch | run_id=10759fad-44db-4088-925c-cf49de744bf4 | agent=uber_agent | context_keys=['calendar_event', 'customer', 'device_location']
+2026-08-22 16:04:08,436 INFO app.agents.uber.agent | uber agent execute start | run_id=10759fad-44db-4088-925c-cf49de744bf4 | conversation_id=d48b7d62-cc56-43cc-9f5f-badaebc49b2d | mode=converse | customer_id=4df28ba6-e5b1-4465-8d59-d1ba49bacb7a | has_calendar_event=True | has_device_location=True
+2026-08-22 16:04:08,439 INFO app.agents.uber.graph | uber graph extract context | customer_id=4df28ba6-e5b1-4465-8d59-d1ba49bacb7a | origin='London Heathrow (LHR)' | destination='Tokyo Narita (NRT)' | destination_country='Japan' | has_device_location=True
+2026-08-22 16:04:11,434 INFO httpx | HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-22 16:04:11,439 INFO app.agents.uber.graph | uber graph suggest ride complete | customer_id=4df28ba6-e5b1-4465-8d59-d1ba49bacb7a | should_suggest=True | reasoning='The customer is departing from a known airport, London Heathrow, and a ride to the airport would be useful.' | suggested_message="Need a ride to Heathrow for your flight to Tokyo? Let's get you there without any hassle!"
+2026-08-22 16:04:11,441 INFO app.tools.uber_deeplink | [uber] coords HIT  'London Heathrow (LHR)' -> (51.47, -0.4543)
+2026-08-22 16:04:11,442 INFO app.agents.uber.graph | uber graph deeplink start | customer_id=4df28ba6-e5b1-4465-8d59-d1ba49bacb7a | origin_label='London Heathrow (LHR)' | pickup_coords_present=True | dropoff_coords_present=True
+2026-08-22 16:04:11,443 INFO app.tools.uber_deeplink | [uber] build_deeplink pickup=(47.7900, -122.2100, 'Current location') dropoff=(51.4700, -0.4543, 'London Heathrow (LHR)')
+2026-08-22 16:04:11,443 INFO app.tools.uber_deeplink | [uber] uber_app_url:      uber://?client_id=J9bU_EJkrbz3sCdMnfbgOIlhTP2gCh5E&action=setPickup&pickup[latitude]=47.79003748069428&pickup[longitude]=-122.20999313484727&pickup[nickname]=Current%20location&dropoff[latitude]=51.47&dropoff[longitude]=-0.4543&dropoff[nickname]=London%20Heathrow%20%28LHR%29
+2026-08-22 16:04:11,444 INFO app.tools.uber_deeplink | [uber] web_fallback_url:  https://m.uber.com/ul/?client_id=J9bU_EJkrbz3sCdMnfbgOIlhTP2gCh5E&action=setPickup&pickup[latitude]=47.79003748069428&pickup[longitude]=-122.20999313484727&pickup[nickname]=Current%20location&dropoff[latitude]=51.47&dropoff[longitude]=-0.4543&dropoff[nickname]=London%20Heathrow%20%28LHR%29
+2026-08-22 16:04:11,444 INFO app.agents.uber.graph | uber graph deeplink complete | customer_id=4df28ba6-e5b1-4465-8d59-d1ba49bacb7a | has_uber_app_url=True | has_deep_link_url=True | airport_option_count=0
+2026-08-22 16:04:11,446 INFO app.agents.uber.agent | uber agent graph complete | run_id=10759fad-44db-4088-925c-cf49de744bf4 | should_suggest=True | has_deeplink=True | airport_option_count=0
+2026-08-22 16:04:11,447 INFO app.agents.uber.agent | uber agent emitting recommendation | run_id=10759fad-44db-4088-925c-cf49de744bf4 | pickup_label='Current location' | dropoff_label='London Heathrow (LHR)'
+2026-08-22 16:04:11,447 INFO app.orchestration.orchestrator | orchestrator agent complete | run_id=10759fad-44db-4088-925c-cf49de744bf4 | agent=uber_agent | status=ok | card_count=1 | proposed_action_count=0
+2026-08-22 16:04:11,447 INFO app.orchestration.orchestrator | orchestrator run complete | run_id=10759fad-44db-4088-925c-cf49de744bf4 | conversation_id=d48b7d62-cc56-43cc-9f5f-badaebc49b2d | result_count=2
+2026-08-22 16:04:11,447 INFO app.routers.conversation | chat stream orchestration complete | customer_id=4df28ba6-e5b1-4465-8d59-d1ba49bacb7a | conversation_id=d48b7d62-cc56-43cc-9f5f-badaebc49b2d | agent_count=2
+2026-08-22 16:04:11,448 INFO app.routers.conversation | chat stream completed | customer_id=4df28ba6-e5b1-4465-8d59-d1ba49bacb7a | conversation_id=d48b7d62-cc56-43cc-9f5f-badaebc49b2d

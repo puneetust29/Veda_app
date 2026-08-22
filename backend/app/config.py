@@ -29,14 +29,6 @@ class Settings(BaseSettings):
     uber_client_id: str = ""
     uber_client_secret: str = ""
     uber_redirect_uri: str = "http://localhost:3000/callback"
-    uber_server_token: str = ""
-
-    uber_mcp_command: str = "npx"
-    uber_mcp_args: str = "mcp-uber"
-    uber_mcp_environment: str = "sandbox"
-    uber_mcp_protocol_version: str = "2024-11-05"
-    uber_mcp_timeout_seconds: float = 20.0
-    uber_mcp_access_token: str = ""
 
 
 @lru_cache

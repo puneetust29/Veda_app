@@ -1,16 +1,16 @@
-"""UberAgent LangGraph — MCP enrichment plus deep-link handoff.
+"""UberAgent LangGraph — Official Uber deep-link integration.
 
-  extract_trip_context  ->  suggest_ride  --(True)-->  fetch_mcp_context  ->  build_deeplink  ->  END
+Uses Uber's official deep-link API (m.uber.com/ul/) which requires no auth token.
+No third-party dependencies.
+
+  extract_trip_context  ->  suggest_ride  --(True)-->  build_deeplink  ->  END
                                           --(False)--> END
 
 Node responsibilities:
-  extract_trip_context : pull trip metadata from the calendar event and any optional
-                         device location context.
+  extract_trip_context : pull trip metadata from the calendar event and device location.
   suggest_ride         : the LLM decides whether a ride to the departure airport
                          makes sense and writes the suggested_message.
-  fetch_mcp_context    : call Uber MCP for either an auth URL or a live quote.
-                         Only reached when should_suggest=True.
-  build_deeplink       : build the fallback/launch handoff into the Uber app.
+  build_deeplink       : build the deep-link handoff into the Uber app.
                          Only reached when should_suggest=True.
 """
 from __future__ import annotations
@@ -32,7 +32,6 @@ from app.tools.uber_deeplink import (
     build_uber_deeplink,
     lookup_airport_coordinates,
 )
-from app.tools.uber_mcp import maybe_get_ride_quote, uber_mcp_is_configured
 
 logger = logging.getLogger(__name__)
 
@@ -147,76 +146,6 @@ def node_suggest_ride(state: UberAgentState, writer: StreamWriter) -> dict:
     }
 
 
-def node_fetch_mcp_context(state: UberAgentState, writer: StreamWriter) -> dict:
-    """Fetch MCP-backed auth/quote context without breaking the deep-link fallback."""
-    settings = get_settings()
-    pickup_label = ((state.get("device_location") or {}).get("label") or "Current location")
-    logger.info(
-        "uber graph mcp start | customer_id=%s | pickup_label=%r | token_present=%s",
-        state.get("customer_id"),
-        pickup_label,
-        bool(settings.uber_mcp_access_token),
-    )
-
-    if not uber_mcp_is_configured():
-        logger.info("uber graph mcp skipped | customer_id=%s | reason=not_configured", state.get("customer_id"))
-        return {
-            "pickup_label": pickup_label,
-            "mcp_available": False,
-            "connect_uber_url": None,
-            "live_quote": None,
-            "quote_status": None,
-            "mcp_error": None,
-        }
-
-    tool_name = "uber.get_price_estimates" if settings.uber_mcp_access_token else "uber.get_auth_url"
-    writer({"kind": "tool_started", "tool": tool_name})
-
-    origin_label = state.get("origin_label")
-    dropoff_coords = lookup_airport_coordinates(origin_label)
-    device_location = state.get("device_location") or {}
-    pickup_latitude = device_location.get("latitude")
-    pickup_longitude = device_location.get("longitude")
-    dropoff_latitude, dropoff_longitude = dropoff_coords if dropoff_coords else (None, None)
-    logger.info(
-        "uber graph mcp inputs | customer_id=%s | origin_label=%r | pickup_coords_present=%s | dropoff_coords_present=%s | tool=%s",
-        state.get("customer_id"),
-        origin_label,
-        pickup_latitude is not None and pickup_longitude is not None,
-        dropoff_latitude is not None and dropoff_longitude is not None,
-        tool_name,
-    )
-
-    quote_payload = maybe_get_ride_quote(
-        user_id=state.get("customer_id") or "anonymous",
-        pickup_latitude=pickup_latitude,
-        pickup_longitude=pickup_longitude,
-        dropoff_latitude=dropoff_latitude,
-        dropoff_longitude=dropoff_longitude,
-        access_token=settings.uber_mcp_access_token or None,
-    )
-
-    writer({"kind": "tool_completed", "tool": tool_name})
-    logger.info(
-        "uber graph mcp complete | customer_id=%s | mcp_available=%s | has_connect_url=%s | has_live_quote=%s | quote_status=%r | mcp_error=%r",
-        state.get("customer_id"),
-        quote_payload.get("mcp_available", False),
-        bool(quote_payload.get("connect_uber_url")),
-        bool(quote_payload.get("live_quote")),
-        quote_payload.get("quote_status"),
-        quote_payload.get("mcp_error"),
-    )
-
-    return {
-        "pickup_label": pickup_label,
-        "connect_uber_url": quote_payload.get("connect_uber_url"),
-        "live_quote": quote_payload.get("live_quote"),
-        "quote_status": quote_payload.get("quote_status"),
-        "mcp_available": quote_payload.get("mcp_available", False),
-        "mcp_error": quote_payload.get("mcp_error"),
-    }
-
-
 def node_build_deeplink(state: UberAgentState, writer: StreamWriter) -> dict:
     """Build the Uber deep link for current location -> departure airport.
 
@@ -290,37 +219,28 @@ def node_build_deeplink(state: UberAgentState, writer: StreamWriter) -> dict:
 
 
 def _route_after_suggest(state: UberAgentState) -> str:
-    """Conditional edge: skip MCP + deeplink entirely when the LLM says don't suggest.
-
-    Without this the graph always runs all four nodes, emitting 'Checking your Uber
-    connection...' and 'Preparing your Uber handoff...' tool labels even for train/metro
-    trips where should_suggest=False. Those ghost statuses linger on screen because
-    agent.execute() then emits the silent no_ride_suggested error and the user sees the
-    tool labels appear and disappear with nothing to show for it.
-    """
+    """Conditional edge: skip deeplink when the LLM says don't suggest."""
     if state.get("should_suggest"):
-        return "fetch_mcp_context"
+        return "build_deeplink"
     return END
 
 
 def build_uber_graph():
-    """Graph: extract -> suggest -> [conditional] -> MCP enrich -> deeplink -> END.
+    """Graph: extract -> suggest -> [conditional] -> deeplink -> END.
 
     suggest_ride branches:
-      should_suggest=True  -> fetch_mcp_context -> build_deeplink -> END
-      should_suggest=False -> END  (no MCP call, no deeplink, no ghost tool labels)
+      should_suggest=True  -> build_deeplink -> END
+      should_suggest=False -> END
     """
     graph = StateGraph(UberAgentState)
 
     graph.add_node("extract_trip_context", node_extract_trip_context)
     graph.add_node("suggest_ride", node_suggest_ride)
-    graph.add_node("fetch_mcp_context", node_fetch_mcp_context)
     graph.add_node("build_deeplink", node_build_deeplink)
 
     graph.set_entry_point("extract_trip_context")
     graph.add_edge("extract_trip_context", "suggest_ride")
     graph.add_conditional_edges("suggest_ride", _route_after_suggest)
-    graph.add_edge("fetch_mcp_context", "build_deeplink")
     graph.add_edge("build_deeplink", END)
 
     return graph.compile()

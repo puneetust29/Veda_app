@@ -38,6 +38,7 @@ class UberLiveQuote(BaseModel):
 class UberRideSuggestionCard(BaseModel):
     """The recommendation_ready stream event card payload for the Uber agent.
 
+    Uses official Uber deep-link API. No live quotes or OAuth URLs included.
     Uses a `kind` discriminator so future agent cards can coexist as additive
     union members alongside the existing `roaming_plan` card kind.
     """
@@ -47,11 +48,6 @@ class UberRideSuggestionCard(BaseModel):
     suggested_message: str
     pickup_label: Optional[str] = None
     dropoff_label: Optional[str] = None
-    # Deep link URLs — populated after the tool call, None if the user needs to
-    # choose from several airport options first.
     uber_app_url: Optional[str] = None
     deep_link_url: Optional[str] = None
     airport_options: list[UberAirportOption] = Field(default_factory=list)
-    connect_uber_url: Optional[str] = None
-    live_quote: Optional[UberLiveQuote] = None
-    quote_status: Optional[str] = None

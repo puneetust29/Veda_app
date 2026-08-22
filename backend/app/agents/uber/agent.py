@@ -1,12 +1,10 @@
 """UberAgent: suggests an Uber ride for an upcoming flight.
 
-The agent now combines two layers:
-- Uber MCP for account-connect URLs and live quote enrichment when credentials and
-  coordinates are available
-- deep-link handoff for the final launch into the real Uber app
+Uses official Uber deep-link API (m.uber.com/ul/) to hand off to the native Uber app.
+No third-party dependencies or API approval required.
 
-No commit-risk actions are declared yet. Booking/cancel/status flows stay deferred
-until OAuth persistence and explicit approval UX are formalized.
+No server-side booking implemented. Deep link opens Uber app where user completes the
+booking themselves.
 """
 from __future__ import annotations
 
@@ -85,15 +83,10 @@ class UberAgent(BaseAgent):
         pickup_label = final_state.get("pickup_label")
         dropoff_label = final_state.get("dropoff_label")
         airport_options = final_state.get("airport_options", [])
-        connect_uber_url = final_state.get("connect_uber_url")
-        live_quote = final_state.get("live_quote")
-        quote_status = final_state.get("quote_status")
         logger.info(
-            "uber agent graph complete | run_id=%s | should_suggest=%s | has_connect_url=%s | has_live_quote=%s | has_deeplink=%s | airport_option_count=%d",
+            "uber agent graph complete | run_id=%s | should_suggest=%s | has_deeplink=%s | airport_option_count=%d",
             ctx.run_id,
             should_suggest,
-            bool(connect_uber_url),
-            bool(live_quote),
             bool(uber_app_url or deep_link_url),
             len(airport_options),
         )
@@ -119,17 +112,13 @@ class UberAgent(BaseAgent):
             uber_app_url=uber_app_url,
             deep_link_url=deep_link_url,
             airport_options=airport_options,
-            connect_uber_url=connect_uber_url,
-            live_quote=live_quote,
-            quote_status=quote_status,
         ).model_dump()
 
         logger.info(
-            "uber agent emitting recommendation | run_id=%s | pickup_label=%r | dropoff_label=%r | quote_status=%r",
+            "uber agent emitting recommendation | run_id=%s | pickup_label=%r | dropoff_label=%r",
             ctx.run_id,
             pickup_label,
             dropoff_label,
-            quote_status,
         )
         ctx.emit(build_recommendation_ready(card))
         ctx.emit(build_done("ok_no_action"))
