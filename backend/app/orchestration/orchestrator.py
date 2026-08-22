@@ -6,6 +6,7 @@ AgentRegistry has discovered and validated.
 """
 from __future__ import annotations
 
+import logging
 import uuid
 from functools import lru_cache
 from typing import Callable, List, Optional
@@ -15,6 +16,8 @@ from app.context.resolver import ContextResolver, get_context_resolver
 from app.orchestration.intents import OrchestratorRequest, OrchestratorResult
 from app.orchestration.registry import AgentRegistry, get_registry
 from app.policy import risk as policy
+
+logger = logging.getLogger(__name__)
 
 
 def _noop_emit(_event: dict) -> None:
@@ -31,6 +34,7 @@ class Orchestrator:
         refine by triggers.rules against that resolved context. Returns
         (matched_agents, resolved_context)."""
         coarse = self._registry.match(request.intent)
+        coarse_names = [entry.manifest.name for entry in coarse]
 
         required_keys: set = set()
         for entry in coarse:
@@ -41,6 +45,13 @@ class Orchestrator:
 
         matched = self._registry.match(request.intent, context=resolved_context)
         matched.sort(key=lambda entry: entry.manifest.priority)
+        logger.info(
+            "orchestrator match | conversation_id=%s | coarse_agents=%s | resolved_keys=%s | matched_agents=%s",
+            request.conversation_id,
+            coarse_names,
+            sorted(required_keys),
+            [entry.manifest.name for entry in matched],
+        )
         return matched, resolved_context
 
     def run(
@@ -51,12 +62,25 @@ class Orchestrator:
         emit = emit or _noop_emit
         run_id = str(uuid.uuid4())
 
+        logger.info(
+            "orchestrator run start | run_id=%s | conversation_id=%s | mode=%s | user_id=%s",
+            run_id,
+            request.conversation_id,
+            request.mode,
+            (request.principal or {}).get("id"),
+        )
         matched, resolved_context = self._match_with_resolved_context(request)
         emit({"type": "run_started", "data": {"run_id": run_id, "agents": [e.manifest.name for e in matched]}})
 
         results: List[AgentResult] = []
         for entry in matched:
             ctx_slice = {k: resolved_context.get(k) for k in entry.manifest.required_context}
+            logger.info(
+                "orchestrator dispatch | run_id=%s | agent=%s | context_keys=%s",
+                run_id,
+                entry.manifest.name,
+                sorted(ctx_slice.keys()),
+            )
             agent_ctx = AgentContext(
                 run_id=run_id,
                 principal=request.principal,
@@ -70,8 +94,22 @@ class Orchestrator:
             agent_crashed = False
             try:
                 result = entry.agent.execute(agent_ctx, request.mode)
+                logger.info(
+                    "orchestrator agent complete | run_id=%s | agent=%s | status=%s | card_count=%d | proposed_action_count=%d",
+                    run_id,
+                    entry.manifest.name,
+                    result.status,
+                    len(result.cards),
+                    len(result.proposed_actions),
+                )
             except Exception as exc:  # one agent's failure never aborts the run
                 agent_crashed = True
+                logger.exception(
+                    "orchestrator agent failed | run_id=%s | agent=%s | error=%s",
+                    run_id,
+                    entry.manifest.name,
+                    exc,
+                )
                 result = AgentResult(
                     agent=entry.manifest.name,
                     version=entry.manifest.version,
@@ -101,11 +139,22 @@ class Orchestrator:
                     )
 
         if not matched:
+            logger.warning(
+                "orchestrator run no match | run_id=%s | conversation_id=%s",
+                run_id,
+                request.conversation_id,
+            )
             # No agent matched this run at all (e.g. no trigger rule applied) -- still
             # guarantee the stream terminates with an event rather than just closing.
             emit({"type": "error", "data": {"code": "no_agent_matched", "retryable": False}})
             emit({"type": "done", "data": {"status": "ok_no_action"}})
 
+        logger.info(
+            "orchestrator run complete | run_id=%s | conversation_id=%s | result_count=%d",
+            run_id,
+            request.conversation_id,
+            len(results),
+        )
         return OrchestratorResult(run_id=run_id, results=results)
 
     def execute_action(

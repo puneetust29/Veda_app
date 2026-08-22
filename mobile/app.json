@@ -8,10 +8,17 @@
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.vedaapp.companion"
+      "bundleIdentifier": "com.vedaapp.companion",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Veda uses your location to pre-fill your Uber pickup when you open a ride to the airport."
+      }
     },
     "android": {
       "package": "com.vedaapp.companion",
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ],
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { applyStreamEvent, nextId } from '../lib/chatThread';
 import { api } from '../lib/api';
+import { getCurrentDeviceLocation } from '../lib/deviceLocation';
 import type { AgentStreamEvent, CalendarEvent, ChatItem, RoamingPlan } from '../types';
 
 export type ChatPhase = 'idle' | 'streaming' | 'awaiting_confirmation' | 'complete' | 'failed';
@@ -32,6 +33,7 @@ export function useRoamingChat(event: CalendarEvent) {
   const abortControllerRef = useRef<AbortController | null>(null);
   const watchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const startedRef = useRef(false);
+  const deviceLocationPromiseRef = useRef<Promise<Awaited<ReturnType<typeof getCurrentDeviceLocation>>> | null>(null);
   const lastRequestParamsRef = useRef<{
     message?: string;
     priorPlan?: RoamingPlan;
@@ -124,6 +126,13 @@ export function useRoamingChat(event: CalendarEvent) {
     [clearWatchdog, pushErrorItem],
   );
 
+  const getOrLoadDeviceLocation = useCallback(() => {
+    if (!deviceLocationPromiseRef.current) {
+      deviceLocationPromiseRef.current = getCurrentDeviceLocation();
+    }
+    return deviceLocationPromiseRef.current;
+  }, []);
+
   const startStream = useCallback(
     (
       controller: AbortController,
@@ -139,8 +148,10 @@ export function useRoamingChat(event: CalendarEvent) {
       }
       setPhase('streaming');
       resetWatchdog();
-      api
-        .streamRoamingConversation({
+      (async () => {
+        const pickup = await getOrLoadDeviceLocation();
+        if (controller.signal.aborted) return;
+        await api.streamRoamingConversation({
           calendarEventId: event.id,
           signal: controller.signal,
           onEvent: handleStreamEvent,
@@ -149,14 +160,17 @@ export function useRoamingChat(event: CalendarEvent) {
             handleStreamError(err);
           },
           onClose: clearWatchdog,
+          pickupLatitude: pickup?.latitude,
+          pickupLongitude: pickup?.longitude,
+          pickupLabel: pickup?.label,
           ...params,
-        })
-        .catch((err) => {
-          if (controller.signal.aborted) return;
-          handleStreamError(err);
         });
+      })().catch((err) => {
+        if (controller.signal.aborted) return;
+        handleStreamError(err);
+      });
     },
-    [clearWatchdog, event.id, handleStreamError, handleStreamEvent, resetWatchdog],
+    [clearWatchdog, event.id, getOrLoadDeviceLocation, handleStreamError, handleStreamEvent, resetWatchdog],
   );
 
   useEffect(() => {

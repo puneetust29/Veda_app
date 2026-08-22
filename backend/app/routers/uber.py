@@ -2,31 +2,93 @@ import logging
 from typing import Optional
 
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.deps import get_current_customer
 from app.routers._shared import get_owned_calendar_event
-from app.tools.uber_deeplink import build_uber_deeplink, lookup_airport_coordinates
+from app.tools.mcp_client import McpClientError
+from app.tools.uber_deeplink import (
+    build_airport_deeplink_options,
+    build_uber_deeplink,
+    lookup_airport_coordinates,
+)
+from app.tools.uber_mcp import get_uber_auth_url, uber_mcp_is_configured
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/uber", tags=["uber"])
 
 
+class AirportOption(BaseModel):
+    label: str
+    uber_app_url: str
+    deep_link_url: str
+
+
 class DeeplinkResponse(BaseModel):
-    uber_app_url: str       # uber:// scheme — opens native app, reliably pre-fills fields
-    deep_link_url: str      # https://m.uber.com/ul/ — web fallback if app not installed
-    destination_label: Optional[str] = None
+    uber_app_url: Optional[str] = None       # uber:// scheme — opens native app, reliably pre-fills fields
+    deep_link_url: Optional[str] = None      # https://m.uber.com/ul/ — web fallback if app not installed
+    destination_label: Optional[str] = None  # Uber dropoff label (normally the departure airport)
+    airport_options: list[AirportOption] = Field(default_factory=list)
+
+
+class UberAuthUrlResponse(BaseModel):
+    available: bool
+    auth_url: Optional[str] = None
+    message: str
+
+
+@router.get("/auth-url", response_model=UberAuthUrlResponse)
+def get_auth_url(customer: dict = Depends(get_current_customer)) -> UberAuthUrlResponse:
+    """Return an Uber MCP authorization URL when the MCP integration is configured."""
+    logger.info("[uber] auth-url request | customer_id=%s", customer.get("id"))
+    if not uber_mcp_is_configured():
+        logger.info("[uber] auth-url unavailable | customer_id=%s | reason=not_configured", customer.get("id"))
+        return UberAuthUrlResponse(
+            available=False,
+            message="Uber account connection is not configured on this server.",
+        )
+
+    try:
+        auth_url = get_uber_auth_url(user_id=customer["id"])
+    except McpClientError as exc:
+        logger.warning("[uber] auth-url lookup failed | customer_id=%s | error=%s", customer.get("id"), exc)
+        return UberAuthUrlResponse(
+            available=False,
+            message="Uber account connection is unavailable right now.",
+        )
+
+    logger.info("[uber] auth-url success | customer_id=%s", customer.get("id"))
+    return UberAuthUrlResponse(
+        available=True,
+        auth_url=auth_url,
+        message="Connect your Uber account to unlock live ride estimates.",
+    )
 
 
 @router.get("/deeplink", response_model=DeeplinkResponse)
-def get_deeplink(calendar_event_id: str, customer: dict = Depends(get_current_customer)) -> DeeplinkResponse:
-    """Deep link to hand a rider off to the Uber app for a ride around this trip.
+def get_deeplink(
+    calendar_event_id: str,
+    pickup_latitude: Optional[float] = None,
+    pickup_longitude: Optional[float] = None,
+    pickup_label: Optional[str] = None,
+    customer: dict = Depends(get_current_customer),
+) -> DeeplinkResponse:
+    """Deep link to hand a rider off to the Uber app for the departure leg of a trip.
 
-    Pickup = flight origin airport (e.g. London Heathrow).
-    Dropoff = flight destination airport (e.g. Tokyo Narita).
+    Pickup = rider's live device location when the mobile app provides coordinates,
+    otherwise Uber resolves it from `pickup=my_location`.
+    Dropoff = the trip's departure airport/station (the calendar event origin).
 
-    Both are looked up from the known-coordinates map. If an airport isn't in the map
-    its field is omitted and the rider sets it themselves inside the Uber app.
+    This is intentional: when a user taps Uber from a London → Tokyo trip, they need a
+    ride from where they are now to Heathrow — not an Uber route from London to Tokyo.
+
+    The dropoff is looked up from the known-coordinates map. If the origin is only a
+    city (for example "London"), we return curated airport options like Heathrow and
+    Gatwick so the user can choose the right departure airport first.
+
+    If the origin isn't in the map and no city-level airport options are known, Uber
+    still opens with current location as the pickup and the rider can choose the
+    destination manually in the app.
 
     No Uber account connection or OAuth is required -- see app/tools/uber_deeplink.py.
     """
@@ -35,33 +97,64 @@ def get_deeplink(calendar_event_id: str, customer: dict = Depends(get_current_cu
     destination_label = event.get("destination")
 
     logger.info(
-        "[uber] deeplink request | event=%s | origin=%r | destination=%r",
-        calendar_event_id, origin_label, destination_label,
+        "[uber] deeplink request | event=%s | origin=%r | destination=%r | pickup_coords_present=%s | pickup_label=%r",
+        calendar_event_id,
+        origin_label,
+        destination_label,
+        pickup_latitude is not None and pickup_longitude is not None,
+        pickup_label,
     )
 
-    # Pickup = departure airport (where the flight leaves from)
-    pickup_coords = lookup_airport_coordinates(origin_label)
-    pickup_lat, pickup_lng = pickup_coords if pickup_coords else (None, None)
-    logger.info("[uber] pickup_coords for %r -> %s", origin_label, pickup_coords)
+    # Dropoff = departure airport / station (where the trip leaves from)
+    dropoff_coords = lookup_airport_coordinates(origin_label)
+    if dropoff_coords:
+        dropoff_lat, dropoff_lng = dropoff_coords
+        logger.info("[uber] dropoff_coords for departure %r -> %s", origin_label, dropoff_coords)
 
-    # Dropoff = arrival airport (where the flight lands)
-    dropoff_coords = lookup_airport_coordinates(destination_label)
-    dropoff_lat, dropoff_lng = dropoff_coords if dropoff_coords else (None, None)
-    logger.info("[uber] dropoff_coords for %r -> %s", destination_label, dropoff_coords)
+        uber_app_url, web_fallback_url = build_uber_deeplink(
+            pickup_latitude=pickup_latitude,
+            pickup_longitude=pickup_longitude,
+            pickup_nickname=pickup_label,
+            dropoff_latitude=dropoff_lat,
+            dropoff_longitude=dropoff_lng,
+            dropoff_nickname=origin_label,
+        )
+
+        response = DeeplinkResponse(
+            uber_app_url=uber_app_url,
+            deep_link_url=web_fallback_url,
+            destination_label=origin_label,
+        )
+        logger.info("[uber] response sent | uber_app_url=%s", response.uber_app_url)
+        return response
+
+    airport_options = [
+        AirportOption(**option)
+        for option in build_airport_deeplink_options(
+            origin_label,
+            pickup_latitude=pickup_latitude,
+            pickup_longitude=pickup_longitude,
+            pickup_nickname=pickup_label,
+        )
+    ]
+    if airport_options:
+        response = DeeplinkResponse(
+            destination_label=origin_label,
+            airport_options=airport_options,
+        )
+        logger.info("[uber] response sent with %d airport options", len(airport_options))
+        return response
 
     uber_app_url, web_fallback_url = build_uber_deeplink(
-        pickup_latitude=pickup_lat,
-        pickup_longitude=pickup_lng,
-        pickup_nickname=origin_label,
-        dropoff_latitude=dropoff_lat,
-        dropoff_longitude=dropoff_lng,
-        dropoff_nickname=destination_label,
+        pickup_latitude=pickup_latitude,
+        pickup_longitude=pickup_longitude,
+        pickup_nickname=pickup_label,
     )
 
     response = DeeplinkResponse(
         uber_app_url=uber_app_url,
         deep_link_url=web_fallback_url,
-        destination_label=destination_label,
+        destination_label=origin_label,
     )
     logger.info("[uber] response sent | uber_app_url=%s", response.uber_app_url)
     return response

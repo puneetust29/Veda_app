@@ -11,7 +11,7 @@ Uses `https://m.uber.com/ul/` -- the docs' `m.uber.com/looking` URL 404s in prac
 from __future__ import annotations
 
 import logging
-from typing import Optional
+from typing import Optional, TypedDict
 from urllib.parse import quote, urlencode
 
 from app.config import get_settings
@@ -23,34 +23,100 @@ logger = logging.getLogger(__name__)
 # hand-maintained lookup covering the seeded demo airports + common IATA codes that
 # appear in auto-created test accounts. Real coordinates, not placeholders.
 KNOWN_AIRPORT_COORDINATES: dict[str, tuple[float, float]] = {
-    # Seeded demo origins
+    # Seeded demo departure airports
     "London Heathrow (LHR)": (51.4700, -0.4543),
     "London Gatwick (LGW)": (51.1537, -0.1821),
-    "London St Pancras": (51.5320, -0.1230),
-    # Seeded demo destinations (kept for reverse-trip lookups)
-    "Tokyo Narita (NRT)": (35.7720, 140.3929),
+    # NOTE: "London St Pancras" and "Paris Gare du Nord" are intentionally NOT
+    # listed here -- they are train stations, not airports. The LLM's suggest_ride
+    # node should return should_suggest=False for those trips, so the deeplink node
+    # is never reached. If coordinates were listed here, we'd build a deeplink to a
+    # train station, which is wrong.
+    "Paris Charles de Gaulle (CDG)": (49.0097, 2.5479),
     "Marrakesh Menara (RAK)": (31.6069, -8.0363),
-    "Paris Gare du Nord": (48.8809, 2.3553),
+    "Frankfurt Airport (FRA)": (50.0379, 8.5622),
+    # Seeded demo arrival airports (kept for completeness)
+    "Tokyo Narita (NRT)": (35.7720, 140.3929),
     # Common IATA short-codes that appear in auto-created test accounts
     "LHR": (51.4700, -0.4543),
     "LGW": (51.1537, -0.1821),
+    "CDG": (49.0097, 2.5479),
     "NRT": (35.7720, 140.3929),
+    "RAK": (31.6069, -8.0363),
+    "FRA": (50.0379, 8.5622),
     "JFK": (40.6413, -73.7781),
     "SEA": (47.4502, -122.3088),
     "Seattle-Tacoma International Airport (SEA)": (47.4502, -122.3088),
 }
+
+# City-level trip origins sometimes arrive without a specific airport selected yet
+# (e.g. "London" instead of "London Heathrow (LHR)"). In those cases we offer a
+# small curated list of likely departure airports so the user can choose.
+CITY_AIRPORT_OPTIONS: dict[str, tuple[str, ...]] = {
+    "london": ("London Heathrow (LHR)", "London Gatwick (LGW)"),
+    "paris": ("Paris Charles de Gaulle (CDG)",),
+}
+
+
+class AirportDeeplinkOption(TypedDict):
+    label: str
+    uber_app_url: str
+    deep_link_url: str
+
+
+def _normalize_location_label(label: str) -> str:
+    return " ".join(label.strip().lower().replace(",", " ").split())
 
 
 def lookup_airport_coordinates(label: Optional[str]) -> Optional[tuple[float, float]]:
     if not label:
         logger.debug("[uber] lookup_airport_coordinates called with empty label")
         return None
+
+    # Exact match first — fast path for the common case.
     coords = KNOWN_AIRPORT_COORDINATES.get(label)
     if coords:
         logger.info("[uber] coords HIT  %r -> %s", label, coords)
-    else:
-        logger.warning("[uber] coords MISS %r -> not in KNOWN_AIRPORT_COORDINATES", label)
     return coords
+
+    # Normalised fallback: case-insensitive, strips extra whitespace and commas.
+    # Handles variations like "london heathrow (lhr)" or "London Heathrow, LHR".
+    normalized_label = _normalize_location_label(label)
+    for known_label, known_coords in KNOWN_AIRPORT_COORDINATES.items():
+        if _normalize_location_label(known_label) == normalized_label:
+            logger.info("[uber] coords NORMALIZED HIT %r -> %r -> %s", label, known_label, known_coords)
+            return known_coords
+
+    logger.warning("[uber] coords MISS %r -> not in KNOWN_AIRPORT_COORDINATES", label)
+    return None
+
+
+def _pickup_log_label(pickup_nickname: Optional[str], pickup_latitude: Optional[float], pickup_longitude: Optional[float]) -> str:
+    if pickup_nickname:
+        return pickup_nickname
+    if pickup_latitude is not None and pickup_longitude is not None:
+        return f"{pickup_latitude:.4f},{pickup_longitude:.4f}"
+    return "my_location"
+
+
+def _dropoff_log_label(dropoff_nickname: Optional[str], dropoff_latitude: Optional[float], dropoff_longitude: Optional[float]) -> str:
+    if dropoff_nickname:
+        return dropoff_nickname
+    if dropoff_latitude is not None and dropoff_longitude is not None:
+        return f"{dropoff_latitude:.4f},{dropoff_longitude:.4f}"
+    return "none"
+
+
+def lookup_airport_options(label: Optional[str]) -> list[str]:
+    if not label:
+        logger.debug("[uber] lookup_airport_options called with empty label")
+        return []
+
+    options = list(CITY_AIRPORT_OPTIONS.get(_normalize_location_label(label), ()))
+    if options:
+        logger.info("[uber] airport options HIT  %r -> %s", label, options)
+    else:
+        logger.info("[uber] airport options MISS %r", label)
+    return options
 
 
 def _location_params(prefix: str, latitude: Optional[float], longitude: Optional[float], nickname: Optional[str]) -> dict:
@@ -67,6 +133,41 @@ def _build_query(params: dict) -> str:
     # recognises pickup[latitude] / dropoff[latitude] -- the default urlencode encodes
     # them as %5B/%5D which the Uber app silently ignores, leaving fields blank.
     return urlencode(params, quote_via=quote, safe="[]")
+
+
+def build_airport_deeplink_options(
+    label: Optional[str],
+    *,
+    pickup_latitude: Optional[float] = None,
+    pickup_longitude: Optional[float] = None,
+    pickup_nickname: Optional[str] = None,
+) -> list[AirportDeeplinkOption]:
+    options: list[AirportDeeplinkOption] = []
+    for airport_label in lookup_airport_options(label):
+        coords = KNOWN_AIRPORT_COORDINATES.get(airport_label)
+        if not coords:
+            logger.warning("[uber] missing coords for airport option %r", airport_label)
+            continue
+        dropoff_latitude, dropoff_longitude = coords
+        uber_app_url, deep_link_url = build_uber_deeplink(
+            pickup_latitude=pickup_latitude,
+            pickup_longitude=pickup_longitude,
+            pickup_nickname=pickup_nickname,
+            dropoff_latitude=dropoff_latitude,
+            dropoff_longitude=dropoff_longitude,
+            dropoff_nickname=airport_label,
+        )
+        logger.info(
+            "[uber] airport option deeplink built pickup=%s dropoff=%s",
+            _pickup_log_label(pickup_nickname, pickup_latitude, pickup_longitude),
+            _dropoff_log_label(airport_label, dropoff_latitude, dropoff_longitude),
+        )
+        options.append({
+            "label": airport_label,
+            "uber_app_url": uber_app_url,
+            "deep_link_url": deep_link_url,
+        })
+    return options
 
 
 def build_uber_deeplink(

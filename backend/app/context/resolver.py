@@ -19,11 +19,16 @@ def _calendar_event_fetcher(principal: dict, subject: Optional[dict]) -> Optiona
     return (subject or {}).get("calendar_event")
 
 
+def _device_location_fetcher(principal: dict, subject: Optional[dict]) -> Optional[dict]:
+    return (subject or {}).get("device_location")
+
+
 class ContextResolver:
     def __init__(self) -> None:
         self._fetchers: Dict[str, Callable[[dict, Optional[dict]], object]] = {
             "customer": _customer_fetcher,
             "calendar_event": _calendar_event_fetcher,
+            "device_location": _device_location_fetcher,
         }
 
     def register(self, key: str, fetcher: Callable[[dict, Optional[dict]], object]) -> None:

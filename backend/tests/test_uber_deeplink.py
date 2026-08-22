@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 from app.deps import get_current_customer
 from app.main import app
 from app.routers import uber as uber_router
+from app.tools.mcp_client import McpClientError
 from app.tools.uber_deeplink import build_uber_deeplink
 
 
@@ -33,22 +34,88 @@ def test_build_uber_deeplink_defaults_to_current_location(monkeypatch):
     assert web_query["pickup"] == ["my_location"]
 
 
-def test_build_uber_deeplink_includes_dropoff_when_coordinates_given(monkeypatch):
+def test_build_uber_deeplink_includes_pickup_and_dropoff_when_coordinates_given(monkeypatch):
     monkeypatch.setenv("UBER_CLIENT_ID", "test-client-id")
     from app.config import get_settings
 
     get_settings.cache_clear()
 
     uber_app_url, web_fallback_url = build_uber_deeplink(
-        dropoff_latitude=51.5074, dropoff_longitude=-0.1278, dropoff_nickname="Central London"
+        pickup_latitude=51.5007,
+        pickup_longitude=-0.1246,
+        pickup_nickname="Central London",
+        dropoff_latitude=51.5074,
+        dropoff_longitude=-0.1278,
+        dropoff_nickname="Paddington",
     )
 
     for url in (uber_app_url, web_fallback_url):
         query = parse_qs(urlparse(url).query)
+        assert query["pickup[latitude]"] == ["51.5007"]
+        assert query["pickup[longitude]"] == ["-0.1246"]
+        assert query["pickup[nickname]"] == ["Central London"]
         assert query["dropoff[latitude]"] == ["51.5074"]
         assert query["dropoff[longitude]"] == ["-0.1278"]
-        assert query["dropoff[nickname]"] == ["Central London"]
+        assert query["dropoff[nickname]"] == ["Paddington"]
         assert query["action"] == ["setPickup"]
+        assert "pickup" not in query
+
+
+def test_get_auth_url_route_returns_mcp_auth_url(monkeypatch):
+    monkeypatch.setattr(uber_router, "uber_mcp_is_configured", lambda: True)
+    monkeypatch.setattr(uber_router, "get_uber_auth_url", lambda user_id: "https://auth.example.test/uber")
+    app.dependency_overrides[get_current_customer] = lambda: {"id": "cust-1"}
+    try:
+        client = TestClient(app)
+        response = client.get("/uber/auth-url")
+    finally:
+        app.dependency_overrides.pop(get_current_customer, None)
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "available": True,
+        "auth_url": "https://auth.example.test/uber",
+        "message": "Connect your Uber account to unlock live ride estimates.",
+    }
+
+
+def test_get_auth_url_route_handles_unconfigured_mcp(monkeypatch):
+    monkeypatch.setattr(uber_router, "uber_mcp_is_configured", lambda: False)
+    app.dependency_overrides[get_current_customer] = lambda: {"id": "cust-1"}
+    try:
+        client = TestClient(app)
+        response = client.get("/uber/auth-url")
+    finally:
+        app.dependency_overrides.pop(get_current_customer, None)
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "available": False,
+        "auth_url": None,
+        "message": "Uber account connection is not configured on this server.",
+    }
+
+
+def test_get_auth_url_route_handles_mcp_failure(monkeypatch):
+    monkeypatch.setattr(uber_router, "uber_mcp_is_configured", lambda: True)
+
+    def _raise(*_args, **_kwargs):
+        raise McpClientError("boom")
+
+    monkeypatch.setattr(uber_router, "get_uber_auth_url", _raise)
+    app.dependency_overrides[get_current_customer] = lambda: {"id": "cust-1"}
+    try:
+        client = TestClient(app)
+        response = client.get("/uber/auth-url")
+    finally:
+        app.dependency_overrides.pop(get_current_customer, None)
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "available": False,
+        "auth_url": None,
+        "message": "Uber account connection is unavailable right now.",
+    }
 
 
 def test_get_deeplink_route_returns_url_for_owned_event(monkeypatch):
@@ -75,16 +142,100 @@ def test_get_deeplink_route_returns_url_for_owned_event(monkeypatch):
 
     assert response.status_code == 200
     body = response.json()
-    assert body["destination_label"] == "Tokyo Narita (NRT)"
+    # The Uber destination is the departure airport, not the flight arrival airport.
+    assert body["destination_label"] == "London Heathrow (LHR)"
+    assert body["airport_options"] == []
 
     # uber:// scheme URL
     assert body["uber_app_url"].startswith("uber://?")
     assert "action=setPickup" in body["uber_app_url"]
+    assert "pickup=my_location" in body["uber_app_url"]
     assert "London" in body["uber_app_url"] or "LHR" in body["uber_app_url"]
-    assert "Tokyo" in body["uber_app_url"] or "NRT" in body["uber_app_url"]
+    assert "Tokyo" not in body["uber_app_url"] and "NRT" not in body["uber_app_url"]
 
     # web fallback URL
     assert body["deep_link_url"].startswith("https://m.uber.com/ul/?")
     assert "action=setPickup" in body["deep_link_url"]
+    assert "pickup=my_location" in body["deep_link_url"]
     assert "London" in body["deep_link_url"] or "LHR" in body["deep_link_url"]
-    assert "Tokyo" in body["deep_link_url"] or "NRT" in body["deep_link_url"]
+    assert "Tokyo" not in body["deep_link_url"] and "NRT" not in body["deep_link_url"]
+
+
+def test_get_deeplink_route_uses_device_pickup_coordinates_when_provided(monkeypatch):
+    monkeypatch.setenv("UBER_CLIENT_ID", "test-client-id")
+    from app.config import get_settings
+
+    get_settings.cache_clear()
+
+    monkeypatch.setattr(
+        uber_router,
+        "get_owned_calendar_event",
+        lambda event_id, customer_id: {
+            "id": event_id,
+            "origin": "London Heathrow (LHR)",
+            "destination": "Tokyo Narita (NRT)",
+        },
+    )
+    app.dependency_overrides[get_current_customer] = lambda: {"id": "cust-1"}
+    try:
+        client = TestClient(app)
+        response = client.get(
+            "/uber/deeplink",
+            params={
+                "calendar_event_id": "evt-1",
+                "pickup_latitude": 51.5007,
+                "pickup_longitude": -0.1246,
+                "pickup_label": "Central London",
+            },
+        )
+    finally:
+        app.dependency_overrides.pop(get_current_customer, None)
+
+    assert response.status_code == 200
+    body = response.json()
+    for url in (body["uber_app_url"], body["deep_link_url"]):
+        query = parse_qs(urlparse(url).query)
+        assert query["pickup[latitude]"] == ["51.5007"]
+        assert query["pickup[longitude]"] == ["-0.1246"]
+        assert query["pickup[nickname]"] == ["Central London"]
+        assert query["dropoff[nickname]"] == ["London Heathrow (LHR)"]
+        assert "pickup" not in query
+
+
+def test_get_deeplink_route_returns_airport_options_for_city_origin(monkeypatch):
+    monkeypatch.setenv("UBER_CLIENT_ID", "test-client-id")
+    from app.config import get_settings
+
+    get_settings.cache_clear()
+
+    monkeypatch.setattr(
+        uber_router,
+        "get_owned_calendar_event",
+        lambda event_id, customer_id: {
+            "id": event_id,
+            "origin": "London",
+            "destination": "Tokyo Narita (NRT)",
+        },
+    )
+    app.dependency_overrides[get_current_customer] = lambda: {"id": "cust-1"}
+    try:
+        client = TestClient(app)
+        response = client.get("/uber/deeplink", params={"calendar_event_id": "evt-2"})
+    finally:
+        app.dependency_overrides.pop(get_current_customer, None)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["destination_label"] == "London"
+    assert body["uber_app_url"] is None
+    assert body["deep_link_url"] is None
+    assert [option["label"] for option in body["airport_options"]] == [
+        "London Heathrow (LHR)",
+        "London Gatwick (LGW)",
+    ]
+
+    for option in body["airport_options"]:
+        assert option["uber_app_url"].startswith("uber://?")
+        assert option["deep_link_url"].startswith("https://m.uber.com/ul/?")
+        assert "pickup=my_location" in option["uber_app_url"]
+        assert "pickup=my_location" in option["deep_link_url"]

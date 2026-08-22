@@ -16,12 +16,19 @@ export function nextId(): string {
 export const TOOL_LABELS: Record<string, string> = {
   'mobile.get_roaming_plans': 'Checking the roaming catalogue…',
   'mobile.activate_roaming_plan': 'Activating your plan…',
+  'uber.get_auth_url': 'Checking your Uber connection…',
+  'uber.get_price_estimates': 'Fetching a live Uber quote…',
+  'uber.get_deeplink': 'Preparing your Uber handoff…',
+  'uber.suggest_ride': 'Deciding whether an airport ride makes sense…',
 };
 
 function friendlyErrorMessage(code: string): string {
   switch (code) {
     case 'no_plan_found':
       return "I couldn't find a suitable roaming plan for this trip.";
+    case 'no_ride_suggested':
+      // Uber agent decided a ride wasn't appropriate -- not a user-facing error.
+      return '';
     default:
       return 'Something went wrong while working on your request.';
   }
@@ -111,13 +118,16 @@ export function applyStreamEvent(items: ChatItem[], event: AgentStreamEvent): Ch
 
     case 'error': {
       const withDone = markActiveStatusesDone(items);
+      const message = event.data.message ?? friendlyErrorMessage(event.data.code);
+      // Suppress silent/informational codes -- don't render anything to the user.
+      if (!message) return withDone;
       return [
         ...withDone,
         {
           id: nextId(),
           createdAt: Date.now(),
           kind: 'error',
-          message: event.data.message ?? friendlyErrorMessage(event.data.code),
+          message,
           retryable: event.data.retryable,
         },
       ];

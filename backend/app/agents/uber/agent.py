@@ -1,25 +1,17 @@
-"""UberAgent: suggests an Uber ride for an upcoming flight and hands off via deep link.
+"""UberAgent: suggests an Uber ride for an upcoming flight.
 
-Mirrors the RoamingAgent contract exactly:
-  - Implements BaseAgent (execute / execute_action)
-  - Exposes a module-level AGENT singleton for AgentRegistry.discover()
-  - Loads manifest.yaml from the same directory
-  - Emits the same stream event types (status, tool_started, tool_completed,
-    recommendation_ready, error, done)
+The agent now combines two layers:
+- Uber MCP for account-connect URLs and live quote enrichment when credentials and
+  coordinates are available
+- deep-link handoff for the final launch into the real Uber app
 
-Current capability (Phase A2 per uber-backend-plan.md):
-  Deep-link handoff only — no in-app booking, no price data.
-  The uber:// and m.uber.com/ul/ URLs are the ONLY verified-working Uber
-  integration path right now (Uber API scope approval is still pending).
-  This is intentional and documented in tools/uber_deeplink.py.
-
-No actions are declared (actions: []) because deep links require no commit-risk
-server-side action — the user taps in their own Uber app. execute_action() is
-intentionally not overridden; BaseAgent raises UnsupportedActionError if called.
+No commit-risk actions are declared yet. Booking/cancel/status flows stay deferred
+until OAuth persistence and explicit approval UX are formalized.
 """
 from __future__ import annotations
 
 import asyncio
+import logging
 import pathlib
 
 from app.agents.base.contracts import AgentContext, AgentMode, AgentResult, BaseAgent
@@ -35,6 +27,8 @@ from app.agents.uber.stream_map import (
     translate,
 )
 
+logger = logging.getLogger(__name__)
+
 _MANIFEST_PATH = pathlib.Path(__file__).parent / "manifest.yaml"
 
 
@@ -45,6 +39,7 @@ class UberAgent(BaseAgent):
     def _initial_state(self, ctx: AgentContext) -> UberAgentState:
         customer = ctx.context.get("customer")
         calendar_event = ctx.context.get("calendar_event")
+        device_location = ctx.context.get("device_location")
         state: UberAgentState = {
             "run_id": ctx.run_id,
             "customer_id": (customer or {}).get("id"),
@@ -53,11 +48,21 @@ class UberAgent(BaseAgent):
             "context": ctx.context,
             "customer": customer,
             "calendar_event": calendar_event,
+            "device_location": device_location,
         }
         return state
 
     def execute(self, ctx: AgentContext, mode: AgentMode = "suggest") -> AgentResult:
         state = self._initial_state(ctx)
+        logger.info(
+            "uber agent execute start | run_id=%s | conversation_id=%s | mode=%s | customer_id=%s | has_calendar_event=%s | has_device_location=%s",
+            ctx.run_id,
+            ctx.conversation_id,
+            mode,
+            state.get("customer_id"),
+            bool(state.get("calendar_event")),
+            bool(state.get("device_location")),
+        )
 
         if mode == "converse":
             def _forward_translated(payload: dict) -> None:
@@ -77,10 +82,24 @@ class UberAgent(BaseAgent):
         suggested_message = final_state.get("suggested_message", "")
         uber_app_url = final_state.get("uber_app_url")
         deep_link_url = final_state.get("deep_link_url")
-        origin_label = final_state.get("origin_label")
-        destination_label = final_state.get("destination_label")
+        pickup_label = final_state.get("pickup_label")
+        dropoff_label = final_state.get("dropoff_label")
+        airport_options = final_state.get("airport_options", [])
+        connect_uber_url = final_state.get("connect_uber_url")
+        live_quote = final_state.get("live_quote")
+        quote_status = final_state.get("quote_status")
+        logger.info(
+            "uber agent graph complete | run_id=%s | should_suggest=%s | has_connect_url=%s | has_live_quote=%s | has_deeplink=%s | airport_option_count=%d",
+            ctx.run_id,
+            should_suggest,
+            bool(connect_uber_url),
+            bool(live_quote),
+            bool(uber_app_url or deep_link_url),
+            len(airport_options),
+        )
 
         if not should_suggest:
+            logger.info("uber agent no suggestion | run_id=%s | reason=%r", ctx.run_id, reasoning)
             ctx.emit(build_error("no_ride_suggested", retryable=False))
             ctx.emit(build_done("ok_no_action"))
             return AgentResult(
@@ -95,12 +114,23 @@ class UberAgent(BaseAgent):
             should_suggest=should_suggest,
             reasoning=reasoning,
             suggested_message=suggested_message,
-            pickup_label=origin_label,
-            dropoff_label=destination_label,
+            pickup_label=pickup_label,
+            dropoff_label=dropoff_label,
             uber_app_url=uber_app_url,
             deep_link_url=deep_link_url,
+            airport_options=airport_options,
+            connect_uber_url=connect_uber_url,
+            live_quote=live_quote,
+            quote_status=quote_status,
         ).model_dump()
 
+        logger.info(
+            "uber agent emitting recommendation | run_id=%s | pickup_label=%r | dropoff_label=%r | quote_status=%r",
+            ctx.run_id,
+            pickup_label,
+            dropoff_label,
+            quote_status,
+        )
         ctx.emit(build_recommendation_ready(card))
         ctx.emit(build_done("ok_no_action"))
 

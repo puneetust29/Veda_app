@@ -56,10 +56,24 @@ export type Subscription = {
   calendar_events: CalendarEvent;
 };
 
+export type UberAirportOption = {
+  label: string;
+  uber_app_url: string;
+  deep_link_url: string;
+};
+
+export type UberLiveQuote = {
+  product_name: string;
+  estimate: string;
+  currency_code?: string | null;
+  eta_minutes?: number | null;
+};
+
 export type UberDeeplinkResponse = {
-  uber_app_url: string;    // uber:// scheme — opens native app, reliably pre-fills fields
-  deep_link_url: string;   // https://m.uber.com/ul/ — web fallback if app not installed
-  destination_label: string | null;
+  uber_app_url: string | null;    // uber:// scheme — opens native app, reliably pre-fills fields
+  deep_link_url: string | null;   // https://m.uber.com/ul/ — web fallback if app not installed
+  destination_label: string | null; // Uber dropoff label, usually the trip's departure airport
+  airport_options: UberAirportOption[];
 };
 
 export type RootStackParamList = {
@@ -83,6 +97,10 @@ export type RecommendationCardPayload =
       dropoff_label: string | null;
       uber_app_url: string | null;
       deep_link_url: string | null;
+      airport_options?: UberAirportOption[];
+      connect_uber_url?: string | null;
+      live_quote?: UberLiveQuote | null;
+      quote_status?: string | null;
     };
 
 // The wire event contract emitted by `POST /chat/stream`. This is the backend's

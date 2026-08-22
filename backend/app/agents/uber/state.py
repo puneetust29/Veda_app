@@ -12,6 +12,7 @@ class UberAgentState(AgentState, total=False):
 
     customer: dict
     calendar_event: dict
+    device_location: Optional[dict]
 
     # Trip location fields (extracted from the calendar event)
     origin_label: Optional[str]       # e.g. "London Heathrow (LHR)"
@@ -22,6 +23,16 @@ class UberAgentState(AgentState, total=False):
     reasoning: str
     suggested_message: str
 
-    # Deep link URLs built by the tool (None if coordinates not in the known map)
+    # MCP-enriched quote/auth state
+    connect_uber_url: Optional[str]
+    live_quote: Optional[dict]
+    quote_status: Optional[str]
+    mcp_available: bool
+    mcp_error: Optional[str]
+
+    # Deep link URLs built by the tool (None if the user must choose an airport option first)
+    pickup_label: Optional[str]
+    dropoff_label: Optional[str]
     uber_app_url: Optional[str]
     deep_link_url: Optional[str]
+    airport_options: list[dict]

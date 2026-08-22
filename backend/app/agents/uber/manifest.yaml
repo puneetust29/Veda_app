@@ -1,6 +1,6 @@
 name: uber_agent
 version: 0.1.0
-description: Detects an upcoming flight and suggests a deep-link Uber ride from the departure airport to the destination airport.
+description: Detects an upcoming flight, uses Uber MCP for auth/quote enrichment when available, and falls back to a deep-link Uber handoff.
 enabled: true
 priority: 20
 capabilities: [uber]
@@ -10,7 +10,12 @@ triggers:
     - key: calendar_event.event_type
       op: eq
       value: flight
-required_context: [customer, calendar_event]
-tools: [uber.get_deeplink]
+# device_location is listed here so the ContextResolver fetches it and the agent
+# receives it. The resolved value may be None (user denied GPS or location timed
+# out) -- the registry validator only checks that a fetcher is registered for the
+# key, not that the value is non-null. The agent and graph handle None gracefully
+# throughout (falls back to Uber's pickup=my_location deep-link behaviour).
+required_context: [customer, calendar_event, device_location]
+tools: [uber.get_auth_url, uber.get_price_estimates, uber.get_deeplink]
 actions: []
 output_schema: app.agents.uber.schemas:UberRideSuggestionCard

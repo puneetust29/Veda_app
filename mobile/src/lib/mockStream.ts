@@ -75,14 +75,28 @@ function scriptedEvents(calendarEventId: string): Array<{ delayMs: number; event
         data: {
           card: {
             kind: 'uber_ride',
-            suggested_message: 'Need a ride to Heathrow before your Tokyo flight?',
-            reasoning: 'Flight detected from London Heathrow to Tokyo Narita — booking an airport transfer in advance is recommended.',
-            pickup_label: 'London Heathrow (LHR)',
-            dropoff_label: 'Tokyo Narita (NRT)',
-            uber_app_url:
-              'uber://?action=setPickup&pickup[latitude]=51.47&pickup[longitude]=-0.4543&pickup[nickname]=LHR&dropoff[latitude]=35.772&dropoff[longitude]=140.3929&dropoff[nickname]=NRT',
-            deep_link_url:
-              'https://m.uber.com/ul/?action=setPickup&pickup[latitude]=51.47&pickup[longitude]=-0.4543&pickup[nickname]=LHR&dropoff[latitude]=35.772&dropoff[longitude]=140.3929&dropoff[nickname]=NRT',
+            suggested_message: 'Need a ride to the airport before your Tokyo flight?',
+            reasoning: 'Flight detected from London to Tokyo Narita — choose the right London departure airport and open Uber with your live location as pickup.',
+            pickup_label: 'Current location',
+            dropoff_label: 'London',
+            uber_app_url: null,
+            deep_link_url: null,
+            airport_options: [
+              {
+                label: 'London Heathrow (LHR)',
+                uber_app_url:
+                  'uber://?client_id=mock-client-id&action=setPickup&pickup=my_location&dropoff[latitude]=51.47&dropoff[longitude]=-0.4543&dropoff[nickname]=LHR',
+                deep_link_url:
+                  'https://m.uber.com/ul/?client_id=mock-client-id&action=setPickup&pickup=my_location&dropoff[latitude]=51.47&dropoff[longitude]=-0.4543&dropoff[nickname]=LHR',
+              },
+              {
+                label: 'London Gatwick (LGW)',
+                uber_app_url:
+                  'uber://?client_id=mock-client-id&action=setPickup&pickup=my_location&dropoff[latitude]=51.1537&dropoff[longitude]=-0.1821&dropoff[nickname]=LGW',
+                deep_link_url:
+                  'https://m.uber.com/ul/?client_id=mock-client-id&action=setPickup&pickup=my_location&dropoff[latitude]=51.1537&dropoff[longitude]=-0.1821&dropoff[nickname]=LGW',
+              },
+            ],
           },
         },
       },

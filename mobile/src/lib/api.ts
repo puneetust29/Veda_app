@@ -131,6 +131,9 @@ export const api = {
     priorPlan?: RoamingPlan;
     priorReasoning?: string;
     priorJudgeFeedback?: string;
+    pickupLatitude?: number;
+    pickupLongitude?: number;
+    pickupLabel?: string;
   }): Promise<void> => {
     if (process.env.EXPO_PUBLIC_CHAT_MOCK === '1') {
       return mockStreamRoamingConversation(params);
@@ -147,6 +150,11 @@ export const api = {
       body.prior_plan = params.priorPlan;
       body.prior_reasoning = params.priorReasoning;
       body.prior_judge_feedback = params.priorJudgeFeedback;
+    }
+    if (params.pickupLatitude != null && params.pickupLongitude != null) {
+      body.pickup_latitude = params.pickupLatitude;
+      body.pickup_longitude = params.pickupLongitude;
+      body.pickup_label = params.pickupLabel;
     }
 
     return streamSse({
@@ -172,6 +180,22 @@ export const api = {
   },
   // Deep-link handoff only -- no Uber account/OAuth needed (see backend/app/tools/uber_deeplink.py).
   // Real in-app price/booking is currently blocked pending Uber access approval.
-  getUberDeeplink: (calendarEventId: string) =>
-    authedFetch<UberDeeplinkResponse>(`/uber/deeplink?calendar_event_id=${calendarEventId}`),
+  getUberDeeplink: (params: {
+    calendarEventId: string;
+    pickupLatitude?: number;
+    pickupLongitude?: number;
+    pickupLabel?: string;
+  }) => {
+    const query = new URLSearchParams({ calendar_event_id: params.calendarEventId });
+    if (params.pickupLatitude != null && params.pickupLongitude != null) {
+      query.set('pickup_latitude', String(params.pickupLatitude));
+      query.set('pickup_longitude', String(params.pickupLongitude));
+      if (params.pickupLabel) {
+        query.set('pickup_label', params.pickupLabel);
+      }
+    }
+    return authedFetch<UberDeeplinkResponse>(`/uber/deeplink?${query.toString()}`);
+  },
+  getUberAuthUrl: () =>
+    authedFetch<{ available: boolean; auth_url: string | null; message: string }>(`/uber/auth-url`),
 };

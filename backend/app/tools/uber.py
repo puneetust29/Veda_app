@@ -1,16 +1,16 @@
 """Uber tool registrations for the ToolRegistry.
 
-Registers `uber.get_deeplink` (risk: read) so the uber_agent manifest can declare it
-and AgentRegistry.validate() can confirm it exists at startup.
+The Uber agent now uses two integration layers:
+- deep-link handoff (`uber.get_deeplink`) for reliable launch into the real Uber app
+- MCP-backed read tools (`uber.get_auth_url`, `uber.get_price_estimates`) so the
+  agent can surface connect/auth flows and live quote data when available
 
-The actual deep link logic lives in uber_deeplink.py — this module is purely the
-registry bridge, mirroring the pattern in tools/mobile.py for roaming tools.
-
-No commit-risk actions are registered here because deep links require no server-side
-booking call — the user completes the ride request inside their own Uber app.
+Commit-risk MCP actions (request/cancel ride) are intentionally deferred until the
+product flow, token storage, and explicit approval UX are formalized.
 """
 from app.tools.registry import ToolSpec, tool_registry
 from app.tools.uber_deeplink import build_uber_deeplink
+from app.tools.uber_mcp import get_uber_auth_url, get_uber_price_estimates
 
 tool_registry.register(
     ToolSpec(
@@ -18,5 +18,23 @@ tool_registry.register(
         handler=build_uber_deeplink,
         risk="read",
         provider="uber",
+    )
+)
+
+tool_registry.register(
+    ToolSpec(
+        name="uber.get_auth_url",
+        handler=get_uber_auth_url,
+        risk="read",
+        provider="uber_mcp",
+    )
+)
+
+tool_registry.register(
+    ToolSpec(
+        name="uber.get_price_estimates",
+        handler=get_uber_price_estimates,
+        risk="read",
+        provider="uber_mcp",
     )
 )

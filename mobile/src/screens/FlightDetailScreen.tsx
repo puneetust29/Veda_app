@@ -1,9 +1,11 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { api } from '../lib/api';
-import type { RecommendResponse, RootStackParamList } from '../types';
+import { getCurrentDeviceLocation } from '../lib/deviceLocation';
+import { openUber } from '../lib/uberDeeplink';
+import type { RecommendResponse, RootStackParamList, UberAirportOption } from '../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'FlightDetail'>;
 
@@ -13,12 +15,58 @@ export default function FlightDetailScreen({ route, navigation }: Props) {
   const [loading, setLoading] = useState(false);
   const [subscribing, setSubscribing] = useState(false);
   const [bookingRide, setBookingRide] = useState(false);
+  const [airportOptions, setAirportOptions] = useState<UberAirportOption[]>([]);
+
+  const handleAirportOptionPress = async (option: UberAirportOption) => {
+    setBookingRide(true);
+    try {
+      await openUber({
+        uber_app_url: option.uber_app_url,
+        deep_link_url: option.deep_link_url,
+        destination: option.label,
+      });
+    } catch (err) {
+      Alert.alert('Could not open Uber', err instanceof Error ? err.message : String(err));
+    } finally {
+      setBookingRide(false);
+    }
+  };
 
   const handleBookRide = async () => {
     setBookingRide(true);
     try {
-      const { deep_link_url } = await api.getUberDeeplink(event.id);
-      await Linking.openURL(deep_link_url);
+      const pickup = await getCurrentDeviceLocation();
+      const { uber_app_url, deep_link_url, destination_label, airport_options } = await api.getUberDeeplink({
+        calendarEventId: event.id,
+        pickupLatitude: pickup?.latitude,
+        pickupLongitude: pickup?.longitude,
+        pickupLabel: pickup?.label,
+      });
+
+      if (airport_options.length > 1) {
+        setAirportOptions(airport_options);
+        return;
+      }
+
+      if (airport_options.length === 1) {
+        // Single option — open directly without showing the list.
+        // Don't call setAirportOptions here: setting state before the await
+        // causes the airport list to flash on screen briefly before the
+        // Uber app opens.
+        await openUber({
+          uber_app_url: airport_options[0].uber_app_url,
+          deep_link_url: airport_options[0].deep_link_url,
+          destination: airport_options[0].label,
+        });
+        return;
+      }
+
+      setAirportOptions([]);
+      await openUber({
+        uber_app_url,
+        deep_link_url,
+        destination: destination_label,
+      });
     } catch (err) {
       Alert.alert('Could not open Uber', err instanceof Error ? err.message : String(err));
     } finally {
@@ -75,9 +123,9 @@ export default function FlightDetailScreen({ route, navigation }: Props) {
       </View>
 
       <View style={styles.rideCard}>
-        <Text style={styles.sectionLabel}>Need a ride when you land?</Text>
+        <Text style={styles.sectionLabel}>Need a ride to the airport?</Text>
         <Text style={styles.reasoning}>
-          Book with Uber, using your current location as pickup{event.destination ? ` — set ${event.destination} as your destination once you're in the app` : ''}.
+          Open Uber with your current location as the pickup and {event.origin ?? 'your departure point'} as the destination.
         </Text>
         <TouchableOpacity style={styles.buttonSecondary} onPress={handleBookRide} disabled={bookingRide}>
           {bookingRide ? (
@@ -86,6 +134,21 @@ export default function FlightDetailScreen({ route, navigation }: Props) {
             <Text style={styles.buttonSecondaryText}>Book with Uber</Text>
           )}
         </TouchableOpacity>
+        {airportOptions.length > 0 && (
+          <View style={styles.optionList}>
+            <Text style={styles.optionHeading}>Choose your departure airport</Text>
+            {airportOptions.map((option) => (
+              <TouchableOpacity
+                key={option.label}
+                style={styles.optionButton}
+                onPress={() => handleAirportOptionPress(option)}
+                disabled={bookingRide}
+              >
+                <Text style={styles.optionButtonText}>{option.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
       </View>
 
       {!recommendation && (
@@ -177,6 +240,18 @@ const styles = StyleSheet.create({
     borderColor: '#111',
   },
   buttonSecondaryText: { color: '#111', fontSize: 16, fontWeight: '600' },
+  optionList: { marginTop: 16 },
+  optionHeading: { color: '#444', fontWeight: '600' },
+  optionButton: {
+    borderRadius: 10,
+    padding: 14,
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    marginTop: 10,
+  },
+  optionButtonText: { color: '#111', fontSize: 15, fontWeight: '600' },
   planCard: {
     borderWidth: 1,
     borderColor: '#eee',
