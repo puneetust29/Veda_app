@@ -39,8 +39,10 @@ def detect_hotel_for_flight(
 ) -> Optional[HotelBooking]:
     """Detect if a hotel booking exists for a flight's destination.
 
-    Checks both calendar_events and gmail_messages for hotel bookings
-    matching the destination and arrival date (±1 day).
+    Priority order:
+    1. Check hotel_bookings table for confirmed reservations
+    2. Check calendar_events for hotel events
+    3. Check gmail_messages for hotel confirmation emails
 
     Args:
         customer_id: Customer UUID
@@ -55,15 +57,65 @@ def detect_hotel_for_flight(
 
     supabase = get_supabase()
 
-    # 1. Check calendar_events for hotel bookings
+    # 1. Check hotel_bookings table for confirmed reservations (highest priority)
+    hotel_from_bookings = _check_hotel_bookings_table(supabase, customer_id, destination, arrival_date)
+    if hotel_from_bookings:
+        return hotel_from_bookings
+
+    # 2. Check calendar_events for hotel bookings
     hotel_from_calendar = _check_calendar_for_hotel(supabase, customer_id, destination, arrival_date)
     if hotel_from_calendar:
         return hotel_from_calendar
 
-    # 2. Check gmail_messages for hotel confirmations
+    # 3. Check gmail_messages for hotel confirmations
     hotel_from_email = _check_email_for_hotel(supabase, customer_id, destination, arrival_date)
     if hotel_from_email:
         return hotel_from_email
+
+    return None
+
+
+def _check_hotel_bookings_table(
+    supabase,
+    customer_id: str,
+    destination: str,
+    arrival_date: datetime,
+) -> Optional[HotelBooking]:
+    """Search hotel_bookings table for confirmed reservations.
+
+    Looks for bookings where check_in is within ±1 day of flight arrival.
+    """
+    try:
+        # Check for booking within ±1 day of arrival
+        start_window = (arrival_date - timedelta(days=1)).replace(hour=0, minute=0, second=0)
+        end_window = (arrival_date + timedelta(days=1)).replace(hour=23, minute=59, second=59)
+
+        result = (
+            supabase.table("hotel_bookings")
+            .select("*")
+            .eq("customer_id", str(customer_id))
+            .gte("check_in", start_window.isoformat())
+            .lte("check_in", end_window.isoformat())
+            .order("check_in", desc=False)
+            .limit(1)
+            .execute()
+        )
+
+        if result.data:
+            booking = result.data[0]
+            return HotelBooking(
+                found=True,
+                hotel_name=booking.get("hotel_name"),
+                check_in=booking.get("check_in"),
+                check_out=booking.get("check_out"),
+                location=destination,
+                source="booking",
+                confidence=1.0,
+            )
+    except Exception as e:
+        import sys
+
+        print(f"[WARN] Error checking hotel_bookings table: {e}", file=sys.stderr)
 
     return None
 
