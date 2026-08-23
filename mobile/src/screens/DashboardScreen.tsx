@@ -22,16 +22,14 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Dashboard'>;
 // Used when location permission is denied or weather cannot be fetched.
 const PLACEHOLDER_WEATHER = FALLBACK_WEATHER;
 
-// Silently mirrors both calendar sources into calendar_events before the
+// Silently mirrors calendar sources into calendar_events before the
 // dashboard reads them, so a returning user sees up-to-date flights without
-// an extra "sync" tap on the Calendars screen. Deliberately non-blocking on
-// failure (best-effort background refresh) and never prompts for anything
-// the user hasn't already granted -- it only acts on connections/permissions
-// that already exist:
-//   - Google: only synced if the customer already completed OAuth consent
-//     (status.connected), so this never triggers a browser popup.
-//   - Device: only read if calendar permission is already GRANTED, so this
-//     never triggers the OS permission dialog on a fresh install.
+// manual syncing. Deliberately non-blocking on failure (best-effort background
+// refresh) and never prompts for anything the user hasn't already granted --
+// it only acts on connections/permissions that already exist:
+//   - Google Calendar: synced if customer completed OAuth consent
+//   - Device Calendar: synced if permission is GRANTED
+//   - Gmail flights: synced if customer connected Gmail (extracts flights from emails)
 async function silentlySyncCalendars(): Promise<void> {
   await Promise.allSettled([
     (async () => {
@@ -45,6 +43,13 @@ async function silentlySyncCalendars(): Promise<void> {
       if (status === Calendar.PermissionStatus.GRANTED) {
         const events = await readDeviceCalendarEvents();
         await api.syncDeviceCalendar(events, true);
+      }
+    })(),
+    (async () => {
+      try {
+        await api.syncGmail();
+      } catch (err) {
+        console.warn('[Dashboard] Gmail sync failed', err);
       }
     })(),
   ]);

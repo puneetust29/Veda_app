@@ -382,13 +382,40 @@ def sync_device_events(
             }
         )
 
-    if rows:
+    # Filter out rows that already exist from any source (cross-source dedup)
+    supabase = get_supabase()
+    deduped_rows = []
+    duplicates = 0
+
+    for row in rows:
+        # Check if flight already exists from any source
+        existing = (
+            supabase.table("calendar_events")
+            .select("id")
+            .eq("customer_id", row["customer_id"])
+            .eq("event_type", "flight")
+            .eq("origin", row.get("origin"))
+            .eq("destination", row.get("destination"))
+            .gte("start_datetime", f"{row['start_datetime'][:10]}T00:00:00Z")
+            .lt("start_datetime", f"{row['start_datetime'][:10]}T23:59:59Z")
+            .limit(1)
+            .execute()
+        )
+
+        if existing.data:
+            duplicates += 1
+            continue
+
+        deduped_rows.append(row)
+
+    if deduped_rows:
         get_supabase().table("calendar_events").upsert(
-            rows, on_conflict="customer_id,device_event_id"
+            deduped_rows, on_conflict="customer_id,device_event_id"
         ).execute()
 
     return {
         "fetched": len(payload.events),
-        "synced": len(rows),
+        "synced": len(deduped_rows),
+        "duplicates": duplicates,
         "skipped_non_flight": skipped_non_flight,
     }
