@@ -91,6 +91,7 @@ export type RecommendationCardPayload =
   | { kind: 'roaming_plan'; plan: RoamingPlan; reasoning: string; judge_approved: boolean; judge_feedback: string }
   | {
       kind: 'uber_ride';
+      origin_type: 'airport' | 'train_station' | 'ferry' | 'unknown';
       suggested_message: string;
       reasoning: string;
       pickup_label: string | null;
@@ -98,6 +99,7 @@ export type RecommendationCardPayload =
       uber_app_url: string | null;
       deep_link_url: string | null;
       airport_options?: UberAirportOption[];
+      alternative_options?: UberAirportOption[];
       connect_uber_url?: string | null;
       live_quote?: UberLiveQuote | null;
       quote_status?: string | null;

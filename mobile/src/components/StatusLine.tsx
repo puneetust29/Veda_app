@@ -8,12 +8,14 @@ type Props = {
 export default function StatusLine({ label, state }: Props) {
   return (
     <View style={styles.row}>
-      {state === 'active' ? (
-        <ActivityIndicator size="small" color="#888" style={styles.icon} />
-      ) : (
-        <Text style={styles.checkmark}>✓</Text>
-      )}
-      <Text style={styles.label}>{label}</Text>
+      <View style={styles.iconWrap}>
+        {state === 'active' ? (
+          <ActivityIndicator size="small" color="#ABABAB" />
+        ) : (
+          <Text style={styles.check}>✓</Text>
+        )}
+      </View>
+      <Text style={[styles.label, state === 'done' && styles.labelDone]}>{label}</Text>
     </View>
   );
 }
@@ -22,10 +24,25 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
-    paddingVertical: 2,
+    gap: 10,
+    paddingVertical: 3,
   },
-  icon: { marginRight: 8, width: 16 },
-  checkmark: { color: '#0a7a3f', fontWeight: '700', marginRight: 8, width: 16, textAlign: 'center' },
-  label: { color: '#666', fontSize: 13, flexShrink: 1 },
+  iconWrap: {
+    width: 18,
+    alignItems: 'center',
+  },
+  check: {
+    fontSize: 13,
+    color: '#ABABAB',
+    fontWeight: '600',
+  },
+  label: {
+    color: '#6B6B6B',
+    fontSize: 13,
+    fontWeight: '400',
+    flexShrink: 1,
+  },
+  labelDone: {
+    color: '#ABABAB',
+  },
 });

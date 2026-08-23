@@ -1,5 +1,6 @@
 """Builds Uber Universal Link URLs for handing a rider off to the Uber app.
 
+
 No Uber OAuth token or account approval is needed for this -- verified against the real
 Uber API on 2026-08-19 (see the `uber-connection-test-log.md` Test 4 in the Uber
 integration research). Every other Uber capability (real product/price data, in-app
@@ -11,6 +12,7 @@ Uses `https://m.uber.com/ul/` -- the docs' `m.uber.com/looking` URL 404s in prac
 from __future__ import annotations
 
 import logging
+import math
 from typing import Optional, TypedDict
 from urllib.parse import quote, urlencode
 
@@ -65,6 +67,74 @@ KNOWN_AIRPORT_COORDINATES: dict[str, tuple[float, float]] = {
     "BOS": (42.3656, -71.0096),
 }
 
+# Train stations and ferry terminals — Uber rides to these are valid when the
+# departure is a rail/sea journey rather than a flight.
+KNOWN_STATION_COORDINATES: dict[str, tuple[float, float]] = {
+    "London St Pancras": (51.5322, -0.1235),
+    "London St Pancras International": (51.5322, -0.1235),
+    "Paris Gare du Nord": (48.8809, 2.3553),
+    "Gare du Nord": (48.8809, 2.3553),
+    "Amsterdam Centraal": (52.3791, 4.9003),
+    "Brussels-Midi": (50.8357, 4.3359),
+    "Brussels Midi": (50.8357, 4.3359),
+    "London Waterloo": (51.5031, -0.1132),
+    "London Victoria": (51.4952, -0.1439),
+    "London Paddington": (51.5154, -0.1755),
+    "New York Penn Station": (40.7506, -73.9971),
+    "Grand Central Terminal": (40.7527, -73.9772),
+    "Union Station Washington DC": (38.8973, -77.0063),
+    "Union Station Chicago": (41.8789, -87.6400),
+    "Los Angeles Union Station": (34.0561, -118.2360),
+    "San Francisco Caltrain": (37.7762, -122.3942),
+    "Boston South Station": (42.3519, -71.0552),
+}
+
+# Combined lookup: airports first, then stations.
+ALL_KNOWN_COORDINATES: dict[str, tuple[float, float]] = {
+    **KNOWN_AIRPORT_COORDINATES,
+    **KNOWN_STATION_COORDINATES,
+}
+
+
+def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Great-circle distance in km between two lat/lng points."""
+    R = 6371.0
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
+    return R * 2 * math.asin(math.sqrt(a))
+
+
+def find_nearest_airports(
+    latitude: float,
+    longitude: float,
+    limit: int = 2,
+) -> list[tuple[str, tuple[float, float]]]:
+    """Return the (limit) nearest airport labels + coords to the given position.
+
+    Only searches KNOWN_AIRPORT_COORDINATES (not stations), so the alternatives
+    are always airports the user can fly from.
+    """
+    distances = [
+        (label, coords, _haversine_km(latitude, longitude, coords[0], coords[1]))
+        for label, coords in KNOWN_AIRPORT_COORDINATES.items()
+        if len(label) > 4  # skip bare IATA codes — prefer full names
+    ]
+    distances.sort(key=lambda x: x[2])
+    return [(label, coords) for label, coords, _ in distances[:limit]]
+
+
+def is_far_from_user(
+    origin_lat: float,
+    origin_lon: float,
+    user_lat: float,
+    user_lon: float,
+    threshold_km: float = 200.0,
+) -> bool:
+    """True if the origin is more than threshold_km from the user's current location."""
+    return _haversine_km(user_lat, user_lon, origin_lat, origin_lon) > threshold_km
+
+
 # City-level trip origins sometimes arrive without a specific airport selected yet
 # (e.g. "London" instead of "London Heathrow (LHR)"). In those cases we offer a
 # small curated list of likely departure airports so the user can choose.
@@ -85,25 +155,26 @@ def _normalize_location_label(label: str) -> str:
 
 
 def lookup_airport_coordinates(label: Optional[str]) -> Optional[tuple[float, float]]:
+    """Look up coordinates for airports AND train/ferry stations."""
     if not label:
         logger.debug("[uber] lookup_airport_coordinates called with empty label")
         return None
 
-    # Exact match first — fast path for the common case.
-    coords = KNOWN_AIRPORT_COORDINATES.get(label)
+    # Exact match across all known locations (airports + stations).
+    coords = ALL_KNOWN_COORDINATES.get(label)
     if coords:
         logger.info("[uber] coords HIT  %r -> %s", label, coords)
-    return coords
+        return coords
 
     # Normalised fallback: case-insensitive, strips extra whitespace and commas.
     # Handles variations like "london heathrow (lhr)" or "London Heathrow, LHR".
     normalized_label = _normalize_location_label(label)
-    for known_label, known_coords in KNOWN_AIRPORT_COORDINATES.items():
+    for known_label, known_coords in ALL_KNOWN_COORDINATES.items():
         if _normalize_location_label(known_label) == normalized_label:
             logger.info("[uber] coords NORMALIZED HIT %r -> %r -> %s", label, known_label, known_coords)
             return known_coords
 
-    logger.warning("[uber] coords MISS %r -> not in KNOWN_AIRPORT_COORDINATES", label)
+    logger.warning("[uber] coords MISS %r -> not in ALL_KNOWN_COORDINATES", label)
     return None
 
 

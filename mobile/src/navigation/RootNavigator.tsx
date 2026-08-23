@@ -33,10 +33,7 @@ export default function RootNavigator() {
             <Stack.Screen
               name="Chat"
               component={ChatScreen}
-              options={({ route }) => ({
-                headerShown: true,
-                title: route.params.event.destination ?? '',
-              })}
+              options={{ headerShown: false }}
             />
             <Stack.Screen
               name="FlightDetail"

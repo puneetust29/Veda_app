@@ -30,6 +30,8 @@ from app.config import get_settings
 from app.tools.uber_deeplink import (
     build_airport_deeplink_options,
     build_uber_deeplink,
+    find_nearest_airports,
+    is_far_from_user,
     lookup_airport_coordinates,
 )
 
@@ -110,7 +112,10 @@ def node_extract_trip_context(state: UberAgentState, writer: StreamWriter) -> di
 
 
 def node_suggest_ride(state: UberAgentState, writer: StreamWriter) -> dict:
-    """The LLM decides whether to suggest a ride and writes the user-facing message."""
+    """LLM classifies the origin type and writes the user-facing message.
+
+    Always suggests a ride — origin_type determines the message and deeplink strategy.
+    """
     writer({"kind": "tool_started", "tool": "uber.suggest_ride"})
 
     calendar_event = state.get("calendar_event", {})
@@ -130,9 +135,9 @@ def node_suggest_ride(state: UberAgentState, writer: StreamWriter) -> dict:
     )
     result: RideSuggestion = llm.invoke(prompt)
     logger.info(
-        "uber graph suggest ride complete | customer_id=%s | should_suggest=%s | reasoning=%r | suggested_message=%r",
+        "uber graph suggest ride | customer_id=%s | origin_type=%s | reasoning=%r | message=%r",
         state.get("customer_id"),
-        result.should_suggest,
+        result.origin_type,
         result.reasoning,
         result.suggested_message,
     )
@@ -140,35 +145,37 @@ def node_suggest_ride(state: UberAgentState, writer: StreamWriter) -> dict:
     writer({"kind": "tool_completed", "tool": "uber.suggest_ride"})
 
     return {
-        "should_suggest": result.should_suggest,
+        "origin_type": result.origin_type,
         "reasoning": result.reasoning,
         "suggested_message": result.suggested_message,
     }
 
 
 def node_build_deeplink(state: UberAgentState, writer: StreamWriter) -> dict:
-    """Build the Uber deep link for current location -> departure airport.
+    """Build the Uber deep link for current location -> departure point.
 
-    Uses app.tools.uber_deeplink — the only currently approved Uber integration path.
-    No OAuth token or Uber API approval required (verified live 2026-08-19).
-
-    When the mobile app provides a device location, we bake those pickup coordinates
-    into the link so the native Uber app pre-fills both ends more reliably. If not,
-    we fall back to Uber's `pickup=my_location` behavior.
+    Always builds a deeplink — works for airports, train stations, ferry terminals,
+    and unknown origins. When origin is far from the user's current location,
+    also builds alternative_options (nearest airports to the user) so they can
+    choose to fly instead of riding to a distant station.
     """
     writer({"kind": "tool_started", "tool": "uber.get_deeplink"})
 
     origin_label = state.get("origin_label")
+    origin_type = state.get("origin_type", "airport")
     dropoff_coords = lookup_airport_coordinates(origin_label)
     device_location = state.get("device_location") or {}
     pickup_latitude = device_location.get("latitude")
     pickup_longitude = device_location.get("longitude")
     pickup_label = state.get("pickup_label") or device_location.get("label") or "Current location"
-    airport_options = []
+    airport_options: list = []
+    alternative_options: list = []
+
     logger.info(
-        "uber graph deeplink start | customer_id=%s | origin_label=%r | pickup_coords_present=%s | dropoff_coords_present=%s",
+        "uber graph deeplink start | customer_id=%s | origin_label=%r | origin_type=%s | pickup_coords_present=%s | dropoff_coords_present=%s",
         state.get("customer_id"),
         origin_label,
+        origin_type,
         pickup_latitude is not None and pickup_longitude is not None,
         bool(dropoff_coords),
     )
@@ -183,7 +190,33 @@ def node_build_deeplink(state: UberAgentState, writer: StreamWriter) -> dict:
             dropoff_longitude=dropoff_lng,
             dropoff_nickname=origin_label,
         )
+
+        # For non-airport origins (train/ferry), check if the origin is far from the
+        # user. If so, offer nearest airports as alternatives ("fly instead?").
+        if origin_type in ("train_station", "ferry") and pickup_latitude and pickup_longitude:
+            if is_far_from_user(dropoff_lat, dropoff_lng, pickup_latitude, pickup_longitude):
+                for alt_label, (alt_lat, alt_lng) in find_nearest_airports(pickup_latitude, pickup_longitude):
+                    alt_app_url, alt_web_url = build_uber_deeplink(
+                        pickup_latitude=pickup_latitude,
+                        pickup_longitude=pickup_longitude,
+                        pickup_nickname=pickup_label,
+                        dropoff_latitude=alt_lat,
+                        dropoff_longitude=alt_lng,
+                        dropoff_nickname=alt_label,
+                    )
+                    alternative_options.append({
+                        "label": alt_label,
+                        "uber_app_url": alt_app_url,
+                        "deep_link_url": alt_web_url,
+                    })
+                logger.info(
+                    "uber graph deeplink far origin | customer_id=%s | built %d airport alternatives",
+                    state.get("customer_id"),
+                    len(alternative_options),
+                )
+
     else:
+        # Coordinates not known — try city-level airport options first.
         airport_options = build_airport_deeplink_options(
             origin_label,
             pickup_latitude=pickup_latitude,
@@ -194,6 +227,7 @@ def node_build_deeplink(state: UberAgentState, writer: StreamWriter) -> dict:
             uber_app_url = None
             web_fallback_url = None
         else:
+            # Fall back: open Uber with just the pickup location, user sets destination.
             uber_app_url, web_fallback_url = build_uber_deeplink(
                 pickup_latitude=pickup_latitude,
                 pickup_longitude=pickup_longitude,
@@ -202,11 +236,11 @@ def node_build_deeplink(state: UberAgentState, writer: StreamWriter) -> dict:
 
     writer({"kind": "tool_completed", "tool": "uber.get_deeplink"})
     logger.info(
-        "uber graph deeplink complete | customer_id=%s | has_uber_app_url=%s | has_deep_link_url=%s | airport_option_count=%d",
+        "uber graph deeplink complete | customer_id=%s | has_uber_app_url=%s | airport_options=%d | alternative_options=%d",
         state.get("customer_id"),
         bool(uber_app_url),
-        bool(web_fallback_url),
         len(airport_options),
+        len(alternative_options),
     )
 
     return {
@@ -215,22 +249,15 @@ def node_build_deeplink(state: UberAgentState, writer: StreamWriter) -> dict:
         "uber_app_url": uber_app_url,
         "deep_link_url": web_fallback_url,
         "airport_options": airport_options,
+        "alternative_options": alternative_options,
     }
 
 
-def _route_after_suggest(state: UberAgentState) -> str:
-    """Conditional edge: skip deeplink when the LLM says don't suggest."""
-    if state.get("should_suggest"):
-        return "build_deeplink"
-    return END
-
-
 def build_uber_graph():
-    """Graph: extract -> suggest -> [conditional] -> deeplink -> END.
+    """Graph: extract -> suggest -> deeplink -> END.
 
-    suggest_ride branches:
-      should_suggest=True  -> build_deeplink -> END
-      should_suggest=False -> END
+    Always builds a deeplink — origin_type from suggest_ride determines the
+    message and whether alternative airport options are shown.
     """
     graph = StateGraph(UberAgentState)
 
@@ -240,7 +267,7 @@ def build_uber_graph():
 
     graph.set_entry_point("extract_trip_context")
     graph.add_edge("extract_trip_context", "suggest_ride")
-    graph.add_conditional_edges("suggest_ride", _route_after_suggest)
+    graph.add_edge("suggest_ride", "build_deeplink")
     graph.add_edge("build_deeplink", END)
 
     return graph.compile()

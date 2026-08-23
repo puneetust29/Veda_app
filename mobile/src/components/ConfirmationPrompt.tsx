@@ -17,31 +17,35 @@ export default function ConfirmationPrompt({ item, onConfirm, onDecline }: Props
 
       {item.state === 'pending' && item.risk === 'commit' && (
         <View style={styles.actions}>
-          <TouchableOpacity style={styles.primaryButton} onPress={() => onConfirm(item.actionId)}>
-            <Text style={styles.primaryButtonText}>Activate this plan</Text>
+          <TouchableOpacity style={styles.primaryBtn} onPress={() => onConfirm(item.actionId)}>
+            <Text style={styles.primaryBtnText}>Activate this plan</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.secondaryButton} onPress={() => onDecline(item.actionId)}>
-            <Text style={styles.secondaryButtonText}>Not now</Text>
+          <TouchableOpacity style={styles.outlineBtn} onPress={() => onDecline(item.actionId)}>
+            <Text style={styles.outlineBtnText}>Not now</Text>
           </TouchableOpacity>
         </View>
       )}
 
       {item.state === 'submitting' && (
         <View style={styles.statusRow}>
-          <ActivityIndicator size="small" color="#111" />
+          <ActivityIndicator size="small" color="#0F0F0F" />
           <Text style={styles.statusText}>Activating…</Text>
         </View>
       )}
 
-      {item.state === 'confirmed' && <Text style={styles.confirmedLabel}>Activated ✓</Text>}
+      {item.state === 'confirmed' && (
+        <Text style={styles.confirmedLabel}>Activated ✓</Text>
+      )}
 
-      {item.state === 'declined' && <Text style={styles.declinedLabel}>Not now</Text>}
+      {item.state === 'declined' && (
+        <Text style={styles.declinedLabel}>Skipped</Text>
+      )}
 
       {item.state === 'failed' && (
-        <View>
+        <View style={styles.actions}>
           <Text style={styles.errorText}>{item.error ?? 'Something went wrong activating this plan.'}</Text>
-          <TouchableOpacity style={styles.secondaryButton} onPress={() => onConfirm(item.actionId)}>
-            <Text style={styles.secondaryButtonText}>Retry</Text>
+          <TouchableOpacity style={styles.outlineBtn} onPress={() => onConfirm(item.actionId)}>
+            <Text style={styles.outlineBtnText}>Retry</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -51,35 +55,71 @@ export default function ConfirmationPrompt({ item, onConfirm, onDecline }: Props
 
 const styles = StyleSheet.create({
   card: {
-    borderWidth: 1,
-    borderColor: '#eee',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  summary: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#0F0F0F',
+    lineHeight: 22,
+    marginBottom: 16,
+  },
+  actions: {
+    gap: 10,
+  },
+  primaryBtn: {
+    backgroundColor: '#0F0F0F',
     borderRadius: 12,
-    padding: 16,
-    backgroundColor: '#fff',
-    marginBottom: 10,
-  },
-  summary: { fontSize: 15, fontWeight: '600', color: '#111', marginBottom: 12 },
-  actions: { flexDirection: 'row', gap: 12 },
-  primaryButton: {
-    flex: 1,
-    backgroundColor: '#111',
-    borderRadius: 10,
-    padding: 14,
+    paddingVertical: 14,
     alignItems: 'center',
   },
-  primaryButtonText: { color: '#fff', fontSize: 15, fontWeight: '600' },
-  secondaryButton: {
-    flex: 1,
-    borderRadius: 10,
-    padding: 14,
+  primaryBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  outlineBtn: {
+    borderRadius: 12,
+    paddingVertical: 14,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#111',
+    borderColor: '#DEDEDE',
   },
-  secondaryButtonText: { color: '#111', fontSize: 15, fontWeight: '600' },
-  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  statusText: { color: '#444', fontSize: 14 },
-  confirmedLabel: { color: '#0a7a3f', fontWeight: '700' },
-  declinedLabel: { color: '#888', fontWeight: '600' },
-  errorText: { color: '#c0392b', marginBottom: 10 },
+  outlineBtnText: {
+    color: '#0F0F0F',
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  statusText: {
+    color: '#6B6B6B',
+    fontSize: 14,
+  },
+  confirmedLabel: {
+    color: '#3A9E5F',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  declinedLabel: {
+    color: '#ABABAB',
+    fontWeight: '500',
+    fontSize: 14,
+  },
+  errorText: {
+    color: '#C0392B',
+    fontSize: 13,
+    lineHeight: 20,
+    marginBottom: 4,
+  },
 });

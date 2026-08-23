@@ -4,21 +4,25 @@ from pydantic import BaseModel, Field
 
 
 class RideSuggestion(BaseModel):
-    """Claude's structured output when recommending a ride for the trip.
+    """Claude's structured output for a ride suggestion.
 
-    Deliberately minimal: the LLM's job is only to decide whether to suggest a
-    ride and write the user-facing message. All location labels and deep-link
-    URLs are derived by the graph from device GPS + the airport coordinates
-    lookup -- the LLM never sees or produces coordinates.
+    The LLM identifies the origin type and writes the user-facing message.
+    Whether to suggest and distance/alternative logic is handled by graph code —
+    the LLM never produces coordinates or deep-link URLs.
     """
-    should_suggest: bool = Field(
-        description="Whether an Uber ride makes sense for this trip context"
+    origin_type: Literal["airport", "train_station", "ferry", "unknown"] = Field(
+        description="Type of departure location: airport, train_station, ferry, or unknown"
     )
     reasoning: str = Field(
-        description="Why a ride is (or isn't) being suggested"
+        description="Brief reasoning about the origin type and why this message was chosen"
     )
     suggested_message: str = Field(
-        description="Short, friendly message to show the user (e.g. 'Need a ride to the airport?')"
+        description=(
+            "Short friendly message for the user. "
+            "Airport: 'Need a ride to Heathrow before your Tokyo flight?' "
+            "Train station: 'Need a ride to St Pancras for your Eurostar?' "
+            "Unknown: 'Need an Uber before your trip?'"
+        )
     )
 
 
@@ -41,9 +45,13 @@ class UberRideSuggestionCard(BaseModel):
     Uses official Uber deep-link API. No live quotes or OAuth URLs included.
     Uses a `kind` discriminator so future agent cards can coexist as additive
     union members alongside the existing `roaming_plan` card kind.
+
+    alternative_options: shown when the origin is far from the user's current location
+    (e.g. train to London but user is in Seattle). Offers nearby airport rides as an
+    alternative to riding directly to a distant station.
     """
     kind: Literal["uber_ride"] = "uber_ride"
-    should_suggest: bool
+    origin_type: str = "airport"
     reasoning: str
     suggested_message: str
     pickup_label: Optional[str] = None
@@ -51,3 +59,4 @@ class UberRideSuggestionCard(BaseModel):
     uber_app_url: Optional[str] = None
     deep_link_url: Optional[str] = None
     airport_options: list[UberAirportOption] = Field(default_factory=list)
+    alternative_options: list[UberAirportOption] = Field(default_factory=list)

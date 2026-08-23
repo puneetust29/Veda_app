@@ -6,64 +6,78 @@ type Props = {
   card: RecommendationCardPayload;
 };
 
-// Plan-card JSX/styles lifted near-verbatim from FlightDetailScreen.tsx's
-// `recommendation.candidate_plan` block. Switches on `card.kind` so a future
-// card variant (a second agent's recommendation shape) is an added branch,
-// not a rewrite.
+async function openUber(uberAppUrl: string | null, deepLinkUrl: string | null) {
+  if (uberAppUrl) {
+    try { await Linking.openURL(uberAppUrl); return; } catch { /* fall through */ }
+  }
+  if (deepLinkUrl) { await Linking.openURL(deepLinkUrl); }
+}
+
 export default function RecommendationCard({ card }: Props) {
   switch (card.kind) {
-    case 'roaming_plan':
+    // ── Roaming plan ─────────────────────────────────────────────────────────
+    case 'roaming_plan': {
+      const plan = card.plan;
       return (
-        <View style={styles.planCard}>
-          <Text style={styles.planName}>{card.plan.plan_name}</Text>
-          <Text style={styles.planMeta}>
-            {card.plan.data_gb}GB · {card.plan.duration_days} days · {card.plan.price} {card.plan.currency}
-          </Text>
-          <Text style={styles.planDescription}>{card.plan.description}</Text>
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Text style={styles.cardLabel}>ROAMING PLAN</Text>
+          </View>
 
-          <Text style={styles.sectionLabel}>Why the AI picked this</Text>
-          <Text style={styles.reasoning}>{card.reasoning}</Text>
+          <Text style={styles.planName}>{plan.plan_name}</Text>
+          <View style={styles.planMetaRow}>
+            <MetaPill label={`${plan.data_gb} GB`} />
+            <MetaPill label={`${plan.duration_days} days`} />
+            <MetaPill label={`${plan.price} ${plan.currency}`} />
+          </View>
 
-          <Text style={styles.sectionLabel}>AI reviewer: {card.judge_approved ? 'Approved ✅' : 'Flagged ⚠️'}</Text>
-          <Text style={styles.reasoning}>{card.judge_feedback}</Text>
+          {plan.description ? (
+            <Text style={styles.planDescription}>{plan.description}</Text>
+          ) : null}
+
+          <View style={styles.divider} />
+
+          <Text style={styles.sectionLabel}>Why this plan</Text>
+          <Text style={styles.reasoningText}>{card.reasoning}</Text>
+
+          <View style={styles.judgeRow}>
+            <Text style={[styles.judgeBadge, card.judge_approved ? styles.judgeApproved : styles.judgeFlagged]}>
+              {card.judge_approved ? 'AI approved' : 'AI flagged'}
+            </Text>
+            {card.judge_feedback ? (
+              <Text style={styles.judgeFeedback}>{card.judge_feedback}</Text>
+            ) : null}
+          </View>
         </View>
       );
+    }
+
+    // ── Uber ride ─────────────────────────────────────────────────────────────
     case 'uber_ride': {
-      const airportOptions = card.airport_options ?? [];
-
-      const openUber = async (uberAppUrl: string | null, deepLinkUrl: string | null) => {
-        if (uberAppUrl) {
-          try {
-            await Linking.openURL(uberAppUrl);
-            return;
-          } catch {
-            // Fall through to the universal link below.
-          }
-        }
-        if (deepLinkUrl) {
-          await Linking.openURL(deepLinkUrl);
-          return;
-        }
-        throw new Error('No Uber deep link available');
-      };
-
-      const handleOpenUber = async () => {
-        await openUber(card.uber_app_url, card.deep_link_url);
-      };
+      const airportOptions  = card.airport_options  ?? [];
+      const altOptions      = card.alternative_options ?? [];
 
       return (
-        <View style={styles.uberCard}>
-          <Text style={styles.uberHeading}>🚗 Uber Ride Suggestion</Text>
-          {card.pickup_label && card.dropoff_label && (
-            <Text style={styles.uberRoute}>
-              {card.pickup_label} → {card.dropoff_label}
-            </Text>
-          )}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Text style={styles.cardLabel}>UBER RIDE</Text>
+            <Text style={styles.uberLogo}>✈</Text>
+          </View>
+
           <Text style={styles.uberMessage}>{card.suggested_message}</Text>
 
+          {/* Direct route */}
+          {(card.pickup_label || card.dropoff_label) && (
+            <View style={styles.routeRow}>
+              <Text style={styles.routeCity} numberOfLines={1}>{card.pickup_label ?? 'Current location'}</Text>
+              <Text style={styles.routeArrow}>→</Text>
+              <Text style={styles.routeCity} numberOfLines={1}>{card.dropoff_label}</Text>
+            </View>
+          )}
+
+          {/* Live quote */}
           {card.live_quote && (
-            <View style={styles.quoteCard}>
-              <Text style={styles.quoteEyebrow}>Live quote</Text>
+            <View style={styles.quoteBlock}>
               <Text style={styles.quotePrice}>{card.live_quote.estimate}</Text>
               <Text style={styles.quoteMeta}>
                 {card.live_quote.product_name}
@@ -72,120 +86,302 @@ export default function RecommendationCard({ card }: Props) {
             </View>
           )}
 
-          {card.quote_status && <Text style={styles.quoteStatus}>{card.quote_status}</Text>}
+          {card.quote_status && (
+            <Text style={styles.quoteStatus}>{card.quote_status}</Text>
+          )}
 
+          {/* Connect Uber */}
           {card.connect_uber_url && (
             <TouchableOpacity
-              style={styles.connectButton}
+              style={styles.outlineBtn}
               onPress={() => Linking.openURL(card.connect_uber_url!)}
             >
-              <Text style={styles.connectButtonText}>Connect Uber</Text>
+              <Text style={styles.outlineBtnText}>Connect Uber account</Text>
             </TouchableOpacity>
           )}
 
-          {airportOptions.length > 0 ? (
-            <View style={styles.optionList}>
-              <Text style={styles.optionHeading}>Choose your departure airport</Text>
-              {airportOptions.map((option) => (
+          {/* Single-airport deeplink */}
+          {airportOptions.length === 0 && !card.connect_uber_url && (card.uber_app_url || card.deep_link_url) && (
+            <TouchableOpacity
+              style={styles.primaryBtn}
+              onPress={() => openUber(card.uber_app_url, card.deep_link_url)}
+            >
+              <Text style={styles.primaryBtnText}>Open in Uber</Text>
+            </TouchableOpacity>
+          )}
+
+          {/* Multiple airport choices */}
+          {airportOptions.length > 0 && (
+            <View>
+              <Text style={styles.sectionLabel}>Choose your departure airport</Text>
+              {airportOptions.map((opt) => (
                 <TouchableOpacity
-                  key={option.label}
-                  style={styles.optionButton}
-                  onPress={() => openUber(option.uber_app_url, option.deep_link_url)}
+                  key={opt.label}
+                  style={styles.optionBtn}
+                  onPress={() => openUber(opt.uber_app_url, opt.deep_link_url)}
                 >
-                  <Text style={styles.optionButtonText}>{option.label}</Text>
+                  <Text style={styles.optionBtnText}>{opt.label}</Text>
+                  <Text style={styles.optionChevron}>›</Text>
                 </TouchableOpacity>
               ))}
             </View>
-          ) : (
-            (card.uber_app_url || card.deep_link_url) && (
-              <TouchableOpacity
-                style={styles.uberButton}
-                onPress={handleOpenUber}
-              >
-                <Text style={styles.uberButtonText}>Open in Uber</Text>
-              </TouchableOpacity>
-            )
           )}
-          <Text style={styles.uberDisclaimer}>
-            Opens Uber with your current location and airport destination pre-filled.
-          </Text>
+
+          {/* Alternative airport options (origin is far from user) */}
+          {altOptions.length > 0 && (
+            <View style={styles.altSection}>
+              <View style={styles.divider} />
+              <Text style={styles.sectionLabel}>Or fly from near you</Text>
+              {altOptions.map((opt) => (
+                <TouchableOpacity
+                  key={opt.label}
+                  style={styles.optionBtn}
+                  onPress={() => openUber(opt.uber_app_url, opt.deep_link_url)}
+                >
+                  <Text style={styles.optionBtnText}>{opt.label}</Text>
+                  <Text style={styles.optionChevron}>›</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+
+          <Text style={styles.disclaimer}>Opens Uber with pickup and destination pre-filled.</Text>
         </View>
       );
     }
 
     default: {
-      // Exhaustiveness guard — TS will error here if a new card kind is added
-      // to RecommendationCardPayload without a matching case above.
       const _exhaustive: never = card;
       return _exhaustive;
     }
   }
 }
 
+function MetaPill({ label }: { label: string }) {
+  return (
+    <View style={styles.metaPill}>
+      <Text style={styles.metaPillText}>{label}</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  uberCard: {
-    borderWidth: 1,
-    borderColor: '#ffe0b2',
-    borderRadius: 12,
-    padding: 16,
-    backgroundColor: '#fff8f0',
-    marginBottom: 10,
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
   },
-  uberHeading: { fontSize: 16, fontWeight: '700', color: '#111', marginBottom: 6 },
-  uberRoute: { fontSize: 13, color: '#555', marginBottom: 8 },
-  uberMessage: { fontSize: 15, color: '#333', lineHeight: 21, marginBottom: 14 },
-  quoteCard: {
-    borderRadius: 10,
-    backgroundColor: '#fff',
-    padding: 12,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: '#f1d5b8',
-  },
-  quoteEyebrow: { fontSize: 12, color: '#8a5a2b', fontWeight: '600', marginBottom: 4 },
-  quotePrice: { fontSize: 18, fontWeight: '700', color: '#111' },
-  quoteMeta: { fontSize: 13, color: '#555', marginTop: 2 },
-  quoteStatus: { fontSize: 12, color: '#666', marginBottom: 10 },
-  connectButton: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    paddingVertical: 12,
+
+  // Card header (label row)
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: '#000',
+    marginBottom: 12,
   },
-  connectButtonText: { color: '#111', fontSize: 15, fontWeight: '700' },
-  uberButton: {
-    backgroundColor: '#000',
-    borderRadius: 10,
-    paddingVertical: 12,
-    alignItems: 'center',
-    marginBottom: 10,
+  cardLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1.8,
+    color: '#ABABAB',
   },
-  uberButtonText: { color: '#fff', fontSize: 15, fontWeight: '700' },
-  optionList: { marginBottom: 10 },
-  optionHeading: { fontSize: 13, color: '#555', marginBottom: 8, fontWeight: '600' },
-  optionButton: {
-    backgroundColor: '#000',
-    borderRadius: 10,
-    paddingVertical: 12,
-    alignItems: 'center',
+  uberLogo: {
+    fontSize: 16,
+    color: '#ABABAB',
+  },
+
+  // ── Roaming plan ──
+  planName: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#0F0F0F',
+    marginBottom: 10,
+    letterSpacing: -0.3,
+  },
+  planMetaRow: {
+    flexDirection: 'row',
+    gap: 6,
+    flexWrap: 'wrap',
+    marginBottom: 12,
+  },
+  metaPill: {
+    backgroundColor: '#F2F2F0',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  metaPillText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#0F0F0F',
+  },
+  planDescription: {
+    fontSize: 14,
+    color: '#6B6B6B',
+    lineHeight: 20,
+    marginBottom: 4,
+  },
+
+  divider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: '#EDEDEB',
+    marginVertical: 16,
+  },
+
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    color: '#ABABAB',
+    textTransform: 'uppercase',
     marginBottom: 8,
   },
-  optionButtonText: { color: '#fff', fontSize: 15, fontWeight: '700' },
-  uberDisclaimer: { fontSize: 11, color: '#999', textAlign: 'center' },
-  planCard: {
-    borderWidth: 1,
-    borderColor: '#eee',
-    borderRadius: 12,
-    padding: 16,
-    backgroundColor: '#fafafa',
-    marginBottom: 10,
+  reasoningText: {
+    fontSize: 14,
+    color: '#6B6B6B',
+    lineHeight: 21,
   },
-  planName: { fontSize: 18, fontWeight: '700' },
-  planMeta: { color: '#444', marginTop: 4 },
-  planDescription: { color: '#666', marginTop: 8 },
-  sectionLabel: { fontWeight: '600', marginTop: 16, marginBottom: 4 },
-  reasoning: { color: '#444', lineHeight: 20 },
+
+  judgeRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    marginTop: 12,
+    flexWrap: 'wrap',
+  },
+  judgeBadge: {
+    fontSize: 11,
+    fontWeight: '700',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    overflow: 'hidden',
+  },
+  judgeApproved: {
+    backgroundColor: '#EBF7EF',
+    color: '#3A9E5F',
+  },
+  judgeFlagged: {
+    backgroundColor: '#FEF3EC',
+    color: '#D97A2A',
+  },
+  judgeFeedback: {
+    fontSize: 13,
+    color: '#6B6B6B',
+    lineHeight: 19,
+    flexShrink: 1,
+  },
+
+  // ── Uber ride ──
+  uberMessage: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#0F0F0F',
+    lineHeight: 24,
+    marginBottom: 14,
+    letterSpacing: -0.2,
+  },
+  routeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F7F7F5',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    gap: 8,
+    marginBottom: 14,
+  },
+  routeCity: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#6B6B6B',
+  },
+  routeArrow: {
+    fontSize: 13,
+    color: '#ABABAB',
+  },
+
+  quoteBlock: {
+    backgroundColor: '#F7F7F5',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 14,
+  },
+  quotePrice: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#0F0F0F',
+  },
+  quoteMeta: {
+    fontSize: 13,
+    color: '#6B6B6B',
+    marginTop: 2,
+  },
+  quoteStatus: {
+    fontSize: 12,
+    color: '#ABABAB',
+    marginBottom: 12,
+  },
+
+  primaryBtn: {
+    backgroundColor: '#0F0F0F',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  primaryBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  outlineBtn: {
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#DEDEDE',
+    marginBottom: 4,
+  },
+  outlineBtnText: {
+    color: '#0F0F0F',
+    fontSize: 15,
+    fontWeight: '500',
+  },
+
+  optionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 13,
+    paddingHorizontal: 0,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#EDEDEB',
+  },
+  optionBtnText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#0F0F0F',
+  },
+  optionChevron: {
+    fontSize: 20,
+    color: '#C8C8C8',
+  },
+
+  altSection: {
+    marginTop: 4,
+  },
+
+  disclaimer: {
+    fontSize: 11,
+    color: '#C8C8C8',
+    textAlign: 'center',
+    marginTop: 14,
+  },
 });

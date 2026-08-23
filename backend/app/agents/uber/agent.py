@@ -75,7 +75,7 @@ class UberAgent(BaseAgent):
         else:
             final_state = uber_graph.invoke(state)
 
-        should_suggest = final_state.get("should_suggest", False)
+        origin_type = final_state.get("origin_type", "airport")
         reasoning = final_state.get("reasoning", "")
         suggested_message = final_state.get("suggested_message", "")
         uber_app_url = final_state.get("uber_app_url")
@@ -83,28 +83,19 @@ class UberAgent(BaseAgent):
         pickup_label = final_state.get("pickup_label")
         dropoff_label = final_state.get("dropoff_label")
         airport_options = final_state.get("airport_options", [])
+        alternative_options = final_state.get("alternative_options", [])
         logger.info(
-            "uber agent graph complete | run_id=%s | should_suggest=%s | has_deeplink=%s | airport_option_count=%d",
+            "uber agent graph complete | run_id=%s | origin_type=%s | has_deeplink=%s | airport_options=%d | alternatives=%d",
             ctx.run_id,
-            should_suggest,
+            origin_type,
             bool(uber_app_url or deep_link_url),
             len(airport_options),
+            len(alternative_options),
         )
 
-        if not should_suggest:
-            logger.info("uber agent no suggestion | run_id=%s | reason=%r", ctx.run_id, reasoning)
-            ctx.emit(build_error("no_ride_suggested", retryable=False))
-            ctx.emit(build_done("ok_no_action"))
-            return AgentResult(
-                agent=self.manifest.name,
-                version=self.manifest.version,
-                status="ok",
-                summary=reasoning,
-            )
-
-        # Build and emit the recommendation card
+        # Always build and emit the recommendation card
         card = UberRideSuggestionCard(
-            should_suggest=should_suggest,
+            origin_type=origin_type,
             reasoning=reasoning,
             suggested_message=suggested_message,
             pickup_label=pickup_label,
@@ -112,6 +103,7 @@ class UberAgent(BaseAgent):
             uber_app_url=uber_app_url,
             deep_link_url=deep_link_url,
             airport_options=airport_options,
+            alternative_options=alternative_options,
         ).model_dump()
 
         logger.info(

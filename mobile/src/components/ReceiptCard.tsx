@@ -8,27 +8,60 @@ type Props = {
 };
 
 export default function ReceiptCard({ subscription, planName }: Props) {
-  const activatedAt = subscription.subscribed_at ? new Date(subscription.subscribed_at).toLocaleString() : null;
+  const activatedAt = subscription.subscribed_at
+    ? new Date(subscription.subscribed_at).toLocaleDateString('en-US', {
+        month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+      })
+    : null;
 
   return (
     <View style={styles.card}>
-      <Text style={styles.title}>✓ {planName}</Text>
-      {activatedAt && <Text style={styles.meta}>Activated {activatedAt}</Text>}
-      <Text style={styles.status}>Status: {subscription.status}</Text>
+      <View style={styles.topRow}>
+        <Text style={styles.check}>✓</Text>
+        <Text style={styles.planName}>{planName}</Text>
+      </View>
+      {activatedAt && (
+        <Text style={styles.meta}>Activated {activatedAt}</Text>
+      )}
+      <Text style={styles.status}>{subscription.status}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    borderWidth: 1,
-    borderColor: '#d7ead9',
-    borderRadius: 12,
-    padding: 16,
-    backgroundColor: '#f2fbf3',
-    marginBottom: 10,
+    backgroundColor: '#F2FAF5',
+    borderRadius: 18,
+    padding: 18,
+    borderLeftWidth: 3,
+    borderLeftColor: '#3A9E5F',
   },
-  title: { fontSize: 16, fontWeight: '700', color: '#0a7a3f' },
-  meta: { color: '#444', marginTop: 6, fontSize: 13 },
-  status: { color: '#444', marginTop: 2, fontSize: 13, textTransform: 'capitalize' },
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 6,
+  },
+  check: {
+    fontSize: 16,
+    color: '#3A9E5F',
+    fontWeight: '700',
+  },
+  planName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0F0F0F',
+    flexShrink: 1,
+  },
+  meta: {
+    color: '#6B6B6B',
+    fontSize: 13,
+    marginBottom: 2,
+  },
+  status: {
+    color: '#ABABAB',
+    fontSize: 12,
+    fontWeight: '500',
+    textTransform: 'capitalize',
+  },
 });

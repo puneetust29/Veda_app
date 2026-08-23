@@ -75,6 +75,7 @@ function scriptedEvents(calendarEventId: string): Array<{ delayMs: number; event
         data: {
           card: {
             kind: 'uber_ride',
+            origin_type: 'airport' as const,
             suggested_message: 'Need a ride to the airport before your Tokyo flight?',
             reasoning: 'Flight detected from London to Tokyo Narita — choose the right London departure airport and open Uber with your live location as pickup.',
             pickup_label: 'Current location',

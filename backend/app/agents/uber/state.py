@@ -18,8 +18,8 @@ class UberAgentState(AgentState, total=False):
     origin_label: Optional[str]       # e.g. "London Heathrow (LHR)"
     destination_label: Optional[str]  # e.g. "Tokyo Narita (NRT)"
 
-    # Claude's recommendation output
-    should_suggest: bool
+    # LLM classification output
+    origin_type: str          # "airport" | "train_station" | "ferry" | "unknown"
     reasoning: str
     suggested_message: str
 
@@ -36,3 +36,5 @@ class UberAgentState(AgentState, total=False):
     uber_app_url: Optional[str]
     deep_link_url: Optional[str]
     airport_options: list[dict]
+    # Alternative airport options shown when origin is far from user's current location
+    alternative_options: list[dict]
