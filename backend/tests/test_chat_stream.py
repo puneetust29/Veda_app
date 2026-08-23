@@ -133,10 +133,8 @@ def approving_llm(monkeypatch):
 
     # Also mock the Uber agent LLM so it never calls real Anthropic.
     uber_ride_response = RideSuggestion(
-        should_suggest=True,
+        origin_type="airport",
         reasoning="Flight detected from FRA to NRT — airport transfer makes sense.",
-        pickup_label="FRA",
-        dropoff_label="NRT",
         suggested_message="Need a ride to Frankfurt Airport before your Tokyo flight?",
     )
     monkeypatch.setattr(

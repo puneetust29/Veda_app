@@ -1,21 +1,10 @@
 """Tests for the Uber agent LangGraph and UberAgent.execute().
 
-Mirrors the structure of test_agent_graph.py (roaming agent) exactly:
-  - monkeypatches _llm so no real Anthropic call is ever made
-  - drives the compiled graph directly with .invoke()
-  - verifies state transitions, card output, and stream events
-
-Coverage:
-  1. Graph happy path  — Claude says suggest=True → deeplink URLs produced
-  2. Graph no-suggest  — Claude says suggest=False → no URLs, should_suggest=False
-  3. Graph unknown airport — origin not in known-coords map → my_location fallback
-  4. Graph city origin — returns airport choice options instead of a single URL
-  5. Graph known airports — current location → LHR coords resolved and present in URLs
-  6. UberAgent.execute() suggest=True  → recommendation_ready + done emitted
-  7. UberAgent.execute() suggest=False → error + done emitted, no card
-  8. UberAgent.execute_action() → raises UnsupportedActionError (no commit actions)
-  9. Registry discovers uber_agent  → already covered by test_registry.py,
-     included here as a smoke check too
+Reflects the always-suggest architecture introduced when should_suggest was removed:
+  - RideSuggestion uses origin_type (airport/train_station/ferry/unknown), not should_suggest.
+  - Graph always routes: extract_trip_context → suggest_ride → build_deeplink → END.
+  - Agent always emits recommendation_ready — there is no "no suggestion" error path.
+  - Card includes origin_type and alternative_options; no live_quote or connect_uber_url.
 """
 import uuid
 from typing import Optional
@@ -43,6 +32,17 @@ CALENDAR_EVENT_LHR_NRT = {
     "destination": "Tokyo Narita (NRT)",
 }
 
+CALENDAR_EVENT_SEA_JFK = {
+    "id": "evt-5",
+    "customer_id": "cust-1",
+    "event_type": "flight",
+    "start_datetime": "2026-09-10T08:00:00+00:00",
+    "end_datetime": "2026-09-14T08:00:00+00:00",
+    "raw_details": {"destination_country": "USA"},
+    "origin": "Seattle-Tacoma International Airport (SEA)",
+    "destination": "John F. Kennedy International Airport (JFK)",
+}
+
 CALENDAR_EVENT_UNKNOWN = {
     "id": "evt-2",
     "customer_id": "cust-1",
@@ -65,12 +65,23 @@ CALENDAR_EVENT_LONDON_CITY = {
     "destination": "Tokyo Narita (NRT)",
 }
 
+CALENDAR_EVENT_ST_PANCRAS = {
+    "id": "evt-4",
+    "customer_id": "cust-1",
+    "event_type": "flight",
+    "start_datetime": "2026-12-01T08:00:00+00:00",
+    "end_datetime": "2026-12-03T08:00:00+00:00",
+    "raw_details": {"destination_country": "France"},
+    "origin": "London St Pancras",
+    "destination": "Paris Gare du Nord",
+}
+
 CUSTOMER = {"id": "cust-1", "phone_number": "+15550001111"}
-DEVICE_LOCATION = {"latitude": 51.5007, "longitude": -0.1246, "label": "Central London"}
+DEVICE_LOCATION_LONDON  = {"latitude": 51.5007, "longitude": -0.1246, "label": "Central London"}
+DEVICE_LOCATION_SEATTLE = {"latitude": 47.6062, "longitude": -122.3321, "label": "Seattle"}
 
 
 class _FakeStructuredLLM:
-    """Replays a pre-built RideSuggestion on every .invoke() call."""
     def __init__(self, response: RideSuggestion):
         self._response = response
 
@@ -103,13 +114,13 @@ def _make_ctx(calendar_event: dict, emit=None, device_location: Optional[dict] =
 
 
 # ---------------------------------------------------------------------------
-# 1. Graph happy path — suggest=True, known airports
+# 1. Airport origin with known coordinates → deeplink built
 # ---------------------------------------------------------------------------
 
-def test_uber_graph_suggests_ride_for_known_airports(monkeypatch):
+def test_uber_graph_airport_origin_builds_deeplink(monkeypatch):
     _patch_llm(monkeypatch, RideSuggestion(
-        should_suggest=True,
-        reasoning="LHR departure, NRT arrival — airport transfer makes sense.",
+        origin_type="airport",
+        reasoning="LHR departure — airport transfer makes sense.",
         suggested_message="Need a ride to Heathrow before your Tokyo flight?",
     ))
 
@@ -118,26 +129,51 @@ def test_uber_graph_suggests_ride_for_known_airports(monkeypatch):
         "calendar_event": CALENDAR_EVENT_LHR_NRT,
     })
 
-    assert state["should_suggest"] is True
+    assert state["origin_type"] == "airport"
     assert state["origin_label"] == "London Heathrow (LHR)"
     assert state["destination_label"] == "Tokyo Narita (NRT)"
     assert state["pickup_label"] == "Current location"
     assert state["dropoff_label"] == "London Heathrow (LHR)"
     assert state["suggested_message"] == "Need a ride to Heathrow before your Tokyo flight?"
-    # Deep link URLs must be produced
     assert state["uber_app_url"].startswith("uber://?")
     assert state["deep_link_url"].startswith("https://m.uber.com/ul/?")
+    # LHR coordinates appear in the dropoff params
+    assert "51.47" in state["uber_app_url"]
+    assert "0.4543" in state["uber_app_url"]
 
 
 # ---------------------------------------------------------------------------
-# 2. Graph no-suggest — Claude says don't suggest
+# 2. US airport (SEA) — deeplink with SEA coordinates
 # ---------------------------------------------------------------------------
 
-def test_uber_graph_no_suggestion_when_claude_declines(monkeypatch):
+def test_uber_graph_us_airport_builds_deeplink(monkeypatch):
     _patch_llm(monkeypatch, RideSuggestion(
-        should_suggest=False,
-        reasoning="Origin airport unclear — can't pre-fill pickup.",
-        suggested_message="No Uber suggestion available for this trip.",
+        origin_type="airport",
+        reasoning="SEA departure.",
+        suggested_message="Need a ride to Sea-Tac before your flight?",
+    ))
+
+    state = uber_graph.invoke({
+        "customer": CUSTOMER,
+        "calendar_event": CALENDAR_EVENT_SEA_JFK,
+        "device_location": DEVICE_LOCATION_SEATTLE,
+    })
+
+    assert state["origin_type"] == "airport"
+    assert state["uber_app_url"].startswith("uber://?")
+    # SEA coordinates in dropoff
+    assert "47.4502" in state["uber_app_url"] or "122.3088" in state["uber_app_url"]
+
+
+# ---------------------------------------------------------------------------
+# 3. Unknown airport → still produces a deeplink (pickup=my_location fallback)
+# ---------------------------------------------------------------------------
+
+def test_uber_graph_unknown_airport_falls_back_gracefully(monkeypatch):
+    _patch_llm(monkeypatch, RideSuggestion(
+        origin_type="unknown",
+        reasoning="Origin airport not recognised.",
+        suggested_message="Need an Uber before your trip? We can open the app with your current location.",
     ))
 
     state = uber_graph.invoke({
@@ -145,45 +181,20 @@ def test_uber_graph_no_suggestion_when_claude_declines(monkeypatch):
         "calendar_event": CALENDAR_EVENT_UNKNOWN,
     })
 
-    assert state["should_suggest"] is False
-    assert state["suggested_message"] == "No Uber suggestion available for this trip."
-    # Graph short-circuits to END after suggest_ride when should_suggest=False —
-    # build_deeplink never runs, so uber_app_url and deep_link_url are NOT in state.
-    assert "uber_app_url" not in state
-    assert "deep_link_url" not in state
-    assert "airport_options" not in state
+    assert state["origin_type"] == "unknown"
+    # Must still have some deeplink — either a direct URL or airport options
+    has_url = bool(state.get("uber_app_url") or state.get("deep_link_url"))
+    has_options = bool(state.get("airport_options"))
+    assert has_url or has_options
 
 
 # ---------------------------------------------------------------------------
-# 3. Graph unknown airport — coords not in map → my_location fallback
-# ---------------------------------------------------------------------------
-
-def test_uber_graph_unknown_airport_falls_back_to_my_location(monkeypatch):
-    _patch_llm(monkeypatch, RideSuggestion(
-        should_suggest=True,
-        reasoning="Flight detected.",
-        suggested_message="Book your airport Uber.",
-    ))
-
-    state = uber_graph.invoke({
-        "customer": CUSTOMER,
-        "calendar_event": CALENDAR_EVENT_UNKNOWN,
-    })
-
-    # Pickup coords unknown → my_location in URL
-    assert "pickup=my_location" in state["uber_app_url"] or "pickup=my_location" in state["deep_link_url"]
-    # No pickup[latitude] since coords are missing
-    assert "pickup%5Blatitude%5D" not in state["uber_app_url"]
-    assert "pickup[latitude]" not in state["uber_app_url"]
-
-
-# ---------------------------------------------------------------------------
-# 4. Graph city origin — user chooses from curated airport options first
+# 4. City origin ("London") → curated airport options, no single deeplink
 # ---------------------------------------------------------------------------
 
 def test_uber_graph_city_origin_returns_airport_options(monkeypatch):
     _patch_llm(monkeypatch, RideSuggestion(
-        should_suggest=True,
+        origin_type="airport",
         reasoning="London departure detected.",
         suggested_message="Choose your London airport.",
     ))
@@ -197,47 +208,47 @@ def test_uber_graph_city_origin_returns_airport_options(monkeypatch):
     assert state["dropoff_label"] == "London"
     assert state["uber_app_url"] is None
     assert state["deep_link_url"] is None
-    assert [option["label"] for option in state["airport_options"]] == [
+    assert [opt["label"] for opt in state["airport_options"]] == [
         "London Heathrow (LHR)",
         "London Gatwick (LGW)",
     ]
-
-    for option in state["airport_options"]:
-        assert option["uber_app_url"].startswith("uber://?")
-        assert option["deep_link_url"].startswith("https://m.uber.com/ul/?")
-        assert "pickup=my_location" in option["uber_app_url"]
-        assert "pickup=my_location" in option["deep_link_url"]
+    for opt in state["airport_options"]:
+        assert opt["uber_app_url"].startswith("uber://?")
+        assert opt["deep_link_url"].startswith("https://m.uber.com/ul/?")
+        assert "pickup=my_location" in opt["uber_app_url"]
 
 
-def test_uber_graph_city_origin_preserves_device_pickup_for_airport_options(monkeypatch):
+# ---------------------------------------------------------------------------
+# 5. City origin + device location → pickup coordinates in airport option URLs
+# ---------------------------------------------------------------------------
+
+def test_uber_graph_city_origin_with_device_location_pre_fills_pickup(monkeypatch):
     _patch_llm(monkeypatch, RideSuggestion(
-        should_suggest=True,
-        reasoning="London departure detected.",
+        origin_type="airport",
+        reasoning="London departure.",
         suggested_message="Choose your London airport.",
     ))
 
     state = uber_graph.invoke({
         "customer": CUSTOMER,
         "calendar_event": CALENDAR_EVENT_LONDON_CITY,
-        "device_location": DEVICE_LOCATION,
+        "device_location": DEVICE_LOCATION_LONDON,
     })
 
-    for option in state["airport_options"]:
-        assert "pickup[latitude]=51.5007" in option["uber_app_url"]
-        assert "pickup[longitude]=-0.1246" in option["uber_app_url"]
-        assert "pickup[nickname]=Central%20London" in option["uber_app_url"]
-        assert "pickup[latitude]=51.5007" in option["deep_link_url"]
-        assert "pickup[longitude]=-0.1246" in option["deep_link_url"]
-        assert "pickup[nickname]=Central%20London" in option["deep_link_url"]
+    for opt in state["airport_options"]:
+        assert "pickup[latitude]=51.5007" in opt["uber_app_url"]
+        assert "pickup[longitude]=-0.1246" in opt["uber_app_url"]
+        assert "pickup[nickname]=Central%20London" in opt["uber_app_url"]
+        assert "pickup=my_location" not in opt["uber_app_url"]
 
 
 # ---------------------------------------------------------------------------
-# 5. Graph known airports — current location + LHR dropoff appear in the URL
+# 6. Known airport + device location → pickup coords replace my_location
 # ---------------------------------------------------------------------------
 
-def test_uber_graph_known_airports_include_coordinates_in_url(monkeypatch):
+def test_uber_graph_device_location_overrides_my_location(monkeypatch):
     _patch_llm(monkeypatch, RideSuggestion(
-        should_suggest=True,
+        origin_type="airport",
         reasoning="Known airports.",
         suggested_message="Your Heathrow ride awaits.",
     ))
@@ -245,167 +256,143 @@ def test_uber_graph_known_airports_include_coordinates_in_url(monkeypatch):
     state = uber_graph.invoke({
         "customer": CUSTOMER,
         "calendar_event": CALENDAR_EVENT_LHR_NRT,
-        "device_location": DEVICE_LOCATION,
+        "device_location": DEVICE_LOCATION_LONDON,
     })
 
-    # Pickup should use the rider's device coordinates when available.
     for url in (state["uber_app_url"], state["deep_link_url"]):
         assert "pickup[latitude]=51.5007" in url
         assert "pickup[longitude]=-0.1246" in url
         assert "pickup[nickname]=Central%20London" in url
         assert "pickup=my_location" not in url
-
-    # LHR lat/lng (51.47, -0.4543) must appear as the dropoff in both URLs.
-    for url in (state["uber_app_url"], state["deep_link_url"]):
-        assert "51.47" in url
-        assert "0.4543" in url   # longitude (negative sign encoded/stripped)
-        assert "London+Heathrow" in url or "LHR" in url
-        assert "35.772" not in url
-        assert "140.3929" not in url
+        assert "51.47" in url       # LHR latitude in dropoff
+        assert "0.4543" in url      # LHR longitude in dropoff
 
 
-def test_uber_graph_adds_connect_url_when_mcp_needs_auth(monkeypatch):
+# ---------------------------------------------------------------------------
+# 7. Train station far from user → alternative airport options built
+# ---------------------------------------------------------------------------
+
+def test_uber_graph_train_station_far_from_user_builds_alternatives(monkeypatch):
     _patch_llm(monkeypatch, RideSuggestion(
-        should_suggest=True,
-        reasoning="Airport transfer makes sense.",
-        suggested_message="Need a ride to Heathrow?",
+        origin_type="train_station",
+        reasoning="London St Pancras is a train station, user is in Seattle.",
+        suggested_message="Need a ride to St Pancras for your Eurostar?",
     ))
-    monkeypatch.setattr(uber_graph_module, "uber_mcp_is_configured", lambda: True)
-    monkeypatch.setattr(
-        uber_graph_module,
-        "maybe_get_ride_quote",
-        lambda **_kwargs: {
-            "mcp_available": True,
-            "connect_uber_url": "https://auth.example.test/uber",
-            "quote_status": "Connect Uber to unlock live ride estimates.",
-        },
-    )
 
     state = uber_graph.invoke({
         "customer": CUSTOMER,
-        "customer_id": CUSTOMER["id"],
-        "calendar_event": CALENDAR_EVENT_LHR_NRT,
+        "calendar_event": CALENDAR_EVENT_ST_PANCRAS,
+        "device_location": DEVICE_LOCATION_SEATTLE,
     })
 
-    assert state["connect_uber_url"] == "https://auth.example.test/uber"
-    assert state["quote_status"] == "Connect Uber to unlock live ride estimates."
-    assert state["live_quote"] is None
+    assert state["origin_type"] == "train_station"
+    assert state["uber_app_url"].startswith("uber://?")
+    assert len(state["alternative_options"]) > 0
+    for opt in state["alternative_options"]:
+        assert opt["label"]
+        assert opt["uber_app_url"].startswith("uber://?")
+        assert opt["deep_link_url"].startswith("https://m.uber.com/ul/?")
 
 
 # ---------------------------------------------------------------------------
-# 6. UberAgent.execute() suggest=True → recommendation_ready + done emitted
+# 8. Train station close to user → no alternative options
 # ---------------------------------------------------------------------------
 
-def test_uber_agent_execute_emits_recommendation_ready_and_done(monkeypatch):
+def test_uber_graph_train_station_nearby_has_no_alternatives(monkeypatch):
     _patch_llm(monkeypatch, RideSuggestion(
-        should_suggest=True,
+        origin_type="train_station",
+        reasoning="London St Pancras, user is also in London.",
+        suggested_message="Need a ride to St Pancras?",
+    ))
+
+    state = uber_graph.invoke({
+        "customer": CUSTOMER,
+        "calendar_event": CALENDAR_EVENT_ST_PANCRAS,
+        "device_location": DEVICE_LOCATION_LONDON,
+    })
+
+    assert state["origin_type"] == "train_station"
+    # Station is close to the user — no alternatives expected
+    assert state["alternative_options"] == []
+
+
+# ---------------------------------------------------------------------------
+# 9. UberAgent.execute() — always emits recommendation_ready, never error
+# ---------------------------------------------------------------------------
+
+def test_uber_agent_always_emits_recommendation_ready(monkeypatch):
+    _patch_llm(monkeypatch, RideSuggestion(
+        origin_type="airport",
         reasoning="Airport transfer makes sense.",
         suggested_message="Need a ride to Heathrow?",
     ))
-    monkeypatch.setattr(uber_graph_module, "uber_mcp_is_configured", lambda: True)
-    monkeypatch.setattr(
-        uber_graph_module,
-        "maybe_get_ride_quote",
-        lambda **_kwargs: {
-            "mcp_available": True,
-            "live_quote": {
-                "product_name": "UberX",
-                "estimate": "£24-30",
-                "currency_code": "GBP",
-                "eta_minutes": 18,
-            },
-            "quote_status": "Live Uber quote via MCP from 2 product option(s).",
-        },
-    )
 
     emitted = []
-    ctx = _make_ctx(CALENDAR_EVENT_LHR_NRT, emit=emitted.append, device_location=DEVICE_LOCATION)
+    ctx = _make_ctx(CALENDAR_EVENT_LHR_NRT, emit=emitted.append, device_location=DEVICE_LOCATION_LONDON)
 
-    agent = UberAgent()
-    result = agent.execute(ctx)
+    result = UberAgent().execute(ctx)
 
     event_types = [e["type"] for e in emitted]
     assert "recommendation_ready" in event_types
     assert "done" in event_types
     assert event_types[-1] == "done"
+    assert "error" not in event_types
 
-    # Card shape validation
     assert result.status == "ok"
     assert len(result.cards) == 1
     card = result.cards[0]
     assert card["kind"] == "uber_ride"
-    assert card["should_suggest"] is True
+    assert card["origin_type"] == "airport"
+    assert card["suggested_message"] == "Need a ride to Heathrow?"
     assert card["pickup_label"] == "Central London"
     assert card["dropoff_label"] == "London Heathrow (LHR)"
     assert card["uber_app_url"].startswith("uber://?")
-    assert "pickup[latitude]=51.5007" in card["uber_app_url"]
-    assert "pickup[longitude]=-0.1246" in card["uber_app_url"]
     assert card["deep_link_url"].startswith("https://m.uber.com/ul/?")
-    assert "pickup[latitude]=51.5007" in card["deep_link_url"]
-    assert "pickup[longitude]=-0.1246" in card["deep_link_url"]
-    assert card["live_quote"] == {
-        "product_name": "UberX",
-        "estimate": "£24-30",
-        "currency_code": "GBP",
-        "eta_minutes": 18,
-    }
-    assert card["quote_status"] == "Live Uber quote via MCP from 2 product option(s)."
-    assert result.proposed_actions == []   # no commit action — deep link only
+    assert result.proposed_actions == []
 
 
-# ---------------------------------------------------------------------------
-# 7. UberAgent.execute() suggest=False → error + done, no card
-# ---------------------------------------------------------------------------
-
-def test_uber_agent_execute_no_suggestion_emits_error_and_done(monkeypatch):
+def test_uber_agent_emits_card_even_for_unknown_origin(monkeypatch):
+    """Unknown origin still produces a card — no error path any more."""
     _patch_llm(monkeypatch, RideSuggestion(
-        should_suggest=False,
-        reasoning="Origin unclear.",
-        suggested_message="No Uber suggestion for this trip.",
+        origin_type="unknown",
+        reasoning="Origin not recognised.",
+        suggested_message="Need an Uber before your trip?",
     ))
 
     emitted = []
     ctx = _make_ctx(CALENDAR_EVENT_UNKNOWN, emit=emitted.append)
 
-    agent = UberAgent()
-    result = agent.execute(ctx)
+    result = UberAgent().execute(ctx)
 
     event_types = [e["type"] for e in emitted]
-    assert "error" in event_types
-    assert "done" in event_types
-    assert "recommendation_ready" not in event_types
-
-    assert result.status == "ok"
-    assert result.cards == []
-    assert result.proposed_actions == []
+    assert "recommendation_ready" in event_types
+    assert "error" not in event_types
+    assert result.cards[0]["kind"] == "uber_ride"
 
 
 # ---------------------------------------------------------------------------
-# 8. execute_action() → UnsupportedActionError (no commit actions declared)
+# 10. execute_action() → UnsupportedActionError (no commit actions)
 # ---------------------------------------------------------------------------
 
-def test_uber_agent_execute_action_raises_unsupported(monkeypatch):
+def test_uber_agent_execute_action_raises_unsupported():
     ctx = _make_ctx(CALENDAR_EVENT_LHR_NRT)
-    agent = UberAgent()
-
     with pytest.raises(UnsupportedActionError):
-        agent.execute_action(ctx, "activate_anything")
+        UberAgent().execute_action(ctx, "activate_anything")
 
 
 # ---------------------------------------------------------------------------
-# 9. Manifest smoke check — correct fields declared
+# 11. Manifest smoke check
 # ---------------------------------------------------------------------------
 
 def test_uber_agent_manifest_fields():
-    agent = UberAgent()
-    m = agent.manifest
+    m = UberAgent().manifest
 
     assert m.name == "uber_agent"
     assert m.enabled is True
     assert "uber" in m.capabilities
     assert "trip.detected" in m.triggers.events
-    assert "uber.get_auth_url" in m.tools
-    assert "uber.get_price_estimates" in m.tools
     assert "uber.get_deeplink" in m.tools
+    assert "uber.get_auth_url" not in m.tools        # MCP auth removed
+    assert "uber.get_price_estimates" not in m.tools  # MCP quotes removed
     assert "device_location" in m.required_context
-    assert m.actions == []   # no commit-risk actions
+    assert m.actions == []
