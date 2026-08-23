@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from app.config import get_settings
 from app.db.client import get_supabase
 from app.deps import get_current_customer
-from app.integrations import google_gmail, google_oauth
+from app.integrations import google_gmail, google_oauth, gmail_email_agent
 
 router = APIRouter(prefix="/gmail", tags=["gmail"])
 
@@ -170,14 +170,18 @@ def sync_gmail_messages(
     max_results: int = 10,
     customer: dict = Depends(get_current_customer),
 ) -> dict:
-    """Fetch messages from Gmail API and store in database."""
+    """Fetch messages from Gmail API, store in database, and extract flight confirmations.
+
+    Returns:
+        {fetched, synced, flights_extracted, duplicates, result_size_estimate}
+    """
     _require_gmail_configured()
     try:
         result = google_gmail.list_messages(customer["id"], max_results=max_results)
         messages = result.get("messages", [])
 
         # Store messages in database
-        rows = []
+        email_rows = []
         for msg in messages:
             row = {
                 "customer_id": customer["id"],
@@ -189,16 +193,53 @@ def sync_gmail_messages(
                 "labels": msg.get("labels", []),
                 "is_read": msg.get("is_read", False),
             }
-            rows.append(row)
+            email_rows.append(row)
 
-        if rows:
+        if email_rows:
             get_supabase().table("gmail_messages").upsert(
-                rows, on_conflict="customer_id,gmail_message_id"
+                email_rows, on_conflict="customer_id,gmail_message_id"
             ).execute()
+
+        # Extract flights from emails
+        flights_extracted = 0
+        duplicates = 0
+        for msg in messages:
+            try:
+                flight = gmail_email_agent.parse_flight_email(msg, customer["id"])
+                if not flight:
+                    continue
+
+                # Check for duplicate
+                if gmail_email_agent.check_duplicate_flight(
+                    customer["id"],
+                    flight.origin,
+                    flight.destination,
+                    flight.start_datetime,
+                ):
+                    duplicates += 1
+                    continue
+
+                # Insert flight to calendar_events (duplicates already checked)
+                flight_row = flight.to_calendar_event()
+                get_supabase().table("calendar_events").insert(
+                    [flight_row]
+                ).execute()
+                flights_extracted += 1
+            except Exception as e:
+                # Log error but don't fail entire sync
+                import sys
+
+                print(
+                    f"[WARN] Error extracting flight from email {msg.get('gmail_message_id')}: {e}",
+                    file=sys.stderr,
+                )
+                continue
 
         return {
             "fetched": len(messages),
-            "synced": len(rows),
+            "synced": len(email_rows),
+            "flights_extracted": flights_extracted,
+            "duplicates": duplicates,
             "result_size_estimate": result.get("result_size_estimate", 0),
         }
     except google_gmail.GmailNotConnected as exc:

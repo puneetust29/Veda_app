@@ -134,9 +134,11 @@ def complete_authorization(state: str, code: str) -> dict:
             scope=tokens.get("scope", ""),
             email=email,
         )
-    except Exception:
+    except Exception as e:
         # If gmail_credentials table doesn't exist, that's fine
         # The access token works for both services
+        import sys
+        print(f"[WARN] Failed to store Gmail credentials: {e}", file=sys.stderr)
         pass
 
     # Update customer name from profile if present

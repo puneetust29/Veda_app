@@ -165,10 +165,27 @@ def _store_credentials(
 
 
 def get_connection(customer_id: str) -> Optional[dict]:
-    """Retrieve the Gmail connection for a customer."""
+    """Retrieve the Gmail connection for a customer.
+
+    Checks gmail_credentials first, then falls back to google_calendar_credentials
+    (since the unified OAuth flow stores in google_calendar_credentials).
+    """
     supabase = get_supabase()
+
+    # Try gmail_credentials first
     result = (
         supabase.table("gmail_credentials")
+        .select("*")
+        .eq("customer_id", customer_id)
+        .limit(1)
+        .execute()
+    )
+    if result.data:
+        return result.data[0]
+
+    # Fall back to google_calendar_credentials (unified auth stores there)
+    result = (
+        supabase.table("google_calendar_credentials")
         .select("*")
         .eq("customer_id", customer_id)
         .limit(1)
