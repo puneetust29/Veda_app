@@ -1,5 +1,20 @@
 # Boot Server Guide — Veda App
 
+## One-Command Start / Restart
+
+```bash
+cd /Users/287262/Documents/Snehashis/repo/Veda_app && ./dev.sh
+```
+
+This single script:
+- Kills any existing servers on `:8000` and `:8081`
+- Detects your current local IP and updates `mobile/.env` automatically
+- Starts the FastAPI backend (background, logs → `/tmp/veda_backend.log`)
+- Starts the Expo dev server (background, logs → `/tmp/veda_mobile.log`)
+- Prints status, Expo Go URL, and stop commands
+
+---
+
 ## Project Structure
 ```
 Veda_app/

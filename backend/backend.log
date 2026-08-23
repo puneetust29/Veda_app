@@ -112,3 +112,287 @@ INFO:     192.168.1.151:62214 - "POST /chat/stream HTTP/1.1" 200 OK
 2026-08-22 16:08:09,601 INFO httpx | HTTP Request: GET https://mcukcuinjgtgczrpxfby.supabase.co/rest/v1/customers?select=%2A&phone_number=eq.%2B15550001111&limit=1 "HTTP/1.1 200 OK"
 2026-08-22 16:08:09,743 INFO httpx | HTTP Request: GET https://mcukcuinjgtgczrpxfby.supabase.co/rest/v1/calendar_events?select=%2A&customer_id=eq.4df28ba6-e5b1-4465-8d59-d1ba49bacb7a&order=start_datetime "HTTP/1.1 200 OK"
 INFO:     192.168.1.151:62214 - "GET /calendar/events HTTP/1.1" 200 OK
+WARNING:  WatchFiles detected changes in 'scripts/test_uber_api.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-08-22 17:47:30,805 INFO app.main | app shutdown
+INFO:     Application shutdown complete.
+INFO:     Finished server process [73536]
+/Users/287262/Documents/Snehashis/repo/Veda_app/backend/.venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [92032]
+INFO:     Waiting for application startup.
+2026-08-22 17:47:32,188 INFO app.main | app startup | environment=development | log_level=INFO
+2026-08-22 17:47:32,202 INFO app.main | app startup complete | orchestrator_ready=true
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'app/tools/uber_deeplink.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-08-22 17:52:25,862 INFO app.main | app shutdown
+INFO:     Application shutdown complete.
+INFO:     Finished server process [92032]
+/Users/287262/Documents/Snehashis/repo/Veda_app/backend/.venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [92562]
+INFO:     Waiting for application startup.
+2026-08-22 17:52:27,237 INFO app.main | app startup | environment=development | log_level=INFO
+2026-08-22 17:52:27,248 INFO app.main | app startup complete | orchestrator_ready=true
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'scripts/test_uber_api.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-08-22 18:09:30,148 INFO app.main | app shutdown
+INFO:     Application shutdown complete.
+INFO:     Finished server process [92562]
+WARNING:  WatchFiles detected changes in 'scripts/test_uber_api.py'. Reloading...
+/Users/287262/Documents/Snehashis/repo/Veda_app/backend/.venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [94290]
+INFO:     Waiting for application startup.
+2026-08-22 18:09:31,547 INFO app.main | app startup | environment=development | log_level=INFO
+2026-08-22 18:09:31,559 INFO app.main | app startup complete | orchestrator_ready=true
+INFO:     Application startup complete.
+/Users/287262/Documents/Snehashis/repo/Veda_app/backend/.venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [94296]
+INFO:     Waiting for application startup.
+2026-08-22 18:09:32,898 INFO app.main | app startup | environment=development | log_level=INFO
+2026-08-22 18:09:32,911 INFO app.main | app startup complete | orchestrator_ready=true
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'scripts/test_uber_api.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-08-22 18:09:34,938 INFO app.main | app shutdown
+INFO:     Application shutdown complete.
+INFO:     Finished server process [94296]
+WARNING:  WatchFiles detected changes in 'scripts/test_uber_api.py'. Reloading...
+/Users/287262/Documents/Snehashis/repo/Veda_app/backend/.venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [94300]
+INFO:     Waiting for application startup.
+2026-08-22 18:09:36,296 INFO app.main | app startup | environment=development | log_level=INFO
+2026-08-22 18:09:36,306 INFO app.main | app startup complete | orchestrator_ready=true
+INFO:     Application startup complete.
+/Users/287262/Documents/Snehashis/repo/Veda_app/backend/.venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [94303]
+INFO:     Waiting for application startup.
+2026-08-22 18:09:37,639 INFO app.main | app startup | environment=development | log_level=INFO
+2026-08-22 18:09:37,650 INFO app.main | app startup complete | orchestrator_ready=true
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'scripts/test_uber_api.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-08-22 18:10:23,179 INFO app.main | app shutdown
+INFO:     Application shutdown complete.
+INFO:     Finished server process [94303]
+WARNING:  WatchFiles detected changes in 'scripts/test_uber_api.py'. Reloading...
+/Users/287262/Documents/Snehashis/repo/Veda_app/backend/.venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [94378]
+INFO:     Waiting for application startup.
+2026-08-22 18:10:24,544 INFO app.main | app startup | environment=development | log_level=INFO
+2026-08-22 18:10:24,554 INFO app.main | app startup complete | orchestrator_ready=true
+INFO:     Application startup complete.
+/Users/287262/Documents/Snehashis/repo/Veda_app/backend/.venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [94387]
+INFO:     Waiting for application startup.
+2026-08-22 18:10:25,943 INFO app.main | app startup | environment=development | log_level=INFO
+2026-08-22 18:10:25,955 INFO app.main | app startup complete | orchestrator_ready=true
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'scripts/test_uber_api.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-08-22 18:10:35,160 INFO app.main | app shutdown
+INFO:     Application shutdown complete.
+INFO:     Finished server process [94387]
+WARNING:  WatchFiles detected changes in 'scripts/test_uber_api.py'. Reloading...
+/Users/287262/Documents/Snehashis/repo/Veda_app/backend/.venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [94404]
+INFO:     Waiting for application startup.
+2026-08-22 18:10:36,556 INFO app.main | app startup | environment=development | log_level=INFO
+2026-08-22 18:10:36,567 INFO app.main | app startup complete | orchestrator_ready=true
+INFO:     Application startup complete.
+/Users/287262/Documents/Snehashis/repo/Veda_app/backend/.venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [94407]
+INFO:     Waiting for application startup.
+2026-08-22 18:10:37,921 INFO app.main | app startup | environment=development | log_level=INFO
+2026-08-22 18:10:37,932 INFO app.main | app startup complete | orchestrator_ready=true
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'scripts/test_uber_user_auth.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-08-22 18:17:03,037 INFO app.main | app shutdown
+INFO:     Application shutdown complete.
+INFO:     Finished server process [94407]
+/Users/287262/Documents/Snehashis/repo/Veda_app/backend/.venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [94988]
+INFO:     Waiting for application startup.
+2026-08-22 18:17:04,414 INFO app.main | app startup | environment=development | log_level=INFO
+2026-08-22 18:17:04,426 INFO app.main | app startup complete | orchestrator_ready=true
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'scripts/test_uber_user_auth.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-08-22 18:18:47,949 INFO app.main | app shutdown
+INFO:     Application shutdown complete.
+INFO:     Finished server process [94988]
+/Users/287262/Documents/Snehashis/repo/Veda_app/backend/.venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [95210]
+INFO:     Waiting for application startup.
+2026-08-22 18:18:49,281 INFO app.main | app startup | environment=development | log_level=INFO
+2026-08-22 18:18:49,291 INFO app.main | app startup complete | orchestrator_ready=true
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'scripts/test_uber_user_auth.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-08-22 18:18:54,752 INFO app.main | app shutdown
+INFO:     Application shutdown complete.
+INFO:     Finished server process [95210]
+/Users/287262/Documents/Snehashis/repo/Veda_app/backend/.venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [95219]
+INFO:     Waiting for application startup.
+2026-08-22 18:18:56,088 INFO app.main | app startup | environment=development | log_level=INFO
+2026-08-22 18:18:56,099 INFO app.main | app startup complete | orchestrator_ready=true
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'scripts/test_uber_user_auth.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-08-22 18:19:02,471 INFO app.main | app shutdown
+INFO:     Application shutdown complete.
+INFO:     Finished server process [95219]
+/Users/287262/Documents/Snehashis/repo/Veda_app/backend/.venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [95230]
+INFO:     Waiting for application startup.
+2026-08-22 18:19:03,853 INFO app.main | app startup | environment=development | log_level=INFO
+2026-08-22 18:19:03,864 INFO app.main | app startup complete | orchestrator_ready=true
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'scripts/test_uber_user_auth.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-08-22 18:19:08,816 INFO app.main | app shutdown
+INFO:     Application shutdown complete.
+INFO:     Finished server process [95230]
+/Users/287262/Documents/Snehashis/repo/Veda_app/backend/.venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [95239]
+INFO:     Waiting for application startup.
+2026-08-22 18:19:10,181 INFO app.main | app startup | environment=development | log_level=INFO
+2026-08-22 18:19:10,192 INFO app.main | app startup complete | orchestrator_ready=true
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'scripts/test_uber_user_auth.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-08-22 18:19:14,237 INFO app.main | app shutdown
+INFO:     Application shutdown complete.
+INFO:     Finished server process [95239]
+/Users/287262/Documents/Snehashis/repo/Veda_app/backend/.venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [95246]
+INFO:     Waiting for application startup.
+2026-08-22 18:19:15,586 INFO app.main | app startup | environment=development | log_level=INFO
+2026-08-22 18:19:15,596 INFO app.main | app startup complete | orchestrator_ready=true
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'scripts/test_uber_user_auth.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-08-22 18:19:19,035 INFO app.main | app shutdown
+INFO:     Application shutdown complete.
+INFO:     Finished server process [95246]
+/Users/287262/Documents/Snehashis/repo/Veda_app/backend/.venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [95266]
+INFO:     Waiting for application startup.
+2026-08-22 18:19:20,351 INFO app.main | app startup | environment=development | log_level=INFO
+2026-08-22 18:19:20,361 INFO app.main | app startup complete | orchestrator_ready=true
+INFO:     Application startup complete.
+INFO:     127.0.0.1:61578 - "GET /uber/callback?error=invalid_scope HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61578 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+WARNING:  WatchFiles detected changes in 'scripts/test_uber_user_auth.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-08-22 18:28:23,073 INFO app.main | app shutdown
+INFO:     Application shutdown complete.
+INFO:     Finished server process [95266]
+/Users/287262/Documents/Snehashis/repo/Veda_app/backend/.venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [96213]
+INFO:     Waiting for application startup.
+2026-08-22 18:28:24,433 INFO app.main | app startup | environment=development | log_level=INFO
+2026-08-22 18:28:24,444 INFO app.main | app startup complete | orchestrator_ready=true
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'scripts/test_uber_user_auth.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-08-22 18:28:28,994 INFO app.main | app shutdown
+INFO:     Application shutdown complete.
+INFO:     Finished server process [96213]
+/Users/287262/Documents/Snehashis/repo/Veda_app/backend/.venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [96221]
+INFO:     Waiting for application startup.
+2026-08-22 18:28:30,324 INFO app.main | app startup | environment=development | log_level=INFO
+2026-08-22 18:28:30,334 INFO app.main | app startup complete | orchestrator_ready=true
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'scripts/test_uber_user_auth.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-08-22 18:28:35,188 INFO app.main | app shutdown
+INFO:     Application shutdown complete.
+INFO:     Finished server process [96221]
+/Users/287262/Documents/Snehashis/repo/Veda_app/backend/.venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [96228]
+INFO:     Waiting for application startup.
+2026-08-22 18:28:36,551 INFO app.main | app startup | environment=development | log_level=INFO
+2026-08-22 18:28:36,561 INFO app.main | app startup complete | orchestrator_ready=true
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'scripts/test_uber_user_auth.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-08-22 20:06:22,099 INFO app.main | app shutdown
+INFO:     Application shutdown complete.
+INFO:     Finished server process [96228]
+WARNING:  WatchFiles detected changes in 'scripts/test_uber_user_auth.py'. Reloading...
+/Users/287262/Documents/Snehashis/repo/Veda_app/backend/.venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [4229]
+INFO:     Waiting for application startup.
+2026-08-22 20:06:23,569 INFO app.main | app startup | environment=development | log_level=INFO
+2026-08-22 20:06:23,580 INFO app.main | app startup complete | orchestrator_ready=true
+INFO:     Application startup complete.
+/Users/287262/Documents/Snehashis/repo/Veda_app/backend/.venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [4233]
+INFO:     Waiting for application startup.
+2026-08-22 20:06:24,888 INFO app.main | app startup | environment=development | log_level=INFO
+2026-08-22 20:06:24,899 INFO app.main | app startup complete | orchestrator_ready=true
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'scripts/test_uber_user_auth.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-08-22 20:06:33,894 INFO app.main | app shutdown
+INFO:     Application shutdown complete.
+INFO:     Finished server process [4233]
+WARNING:  WatchFiles detected changes in 'scripts/test_uber_user_auth.py'. Reloading...
+/Users/287262/Documents/Snehashis/repo/Veda_app/backend/.venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [4258]
+INFO:     Waiting for application startup.
+2026-08-22 20:06:35,258 INFO app.main | app startup | environment=development | log_level=INFO
+2026-08-22 20:06:35,269 INFO app.main | app startup complete | orchestrator_ready=true
+INFO:     Application startup complete.
+/Users/287262/Documents/Snehashis/repo/Veda_app/backend/.venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [4260]
+INFO:     Waiting for application startup.
+2026-08-22 20:06:36,585 INFO app.main | app startup | environment=development | log_level=INFO
+2026-08-22 20:06:36,595 INFO app.main | app startup complete | orchestrator_ready=true
+INFO:     Application startup complete.

@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 # hand-maintained lookup covering the seeded demo airports + common IATA codes that
 # appear in auto-created test accounts. Real coordinates, not placeholders.
 KNOWN_AIRPORT_COORDINATES: dict[str, tuple[float, float]] = {
-    # Seeded demo departure airports
+    # --- UK / Europe departure airports ---
     "London Heathrow (LHR)": (51.4700, -0.4543),
     "London Gatwick (LGW)": (51.1537, -0.1821),
     # NOTE: "London St Pancras" and "Paris Gare du Nord" are intentionally NOT
@@ -34,18 +34,35 @@ KNOWN_AIRPORT_COORDINATES: dict[str, tuple[float, float]] = {
     "Paris Charles de Gaulle (CDG)": (49.0097, 2.5479),
     "Marrakesh Menara (RAK)": (31.6069, -8.0363),
     "Frankfurt Airport (FRA)": (50.0379, 8.5622),
-    # Seeded demo arrival airports (kept for completeness)
     "Tokyo Narita (NRT)": (35.7720, 140.3929),
-    # Common IATA short-codes that appear in auto-created test accounts
+    # --- US departure airports (seeded US test data) ---
+    "Seattle-Tacoma International Airport (SEA)": (47.4502, -122.3088),
+    "San Francisco International Airport (SFO)":  (37.6213, -122.3790),
+    "Los Angeles International Airport (LAX)":    (33.9425, -118.4081),
+    "John F. Kennedy International Airport (JFK)": (40.6413, -73.7781),
+    "O'Hare International Airport (ORD)":         (41.9742, -87.9073),
+    "Miami International Airport (MIA)":          (25.7959, -80.2870),
+    "Dallas/Fort Worth International Airport (DFW)": (32.8998, -97.0403),
+    "Denver International Airport (DEN)":         (39.8561, -104.6737),
+    "Hartsfield-Jackson Atlanta Airport (ATL)":   (33.6407, -84.4277),
+    "Boston Logan International Airport (BOS)":   (42.3656, -71.0096),
+    # --- IATA short-codes (common alternative format in calendar events) ---
     "LHR": (51.4700, -0.4543),
     "LGW": (51.1537, -0.1821),
     "CDG": (49.0097, 2.5479),
     "NRT": (35.7720, 140.3929),
     "RAK": (31.6069, -8.0363),
     "FRA": (50.0379, 8.5622),
-    "JFK": (40.6413, -73.7781),
     "SEA": (47.4502, -122.3088),
-    "Seattle-Tacoma International Airport (SEA)": (47.4502, -122.3088),
+    "SFO": (37.6213, -122.3790),
+    "LAX": (33.9425, -118.4081),
+    "JFK": (40.6413, -73.7781),
+    "ORD": (41.9742, -87.9073),
+    "MIA": (25.7959, -80.2870),
+    "DFW": (32.8998, -97.0403),
+    "DEN": (39.8561, -104.6737),
+    "ATL": (33.6407, -84.4277),
+    "BOS": (42.3656, -71.0096),
 }
 
 # City-level trip origins sometimes arrive without a specific airport selected yet
