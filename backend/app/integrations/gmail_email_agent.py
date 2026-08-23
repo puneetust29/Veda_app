@@ -269,24 +269,38 @@ def check_duplicate_flight(
     destination: str,
     start_datetime: datetime,
 ) -> bool:
-    """Check if a flight with same origin/destination/date already exists.
+    """Check if a flight with same origin/destination/time already exists.
+
+    Uses time-window matching (±30 min) instead of date-only to handle:
+    - Same-day flights at different times (8am vs 2pm)
+    - Timezone parsing variance
+    - Connecting flights same day
 
     Returns True if duplicate found, False otherwise.
     """
     supabase = get_supabase()
 
-    # Normalize dates for comparison (handle timezone variance)
-    start_date = start_datetime.date() if hasattr(start_datetime, "date") else start_datetime
-
     try:
+        # Parse datetime and create ±30 minute window
+        from dateutil.parser import isoparse
+
+        if isinstance(start_datetime, str):
+            flight_time = isoparse(start_datetime)
+        else:
+            flight_time = start_datetime
+
+        window_start = (flight_time - timedelta(minutes=30)).isoformat()
+        window_end = (flight_time + timedelta(minutes=30)).isoformat()
+
         result = (
             supabase.table("calendar_events")
             .select("id")
             .eq("customer_id", str(customer_id))
+            .eq("event_type", "flight")
             .eq("origin", origin)
             .eq("destination", destination)
-            .gte("start_datetime", f"{start_date}T00:00:00Z")
-            .lt("start_datetime", f"{start_date + timedelta(days=1)}T00:00:00Z")
+            .gte("start_datetime", window_start)
+            .lte("start_datetime", window_end)
             .limit(1)
             .execute()
         )

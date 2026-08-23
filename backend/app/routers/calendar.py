@@ -389,6 +389,17 @@ def sync_device_events(
 
     for row in rows:
         # Check if flight already exists from any source
+        # Use time-window matching (±30 min) instead of date-only to handle:
+        # - Same-day flights at different times (8am vs 2pm)
+        # - Timezone parsing variance
+        # - Connecting flights same day
+        from datetime import timedelta
+        from dateutil.parser import isoparse
+
+        flight_time = isoparse(row['start_datetime'])
+        window_start = (flight_time - timedelta(minutes=30)).isoformat()
+        window_end = (flight_time + timedelta(minutes=30)).isoformat()
+
         existing = (
             supabase.table("calendar_events")
             .select("id")
@@ -396,8 +407,8 @@ def sync_device_events(
             .eq("event_type", "flight")
             .eq("origin", row.get("origin"))
             .eq("destination", row.get("destination"))
-            .gte("start_datetime", f"{row['start_datetime'][:10]}T00:00:00Z")
-            .lt("start_datetime", f"{row['start_datetime'][:10]}T23:59:59Z")
+            .gte("start_datetime", window_start)
+            .lte("start_datetime", window_end)
             .limit(1)
             .execute()
         )

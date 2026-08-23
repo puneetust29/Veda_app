@@ -1,0 +1,24 @@
+name: hotel_agent
+version: 0.1.0
+enabled: true
+priority: 10
+
+capabilities:
+  - hotel_detection
+  - hotel_suggestion
+
+triggers:
+  rules:
+    - key: calendar_event.event_type
+      op: eq
+      value: flight
+
+required_context:
+  - customer
+  - calendar_event
+
+tools: []
+
+actions: []
+
+output_schema: app.agents.hotel.schemas:HotelDetectionResult

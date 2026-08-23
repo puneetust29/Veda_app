@@ -172,12 +172,34 @@ def sync_gmail_messages(
 ) -> dict:
     """Fetch messages from Gmail API, store in database, and extract flight confirmations.
 
+    Supports incremental sync: reads last_gmail_synced_at from customers table and only
+    fetches messages since last sync.
+
     Returns:
-        {fetched, synced, flights_extracted, duplicates, result_size_estimate}
+        {fetched, synced, flights_extracted, duplicates, result_size_estimate, incremental_sync}
     """
+    from datetime import datetime, timezone
+
     _require_gmail_configured()
     try:
-        result = google_gmail.list_messages(customer["id"], max_results=max_results)
+        # Get last sync timestamp for incremental sync
+        customer_record = (
+            get_supabase()
+            .table("customers")
+            .select("last_gmail_synced_at")
+            .eq("id", customer["id"])
+            .execute()
+        )
+        last_synced_at = None
+        if customer_record.data:
+            last_synced_at = customer_record.data[0].get("last_gmail_synced_at")
+
+        # List messages (incremental if we've synced before)
+        result = google_gmail.list_messages(
+            customer["id"],
+            max_results=max_results,
+            after_timestamp=last_synced_at,
+        )
         messages = result.get("messages", [])
 
         # Store messages in database
@@ -235,12 +257,18 @@ def sync_gmail_messages(
                 )
                 continue
 
+        # Update last_gmail_synced_at timestamp for next incremental sync
+        get_supabase().table("customers").update({
+            "last_gmail_synced_at": datetime.now(timezone.utc).isoformat()
+        }).eq("id", customer["id"]).execute()
+
         return {
             "fetched": len(messages),
             "synced": len(email_rows),
             "flights_extracted": flights_extracted,
             "duplicates": duplicates,
             "result_size_estimate": result.get("result_size_estimate", 0),
+            "incremental_sync": last_synced_at is not None,
         }
     except google_gmail.GmailNotConnected as exc:
         raise _not_connected() from exc

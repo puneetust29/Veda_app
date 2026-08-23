@@ -277,14 +277,29 @@ def list_messages(
     *,
     max_results: int = 10,
     page_token: Optional[str] = None,
+    after_timestamp: Optional[datetime] = None,
 ) -> dict:
-    """List Gmail messages from the inbox with full details."""
+    """List Gmail messages from the inbox with full details.
+
+    Args:
+        customer_id: Customer ID
+        max_results: Max messages to return
+        page_token: Token for pagination
+        after_timestamp: If provided, only fetch messages after this timestamp (incremental sync)
+    """
+    # Build query with optional date filter for incremental sync
+    query = "in:inbox"
+    if after_timestamp:
+        # Gmail API format: YYYY/MM/DD
+        date_str = after_timestamp.strftime("%Y/%m/%d")
+        query += f" after:{date_str}"
+
     payload = _request(
         customer_id,
         "GET",
         "/users/me/messages",
         params={
-            "q": "in:inbox",
+            "q": query,
             "maxResults": max_results,
             "pageToken": page_token,
         },

@@ -160,6 +160,22 @@ export type OnboardingStackParamList = {
 export type RecommendationCardPayload =
   | { kind: 'roaming_plan'; plan: RoamingPlan; reasoning: string; judge_approved: boolean; judge_feedback: string };
 
+export type HotelBooking = {
+  found: boolean;
+  hotel_name?: string | null;
+  check_in?: string | null;
+  check_out?: string | null;
+  location?: string | null;
+  source?: 'calendar' | 'email' | null;
+  confidence?: number;
+};
+
+export type HotelDetectionResultPayload = {
+  hotel: HotelBooking | null;
+  suggestion: string;
+  recommendations?: Array<{ name: string; rating: number; price: number; location: string }> | null;
+};
+
 // The wire event contract emitted by `POST /chat/stream`. This is the backend's
 // still-being-finalized shape — only `chatThread.ts` should need to know both this
 // and `ChatItem` below; everything else in the app works off the stable render model.
@@ -170,6 +186,7 @@ export type AgentStreamEvent =
   | { type: 'tool_completed'; data: { tool: string } }
   | { type: 'text'; data: { role: 'agent' | 'user'; text: string } }
   | { type: 'recommendation_ready'; data: { card: RecommendationCardPayload } }
+  | { type: 'hotel_result'; data: HotelDetectionResultPayload }
   | {
       type: 'confirmation_required';
       data: { action_id: string; summary: string; risk: 'commit' | 'read'; plan_id: string; calendar_event_id: string };
@@ -186,6 +203,7 @@ export type ChatItem =
   | (ChatItemBase & { kind: 'text'; role: 'agent' | 'user'; text: string })
   | (ChatItemBase & { kind: 'status'; tool?: string; label: string; state: 'active' | 'done' })
   | (ChatItemBase & { kind: 'card'; card: RecommendationCardPayload })
+  | (ChatItemBase & { kind: 'hotel'; hotel: HotelDetectionResultPayload })
   | (ChatItemBase & {
       kind: 'confirmation';
       actionId: string;
