@@ -23,22 +23,28 @@ export default function OtpVerificationScreen({ navigation }: Props) {
 
   const isComplete = code.length === 6;
 
-  // No real OTP backend exists for this dev flow — any 6-digit code
-  // "verifies" after a short simulated delay, mirroring the prototype.
-  // Signing in here (rather than at the end of onboarding) means every
-  // screen from this point on has a real auth token, so steps like
-  // AccountSelection can make real authed API calls (e.g. Google OAuth).
+  const handleCodeChange = (newCode: string) => {
+    setCode(newCode);
+    if (status === 'error') {
+      setStatus('idle');
+    }
+  };
+
   const handleVerify = async () => {
     if (!isComplete || status !== 'idle') return;
     setStatus('verifying');
     setTimeout(async () => {
       try {
-        await signIn(phoneNumber);
+        await signIn(phoneNumber, code);
         setStatus('verified');
         setTimeout(() => navigation.navigate('Welcome'), 600);
       } catch (err) {
         setStatus('error');
-        Alert.alert('Could not verify', err instanceof Error ? err.message : String(err));
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        const userFriendlyMsg = errorMsg.includes('Invalid OTP')
+          ? 'Incorrect code. Please try again.'
+          : 'Unable to verify. Please try again.';
+        Alert.alert('Verification failed', userFriendlyMsg);
       }
     }, 1200);
   };
@@ -56,7 +62,7 @@ export default function OtpVerificationScreen({ navigation }: Props) {
         </Text>
 
         <View style={styles.otpWrap}>
-          <OtpInput value={code} onChange={setCode} disabled={status === 'verifying' || status === 'verified'} />
+          <OtpInput value={code} onChange={handleCodeChange} disabled={status === 'verifying' || status === 'verified'} />
         </View>
         <Text style={styles.resend}>Resend code in 0:45</Text>
 
@@ -67,6 +73,7 @@ export default function OtpVerificationScreen({ navigation }: Props) {
             styles.cta,
             (!isComplete || status === 'verifying') && styles.ctaDisabled,
             status === 'verified' && styles.ctaVerified,
+            status === 'error' && styles.ctaError,
           ]}
           disabled={!isComplete || status === 'verifying' || status === 'verified'}
           onPress={handleVerify}
@@ -105,6 +112,7 @@ const styles = StyleSheet.create({
   },
   ctaDisabled: { backgroundColor: colors.textDisabled },
   ctaVerified: { backgroundColor: colors.success },
+  ctaError: { backgroundColor: colors.brand },
   ctaText: { ...typography.bodyBold, color: colors.white, fontSize: 16 },
   ctaTextDisabled: { color: colors.white },
   changeNumberButton: {

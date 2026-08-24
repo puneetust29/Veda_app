@@ -13,7 +13,7 @@ type AuthContextValue = {
    * RootNavigator uses this (alongside `customer`) to decide whether to keep
    * rendering the onboarding stack or switch to the authenticated app. */
   onboardingComplete: boolean;
-  signIn: (phoneNumber: string) => Promise<void>;
+  signIn: (phoneNumber: string, otp?: string) => Promise<void>;
   /** Re-fetches the customer profile from the backend. Needed after actions
    * that update it server-side without the app knowing directly -- e.g.
    * connecting a Google account, which may fill in the customer's real name
@@ -52,8 +52,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       customer,
       loading,
       onboardingComplete,
-      signIn: async (phoneNumber: string) => {
-        const { access_token, customer: signedInCustomer } = await api.devLogin(phoneNumber);
+      signIn: async (phoneNumber: string, otp?: string) => {
+        const { access_token, customer: signedInCustomer } = await api.devLogin(phoneNumber, otp);
         await setToken(access_token);
         setCustomer(signedInCustomer);
         setOnboardingComplete(false);
