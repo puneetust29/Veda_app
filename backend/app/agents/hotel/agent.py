@@ -66,7 +66,7 @@ class HotelAgent(BaseAgent):
             hotel = detect_hotel_for_flight(customer_id, destination, arrival_date)
 
             # Prepare result
-            if hotel:
+            if hotel and hotel.found:
                 suggestion = f"Great! I found a hotel booking at {hotel.hotel_name} in {hotel.location}. Check-in: {hotel.check_in}"
                 result_data = {
                     "hotel": hotel.model_dump(),
@@ -76,9 +76,9 @@ class HotelAgent(BaseAgent):
             else:
                 # Get sample hotel recommendations
                 recommendations = get_sample_hotels(destination, count=3)
-                suggestion = f"I don't see a hotel booking in your calendar or emails for {destination}. Would you like me to suggest some great hotels for your arrival date?"
+                suggestion = f"No hotel booking found for your trip to {destination}. Would you like me to suggest some great hotels for your stay?"
                 result_data = {
-                    "hotel": None,
+                    "hotel": hotel.model_dump() if hotel else None,
                     "suggestion": suggestion,
                     "recommendations": recommendations,
                 }
