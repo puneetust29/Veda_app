@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import ChatItemView from '../components/ChatItemView';
+import TypingIndicator from '../components/TypingIndicator';
 import { useRoamingChat } from '../hooks/useRoamingChat';
 import type { RootStackParamList } from '../types';
 
@@ -42,7 +43,7 @@ function fmtDate(iso: string): string {
 
 export default function ChatScreen({ route, navigation }: Props) {
   const { event } = route.params;
-  const { items, phase, confirm, decline, retry, sendMessage, pickup } = useRoamingChat(event);
+  const { items, phase, confirm, decline, retry, sendMessage, startUberLogin, pickup } = useRoamingChat(event);
   const scrollViewRef = useRef<ScrollView>(null);
   const [draft, setDraft] = useState('');
 
@@ -97,8 +98,10 @@ export default function ChatScreen({ route, navigation }: Props) {
             pickupLatitude={pickup?.latitude}
             pickupLongitude={pickup?.longitude}
             pickupLabel={pickup?.label}
+            onStartUberChatLogin={startUberLogin}
           />
         ))}
+        {phase === 'streaming' && <TypingIndicator />}
       </ScrollView>
 
       {/* Footer actions */}

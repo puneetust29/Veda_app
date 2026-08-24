@@ -135,6 +135,7 @@ export const api = {
     pickupLatitude?: number;
     pickupLongitude?: number;
     pickupLabel?: string;
+    startUberLogin?: boolean;
   }): Promise<void> => {
     if (process.env.EXPO_PUBLIC_CHAT_MOCK === '1') {
       return mockStreamRoamingConversation(params);
@@ -156,6 +157,9 @@ export const api = {
       body.pickup_latitude = params.pickupLatitude;
       body.pickup_longitude = params.pickupLongitude;
       body.pickup_label = params.pickupLabel;
+    }
+    if (params.startUberLogin) {
+      body.start_uber_login = true;
     }
 
     return streamSse({

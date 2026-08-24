@@ -15,9 +15,10 @@ type Props = {
   pickupLatitude?: number;
   pickupLongitude?: number;
   pickupLabel?: string;
+  onStartUberChatLogin?: () => void;
 };
 
-function ChatItemViewImpl({ item, onConfirm, onDecline, calendarEventId, pickupLatitude, pickupLongitude, pickupLabel }: Props) {
+function ChatItemViewImpl({ item, onConfirm, onDecline, calendarEventId, pickupLatitude, pickupLongitude, pickupLabel, onStartUberChatLogin }: Props) {
   switch (item.kind) {
     case 'text':
       return <MessageBubble text={item.text} tone={item.role} />;
@@ -31,6 +32,7 @@ function ChatItemViewImpl({ item, onConfirm, onDecline, calendarEventId, pickupL
           pickupLatitude={pickupLatitude}
           pickupLongitude={pickupLongitude}
           pickupLabel={pickupLabel}
+          onStartUberChatLogin={onStartUberChatLogin}
         />
       );
     case 'confirmation':

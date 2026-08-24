@@ -142,6 +142,7 @@ export function useRoamingChat(event: CalendarEvent) {
         priorPlan?: RoamingPlan;
         priorReasoning?: string;
         priorJudgeFeedback?: string;
+        startUberLogin?: boolean;
       }
     ) => {
       if (params) {
@@ -339,5 +340,13 @@ export function useRoamingChat(event: CalendarEvent) {
     [phase, appendItems, startStream],
   );
 
-  return { items, phase, confirm, decline, retry, sendMessage, pickup };
+  const startUberLogin = useCallback(() => {
+    if (phase === 'streaming') return;
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    startStream(controller, { startUberLogin: true });
+  }, [phase, startStream]);
+
+  return { items, phase, confirm, decline, retry, sendMessage, startUberLogin, pickup };
 }

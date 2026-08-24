@@ -7,11 +7,10 @@ from pydantic import BaseModel, Field
 
 from fastapi.responses import HTMLResponse, RedirectResponse
 
-from app.agents.uber.graph import uber_graph
 from app.config import get_settings
 from app.deps import get_current_customer
 from app.routers._shared import get_owned_calendar_event
-from app.tools import uber_mcp_client
+from app.tools import uber_mcp_client, uber_ride_options
 from app.tools import uber_oauth, uber_session as _uber_session
 from app.tools.uber_deeplink import (
     build_airport_deeplink_options,
@@ -79,26 +78,7 @@ def get_ride_options(
     if pickup_latitude is not None and pickup_longitude is not None:
         device_location = {"latitude": pickup_latitude, "longitude": pickup_longitude, "label": pickup_label}
 
-    state = {
-        "customer_id": customer["id"],
-        "customer": customer,
-        "calendar_event": event,
-        "device_location": device_location,
-    }
-    final_state = uber_graph.invoke(state)
-
-    return {
-        "origin_type": final_state.get("origin_type", "airport"),
-        "pickup_label": final_state.get("pickup_label"),
-        "dropoff_label": final_state.get("dropoff_label"),
-        "uber_app_url": final_state.get("uber_app_url"),
-        "deep_link_url": final_state.get("deep_link_url"),
-        "airport_options": final_state.get("airport_options", []),
-        "alternative_options": final_state.get("alternative_options", []),
-        "ride_products": final_state.get("ride_offers", []),
-        "live_quote": final_state.get("live_quote"),
-        "connect_uber_url": final_state.get("connect_uber_url"),
-    }
+    return uber_ride_options.fetch(customer, event, device_location)
 
 
 @router.get("/connect")

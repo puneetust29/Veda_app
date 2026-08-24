@@ -128,24 +128,22 @@ def get_connect_url(customer_id: str, return_url: Optional[str] = None) -> str:
     return f"{url}/authorize?{params}"
 
 
-def exchange_code(code: str, state: str) -> dict:
-    """Exchange auth code for tokens. Returns dict with tokens + customer_id."""
-    flow = _pending_flows.pop(state, None)
-    if not flow:
-        raise ValueError("Invalid or expired OAuth state parameter.")
-    if flow["expires_at"] < time.time():
-        raise ValueError("OAuth flow expired — restart the login from the app.")
+def _exchange_code_for_tokens(code: str, code_verifier: str, client_id: str, redirect_uri: str) -> dict:
+    """POST /token with an authorization code and decode the resulting JWT.
 
+    Shared by the browser-based flow (exchange_code, which looks its params up
+    from _pending_flows) and the chat-driven flow (uber_chat_login.py, which
+    tracks its own PKCE state per in-progress conversation).
+    """
     url = _mcp_url()
-    cb = _callback_url()
     resp = httpx.post(
         f"{url}/token",
         data={
             "grant_type": "authorization_code",
             "code": code,
-            "code_verifier": flow["code_verifier"],
-            "client_id": flow["client_id"],
-            "redirect_uri": cb,
+            "code_verifier": code_verifier,
+            "client_id": client_id,
+            "redirect_uri": redirect_uri,
         },
         timeout=15.0,
     )
@@ -164,16 +162,42 @@ def exchange_code(code: str, state: str) -> dict:
     user_sub = payload.get("sub", "")
     expires_in = tokens.get("expires_in", 3600)
 
-    logger.info("[uber_oauth] code exchange ok | customer_id=%s | user_sub=%s", flow["customer_id"], user_sub)
     return {
         "access_token": tokens["access_token"],
         "refresh_token": tokens.get("refresh_token", ""),
         "expires_in": expires_in,
         "user_sub": user_sub,
+        "client_id": client_id,
+    }
+
+
+def exchange_code(code: str, state: str) -> dict:
+    """Exchange auth code for tokens. Returns dict with tokens + customer_id."""
+    flow = _pending_flows.pop(state, None)
+    if not flow:
+        raise ValueError("Invalid or expired OAuth state parameter.")
+    if flow["expires_at"] < time.time():
+        raise ValueError("OAuth flow expired — restart the login from the app.")
+
+    cb = _callback_url()
+    result = _exchange_code_for_tokens(code, flow["code_verifier"], flow["client_id"], cb)
+    user_sub = result["user_sub"]
+
+    logger.info("[uber_oauth] code exchange ok | customer_id=%s | user_sub=%s", flow["customer_id"], user_sub)
+    return {
+        **result,
         "customer_id": flow["customer_id"],
-        "client_id": flow["client_id"],
         "return_url": flow.get("return_url"),
     }
+
+
+def exchange_code_pkce(code: str, code_verifier: str, client_id: str, redirect_uri: str, customer_id: str) -> dict:
+    """Like exchange_code(), but for callers (uber_chat_login.py) that track
+    their own PKCE state instead of going through _pending_flows/state.
+    """
+    result = _exchange_code_for_tokens(code, code_verifier, client_id, redirect_uri)
+    logger.info("[uber_oauth] chat code exchange ok | customer_id=%s | user_sub=%s", customer_id, result["user_sub"])
+    return {**result, "customer_id": customer_id}
 
 
 def refresh_tokens(refresh_token: str) -> dict:

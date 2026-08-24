@@ -11,6 +11,7 @@ type Props = {
   pickupLatitude?: number;
   pickupLongitude?: number;
   pickupLabel?: string;
+  onStartUberChatLogin?: () => void;
 };
 
 async function openUber(uberAppUrl: string | null, deepLinkUrl: string | null) {
@@ -65,12 +66,14 @@ function UberRideCard({
   pickupLatitude,
   pickupLongitude,
   pickupLabel,
+  onStartUberChatLogin,
 }: {
   card: Extract<RecommendationCardPayload, { kind: 'uber_ride' }>;
   calendarEventId?: string;
   pickupLatitude?: number;
   pickupLongitude?: number;
   pickupLabel?: string;
+  onStartUberChatLogin?: () => void;
 }) {
   const [bookedMsg, setBookedMsg] = useState<string | null>(null);
   const [connectUrl, setConnectUrl] = useState<string | null>(card.connect_uber_url ?? null);
@@ -112,7 +115,15 @@ function UberRideCard({
     return () => sub.remove();
   }, [connectUrl, calendarEventId, pickupLatitude, pickupLongitude, pickupLabel]);
 
-  const handleConnect = async () => {
+  const handleConnectChat = () => {
+    if (!onStartUberChatLogin) {
+      handleConnectBrowser();
+      return;
+    }
+    onStartUberChatLogin();
+  };
+
+  const handleConnectBrowser = async () => {
     try {
       setConnecting(true);
       const returnUrl = ExpoLinking.createURL('/');
@@ -157,15 +168,22 @@ function UberRideCard({
 
       {/* Connect / Re-connect Uber */}
       {connectUrl && (
-        <TouchableOpacity
-          style={styles.outlineBtn}
-          onPress={handleConnect}
-          disabled={connecting}
-        >
-          <Text style={styles.outlineBtnText}>
-            {connecting ? 'Opening…' : hasProducts ? 'Re-connect Uber account' : 'Connect Uber account'}
-          </Text>
-        </TouchableOpacity>
+        <View>
+          <TouchableOpacity
+            style={styles.outlineBtn}
+            onPress={handleConnectChat}
+            disabled={connecting}
+          >
+            <Text style={styles.outlineBtnText}>
+              {connecting ? 'Opening…' : hasProducts ? 'Re-connect Uber account' : 'Connect Uber account'}
+            </Text>
+          </TouchableOpacity>
+          {onStartUberChatLogin && (
+            <TouchableOpacity onPress={handleConnectBrowser} disabled={connecting} style={styles.browserFallback}>
+              <Text style={styles.browserFallbackText}>Trouble connecting? Use browser login instead</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       )}
 
       {/* Fetching live rates after connecting */}
@@ -267,6 +285,7 @@ export default function RecommendationCard({
   pickupLatitude,
   pickupLongitude,
   pickupLabel,
+  onStartUberChatLogin,
 }: Props) {
   switch (card.kind) {
     // ── Roaming plan ─────────────────────────────────────────────────────────
@@ -315,6 +334,7 @@ export default function RecommendationCard({
           pickupLatitude={pickupLatitude}
           pickupLongitude={pickupLongitude}
           pickupLabel={pickupLabel}
+          onStartUberChatLogin={onStartUberChatLogin}
         />
       );
 
@@ -532,6 +552,15 @@ const styles = StyleSheet.create({
     color: '#0F0F0F',
     fontSize: 15,
     fontWeight: '500',
+  },
+  browserFallback: {
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  browserFallbackText: {
+    color: '#ABABAB',
+    fontSize: 12,
+    textDecorationLine: 'underline',
   },
 
   optionBtn: {
