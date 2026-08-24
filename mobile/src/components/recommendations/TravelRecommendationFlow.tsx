@@ -25,7 +25,7 @@ import PaymentSummaryCard from './cards/PaymentSummaryCard';
 import ConfirmationChip from './cards/ConfirmationChip';
 import AIDisclaimerChip from './cards/AIDisclaimerChip';
 
-type Step = 'trip' | 'hotel' | 'roaming' | 'insurance' | 'payment' | 'complete';
+type Step = 'trip' | 'roaming' | 'insurance' | 'payment' | 'complete';
 
 type ChatMessage = {
   id: string;
@@ -44,13 +44,6 @@ export default function TravelRecommendationFlow({ event, onClose }: Props) {
   const { token } = useAuth();
   const scrollViewRef = useRef<ScrollView>(null);
 
-  // Check if hotel is booked from event data
-  const isHotelBooked = () => {
-    return event?.hotel_booking && event.hotel_booking.status === 'confirmed';
-  };
-
-  const hotelBooked = isHotelBooked();
-
   // State Management
   const [currentStep, setCurrentStep] = useState<Step>('trip');
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
@@ -61,12 +54,11 @@ export default function TravelRecommendationFlow({ event, onClose }: Props) {
   });
   const [completedItems, setCompletedItems] = useState({
     flightBookings: true,
-    hotelBookings: hotelBooked,
+    hotelBookings: true,
     roaming: false,
     travelInsurance: false,
   });
   const [confirmedItems, setConfirmedItems] = useState<Set<string>>(new Set());
-  const [hotelData, setHotelData] = useState<any>(event?.hotel_booking || null);
   const [roamingRecommendation, setRoamingRecommendation] = useState<any>(null);
   const [insuranceData, setInsuranceData] = useState<any>(null);
 
@@ -74,7 +66,6 @@ export default function TravelRecommendationFlow({ event, onClose }: Props) {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
-  const [hotelLoading, setHotelLoading] = useState(!hotelBooked);
   const [roamingLoading, setRoamingLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPaymentOptions, setShowPaymentOptions] = useState(false);
@@ -92,60 +83,35 @@ export default function TravelRecommendationFlow({ event, onClose }: Props) {
     return () => clearTimeout(timer);
   }, [currentStep, chatMessages, confirmedItems]);
 
-  // Retry roaming fetch only (without changing step)
-  const retryRoamingFetch = () => {
-    log('ROAMING', 'Retrying roaming fetch');
-    setRoamingLoading(true);
-    setError(null);
-
-    api.recommendRoaming(event.id)
-      .then(recommendation => {
-        log('ROAMING', 'Got recommendation', recommendation);
-        if (!recommendation.candidate_plan) {
-          setError('No suitable roaming plan found. Try a different destination or dates.');
-        } else {
-          setRoamingRecommendation(recommendation);
-        }
-        setRoamingLoading(false);
-      })
-      .catch(err => {
-        log('ROAMING', 'Error fetching recommendation', err);
-        const errorMsg = err instanceof Error ? err.message : 'Failed to get recommendation';
-        if (errorMsg.includes('422')) {
-          setError('No suitable roaming plans available for this trip. Please try different dates.');
-        } else {
-          setError(errorMsg);
-        }
-        setRoamingLoading(false);
-      });
-  };
-
   // Handle Step Navigation
   const handleContinue = () => {
     log('NAVIGATION', `Continuing from step: ${currentStep}`);
     if (currentStep === 'trip') {
-      // Check if hotel needs to be processed
-      if (isHotelBooked()) {
-        // Hotel already booked, go to roaming
-        setCurrentStep('roaming');
-      } else {
-        // Hotel not booked, use hotel agent
-        setCurrentStep('hotel');
-        setHotelLoading(true);
-        setError(null);
-        // TODO: Call hotel agent API when available
-        // For now, skip to roaming
-        setTimeout(() => {
-          setCurrentStep('roaming');
-          setHotelLoading(false);
-          fetchRoamingRecommendation();
-        }, 500);
-        return;
-      }
-      fetchRoamingRecommendation();
-    } else if (currentStep === 'hotel') {
       setCurrentStep('roaming');
-      fetchRoamingRecommendation();
+      setRoamingLoading(true);
+      setError(null);
+
+      // Fetch roaming recommendation from LLM backend
+      api.recommendRoaming(event.id)
+        .then(recommendation => {
+          log('ROAMING', 'Got recommendation', recommendation);
+          if (!recommendation.candidate_plan) {
+            setError('No suitable roaming plan found. Try a different destination or dates.');
+          } else {
+            setRoamingRecommendation(recommendation);
+          }
+          setRoamingLoading(false);
+        })
+        .catch(err => {
+          log('ROAMING', 'Error fetching recommendation', err);
+          const errorMsg = err instanceof Error ? err.message : 'Failed to get recommendation';
+          if (errorMsg.includes('422')) {
+            setError('No suitable roaming plans available for this trip. Please try different dates.');
+          } else {
+            setError(errorMsg);
+          }
+          setRoamingLoading(false);
+        });
     } else if (currentStep === 'roaming') {
       setCurrentStep('insurance');
     } else if (currentStep === 'insurance') {
@@ -153,33 +119,6 @@ export default function TravelRecommendationFlow({ event, onClose }: Props) {
     } else if (currentStep === 'payment') {
       setCurrentStep('complete');
     }
-  };
-
-  // Fetch roaming recommendation
-  const fetchRoamingRecommendation = () => {
-    setRoamingLoading(true);
-    setError(null);
-
-    api.recommendRoaming(event.id)
-      .then(recommendation => {
-        log('ROAMING', 'Got recommendation', recommendation);
-        if (!recommendation.candidate_plan) {
-          setError('No suitable roaming plan found. Try a different destination or dates.');
-        } else {
-          setRoamingRecommendation(recommendation);
-        }
-        setRoamingLoading(false);
-      })
-      .catch(err => {
-        log('ROAMING', 'Error fetching recommendation', err);
-        const errorMsg = err instanceof Error ? err.message : 'Failed to get recommendation';
-        if (errorMsg.includes('422')) {
-          setError('No suitable roaming plans available for this trip. Please try different dates.');
-        } else {
-          setError(errorMsg);
-        }
-        setRoamingLoading(false);
-      });
   };
 
   const handleApprove = () => {
@@ -343,49 +282,6 @@ export default function TravelRecommendationFlow({ event, onClose }: Props) {
           </>
         )}
 
-        {/* Hotel Section */}
-        {(currentStep === 'hotel' || currentStep === 'roaming' || currentStep === 'insurance' || currentStep === 'payment' || currentStep === 'complete') && (
-          <>
-            {isHotelBooked() && hotelData && (
-              <>
-                <View style={styles.agentMessageWrapper}>
-                  <View style={styles.agentIcon}>
-                    <Text style={styles.agentIconText}>V</Text>
-                  </View>
-                  <View style={styles.agentBubble}>
-                    <Text style={styles.agentText}>I see you've already booked your accommodation.</Text>
-                  </View>
-                </View>
-
-                <View style={styles.hotelCard}>
-                  <View style={styles.hotelHeader}>
-                    <Ionicons name="home" size={24} color={colors.brand} />
-                    <View style={styles.hotelHeaderText}>
-                      <Text style={styles.hotelName}>{hotelData.name || 'Hotel Booking'}</Text>
-                      <Text style={styles.hotelLocation}>{hotelData.location || event?.destination}</Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.hotelDetails}>
-                    <View style={styles.hotelDetailRow}>
-                      <Text style={styles.hotelDetailLabel}>Check-in</Text>
-                      <Text style={styles.hotelDetailValue}>{hotelData.check_in || 'TBD'}</Text>
-                    </View>
-                    <View style={styles.hotelDetailRow}>
-                      <Text style={styles.hotelDetailLabel}>Check-out</Text>
-                      <Text style={styles.hotelDetailValue}>{hotelData.check_out || 'TBD'}</Text>
-                    </View>
-                  </View>
-
-                  <TouchableOpacity style={styles.hotelContinueButton} onPress={handleContinue}>
-                    <Text style={styles.hotelContinueButtonText}>Continue</Text>
-                  </TouchableOpacity>
-                </View>
-              </>
-            )}
-          </>
-        )}
-
         {/* Roaming Section */}
         {(currentStep === 'roaming' || currentStep === 'insurance' || currentStep === 'payment' || currentStep === 'complete') && (
           <>
@@ -408,7 +304,10 @@ export default function TravelRecommendationFlow({ event, onClose }: Props) {
                   <View style={styles.errorMessage}>
                     <Ionicons name="alert-circle" size={20} color="#C41C3B" />
                     <Text style={styles.errorText}>{error}</Text>
-                    <TouchableOpacity style={styles.retryButton} onPress={retryRoamingFetch}>
+                    <TouchableOpacity style={styles.retryButton} onPress={() => {
+                      setCurrentStep('trip');
+                      setTimeout(() => handleContinue(), 100);
+                    }}>
                       <Text style={styles.retryButtonText}>Try Again</Text>
                     </TouchableOpacity>
                   </View>
@@ -1187,69 +1086,5 @@ const styles = StyleSheet.create({
   },
   sendButtonDisabled: {
     opacity: 0.5,
-  },
-  hotelCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: spacing.lg,
-    marginBottom: spacing.lg,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  hotelHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    marginBottom: spacing.lg,
-    paddingBottom: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-  },
-  hotelHeaderText: {
-    flex: 1,
-  },
-  hotelName: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#000',
-  },
-  hotelLocation: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: spacing.xs,
-  },
-  hotelDetails: {
-    marginBottom: spacing.lg,
-  },
-  hotelDetailRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: spacing.md,
-  },
-  hotelDetailLabel: {
-    fontSize: 14,
-    color: '#666',
-    fontWeight: '500',
-  },
-  hotelDetailValue: {
-    fontSize: 14,
-    color: '#000',
-    fontWeight: '600',
-  },
-  hotelContinueButton: {
-    backgroundColor: colors.brand,
-    borderRadius: 24,
-    paddingVertical: spacing.lg,
-    alignItems: 'center',
-    marginTop: spacing.md,
-  },
-  hotelContinueButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '700',
   },
 });
