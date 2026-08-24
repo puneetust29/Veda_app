@@ -8,7 +8,7 @@ set -e
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 BACKEND_LOG="/tmp/veda_backend.log"
 MOBILE_LOG="/tmp/veda_mobile.log"
-NODE="/Users/287262/.nvm/versions/node/v24.19.0/bin/node"
+NODE="$(command -v node)"
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
