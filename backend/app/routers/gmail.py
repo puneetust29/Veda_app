@@ -222,31 +222,31 @@ def sync_gmail_messages(
                 email_rows, on_conflict="customer_id,gmail_message_id"
             ).execute()
 
-        # Extract flights from emails
+        # Extract flights and hotels from emails
         flights_extracted = 0
-        duplicates = 0
+        hotels_extracted = 0
+        flight_duplicates = 0
+        hotel_duplicates = 0
         for msg in messages:
+            # Try to extract flight
             try:
                 flight = gmail_email_agent.parse_flight_email(msg, customer["id"])
-                if not flight:
-                    continue
-
-                # Check for duplicate
-                if gmail_email_agent.check_duplicate_flight(
-                    customer["id"],
-                    flight.origin,
-                    flight.destination,
-                    flight.start_datetime,
-                ):
-                    duplicates += 1
-                    continue
-
-                # Insert flight to calendar_events (duplicates already checked)
-                flight_row = flight.to_calendar_event()
-                get_supabase().table("calendar_events").insert(
-                    [flight_row]
-                ).execute()
-                flights_extracted += 1
+                if flight:
+                    # Check for duplicate
+                    if gmail_email_agent.check_duplicate_flight(
+                        customer["id"],
+                        flight.origin,
+                        flight.destination,
+                        flight.start_datetime,
+                    ):
+                        flight_duplicates += 1
+                    else:
+                        # Insert flight to calendar_events (duplicates already checked)
+                        flight_row = flight.to_calendar_event()
+                        get_supabase().table("calendar_events").insert(
+                            [flight_row]
+                        ).execute()
+                        flights_extracted += 1
             except Exception as e:
                 # Log error but don't fail entire sync
                 import sys
@@ -255,7 +255,33 @@ def sync_gmail_messages(
                     f"[WARN] Error extracting flight from email {msg.get('gmail_message_id')}: {e}",
                     file=sys.stderr,
                 )
-                continue
+
+            # Try to extract hotel
+            try:
+                hotel = gmail_email_agent.parse_hotel_email(msg, customer["id"])
+                if hotel:
+                    # Check for duplicate
+                    if gmail_email_agent.check_duplicate_hotel(
+                        customer["id"],
+                        hotel.hotel_name,
+                        hotel.check_in,
+                    ):
+                        hotel_duplicates += 1
+                    else:
+                        # Insert hotel to calendar_events (duplicates already checked)
+                        hotel_row = hotel.to_calendar_event()
+                        get_supabase().table("calendar_events").insert(
+                            [hotel_row]
+                        ).execute()
+                        hotels_extracted += 1
+            except Exception as e:
+                # Log error but don't fail entire sync
+                import sys
+
+                print(
+                    f"[WARN] Error extracting hotel from email {msg.get('gmail_message_id')}: {e}",
+                    file=sys.stderr,
+                )
 
         # Update last_gmail_synced_at timestamp for next incremental sync
         get_supabase().table("customers").update({
@@ -266,7 +292,9 @@ def sync_gmail_messages(
             "fetched": len(messages),
             "synced": len(email_rows),
             "flights_extracted": flights_extracted,
-            "duplicates": duplicates,
+            "flight_duplicates": flight_duplicates,
+            "hotels_extracted": hotels_extracted,
+            "hotel_duplicates": hotel_duplicates,
             "result_size_estimate": result.get("result_size_estimate", 0),
             "incremental_sync": last_synced_at is not None,
         }
