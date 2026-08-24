@@ -17,6 +17,7 @@ import httpx
 from app.config import get_settings
 from app.db.client import get_supabase
 from app.integrations import flight_classifier, google_oauth
+from app.utils.airport_mapper import get_destination_country
 
 CALENDAR_API = "https://www.googleapis.com/calendar/v3"
 DEFAULT_CALENDAR_ID = "primary"
@@ -389,25 +390,31 @@ def sync_to_calendar_events(
             skipped_non_flight += 1
             continue
 
-        rows.append(
-            {
-                "customer_id": customer_id,
-                "google_event_id": event["id"],
-                "source": "google",
-                "title": title,
-                "event_type": "flight" if classification.is_flight else "other",
-                "origin": classification.origin or location or None,
-                "destination": classification.destination,
-                "start_datetime": start,
-                "end_datetime": end,
-                "raw_details": {
-                    "google_html_link": event.get("htmlLink"),
-                    "google_status": event.get("status"),
-                    "description": event.get("description"),
-                    "flight_confidence": classification.confidence,
-                },
-            }
-        )
+        row = {
+            "customer_id": customer_id,
+            "google_event_id": event["id"],
+            "source": "google",
+            "title": title,
+            "event_type": "flight" if classification.is_flight else "other",
+            "origin": classification.origin or location or None,
+            "destination": classification.destination,
+            "start_datetime": start,
+            "end_datetime": end,
+            "raw_details": {
+                "google_html_link": event.get("htmlLink"),
+                "google_status": event.get("status"),
+                "description": event.get("description"),
+                "flight_confidence": classification.confidence,
+            },
+        }
+
+        # Add destination_country for flights
+        if row["event_type"] == "flight" and row["destination"]:
+            row["raw_details"]["destination_country"] = get_destination_country(
+                row["destination"], row
+            )
+
+        rows.append(row)
 
     # Filter out rows that already exist from any source (cross-source dedup)
     supabase = get_supabase()

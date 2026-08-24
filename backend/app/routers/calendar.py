@@ -11,6 +11,7 @@ from app.config import get_settings
 from app.db.client import get_supabase
 from app.deps import get_current_customer
 from app.integrations import flight_classifier, google_calendar, google_oauth
+from app.utils.airport_mapper import get_destination_country
 
 router = APIRouter(prefix="/calendar", tags=["calendar"])
 logger = logging.getLogger(__name__)
@@ -369,23 +370,29 @@ def sync_device_events(
             skipped_non_flight += 1
             continue
 
-        rows.append(
-            {
-                "customer_id": customer["id"],
-                "device_event_id": event.device_event_id,
-                "source": "device",
-                "title": event.title or "(no title)",
-                "event_type": "flight" if classification.is_flight else "other",
-                "origin": classification.origin or event.location or None,
-                "destination": classification.destination,
-                "start_datetime": event.start.isoformat(),
-                "end_datetime": event.end.isoformat(),
-                "raw_details": {
-                    "notes": event.notes or None,
-                    "flight_confidence": classification.confidence,
-                },
-            }
-        )
+        row = {
+            "customer_id": customer["id"],
+            "device_event_id": event.device_event_id,
+            "source": "device",
+            "title": event.title or "(no title)",
+            "event_type": "flight" if classification.is_flight else "other",
+            "origin": classification.origin or event.location or None,
+            "destination": classification.destination,
+            "start_datetime": event.start.isoformat(),
+            "end_datetime": event.end.isoformat(),
+            "raw_details": {
+                "notes": event.notes or None,
+                "flight_confidence": classification.confidence,
+            },
+        }
+
+        # Add destination_country for flights
+        if row["event_type"] == "flight" and row["destination"]:
+            row["raw_details"]["destination_country"] = get_destination_country(
+                row["destination"], row
+            )
+
+        rows.append(row)
 
     # Filter out rows that already exist from any source (cross-source dedup)
     supabase = get_supabase()
