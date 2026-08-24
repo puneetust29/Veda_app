@@ -1,8 +1,9 @@
 import html
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 
+from dateutil.parser import isoparse
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
@@ -398,9 +399,6 @@ def sync_device_events(
         # - Same-day flights at different times (8am vs 2pm)
         # - Timezone parsing variance
         # - Connecting flights same day
-        from datetime import timedelta
-        from dateutil.parser import isoparse
-
         flight_time = isoparse(row['start_datetime'])
         window_start = (flight_time - timedelta(minutes=30)).isoformat()
         window_end = (flight_time + timedelta(minutes=30)).isoformat()
