@@ -48,9 +48,15 @@ if ! command -v npm &>/dev/null; then
 fi
 echo "  ✓  npm $(npm --version)"
 
-# ── 2. Backend ─────────────────────────────────────────────────────────────
+# ── 2. Detect local IP ────────────────────────────────────────────────────
 echo ""
-echo "[2/4] Setting up backend..."
+echo "[2/4] Detecting local IP..."
+LOCAL_IP=$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || echo "127.0.0.1")
+echo "  ✓  IP: $LOCAL_IP"
+
+# ── 3. Backend ─────────────────────────────────────────────────────────────
+echo ""
+echo "[3/5] Setting up backend..."
 
 cd "$ROOT/backend"
 
@@ -67,13 +73,16 @@ if [ ! -f ".env" ]; then
     cp .env.example .env
     echo "  ✓  Created backend/.env from .env.example"
     echo "  ⚠  Fill in backend/.env with real secrets before running ./dev.sh"
-else
-    echo "  ✓  backend/.env already exists"
 fi
 
-# ── 3. Mobile ──────────────────────────────────────────────────────────────
+# Update IP-dependent values
+sed -i '' "s|BACKEND_URL=.*|BACKEND_URL=http://$LOCAL_IP:8000|" .env
+sed -i '' "s|UBER_MCP_URL=.*|UBER_MCP_URL=http://$LOCAL_IP:3001|" .env
+echo "  ✓  backend/.env updated → BACKEND_URL and UBER_MCP_URL set to $LOCAL_IP"
+
+# ── 4. Mobile ──────────────────────────────────────────────────────────────
 echo ""
-echo "[3/4] Setting up mobile..."
+echo "[4/5] Setting up mobile..."
 
 cd "$ROOT/mobile"
 
@@ -88,9 +97,9 @@ else
     echo "  ✓  mobile/.env already exists"
 fi
 
-# ── 4. Done ────────────────────────────────────────────────────────────────
+# ── 5. Done ────────────────────────────────────────────────────────────────
 echo ""
-echo "[4/4] Done!"
+echo "[5/5] Done!"
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "  Next steps"
