@@ -55,13 +55,13 @@ class FlightEmailParsing:
             "start_datetime": self.start_datetime.isoformat(),
             "end_datetime": self.end_datetime.isoformat(),
             "source": "gmail",
+            "gmail_message_id": self.gmail_message_id,
             "raw_details": {
                 "email_sender": self.email_sender,
                 "email_subject": self.email_subject,
                 "email_received_at": self.email_received_at.isoformat(),
                 "flight_confidence": self.confidence,
                 "parsed_from": "email_body",
-                "gmail_message_id": self.gmail_message_id,
             },
         }
 
@@ -348,13 +348,13 @@ class HotelEmailParsing:
             "start_datetime": self.check_in.isoformat(),
             "end_datetime": self.check_out.isoformat(),
             "source": "gmail",
+            "gmail_message_id": self.gmail_message_id,
             "raw_details": {
                 "email_sender": self.email_sender,
                 "email_subject": self.email_subject,
                 "email_received_at": self.email_received_at.isoformat(),
                 "hotel_confidence": self.confidence,
                 "parsed_from": "email_body",
-                "gmail_message_id": self.gmail_message_id,
             },
         }
 

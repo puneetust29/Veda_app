@@ -242,10 +242,10 @@ def sync_gmail_messages(
                     ):
                         flight_duplicates += 1
                     else:
-                        # Insert flight to calendar_events (duplicates already checked)
+                        # Upsert flight to calendar_events (dedup at DB level on gmail_message_id)
                         flight_row = flight.to_calendar_event()
-                        get_supabase().table("calendar_events").insert(
-                            [flight_row]
+                        get_supabase().table("calendar_events").upsert(
+                            [flight_row], on_conflict="customer_id,gmail_message_id"
                         ).execute()
                         flights_extracted += 1
             except Exception as e:
