@@ -25,7 +25,7 @@ import PaymentSummaryCard from './cards/PaymentSummaryCard';
 import ConfirmationChip from './cards/ConfirmationChip';
 import AIDisclaimerChip from './cards/AIDisclaimerChip';
 
-type Step = 'trip' | 'roaming' | 'insurance' | 'payment' | 'complete';
+type Step = 'trip' | 'hotel' | 'roaming' | 'insurance' | 'payment' | 'complete';
 
 type ChatMessage = {
   id: string;
@@ -54,11 +54,17 @@ export default function TravelRecommendationFlow({ event, onClose }: Props) {
   });
   const [completedItems, setCompletedItems] = useState({
     flightBookings: true,
-    hotelBookings: true,
+    hotelBookings: !!hotelData, // Only true if hotel data exists from agent
     roaming: false,
     travelInsurance: false,
   });
   const [confirmedItems, setConfirmedItems] = useState<Set<string>>(new Set());
+
+  // Hotel state - pull from event or call agent
+  const [hotelData, setHotelData] = useState<any>(event?.hotel_booking || null);
+  const [hotelLoading, setHotelLoading] = useState(!event?.hotel_booking);
+  const [hotelChecked, setHotelChecked] = useState(!!event?.hotel_booking);
+
   const [roamingRecommendation, setRoamingRecommendation] = useState<any>(null);
   const [insuranceData, setInsuranceData] = useState<any>(null);
 
@@ -83,10 +89,42 @@ export default function TravelRecommendationFlow({ event, onClose }: Props) {
     return () => clearTimeout(timer);
   }, [currentStep, chatMessages, confirmedItems]);
 
+  // Update hotel booking status based on hotel data from agent
+  useEffect(() => {
+    setCompletedItems(prev => ({
+      ...prev,
+      hotelBookings: !!hotelData,
+    }));
+  }, [hotelData]);
+
+  // Check hotel booking status from backend
+  useEffect(() => {
+    if (!hotelChecked && currentStep === 'hotel') {
+      setHotelLoading(true);
+      // Call hotel agent API to check booking status
+      api.getHotelBooking(event.id)
+        .then(result => {
+          log('HOTEL', 'Got hotel booking result', result);
+          if (result.is_booked && result.booking_details) {
+            setHotelData(result.booking_details);
+          }
+          setHotelLoading(false);
+          setHotelChecked(true);
+        })
+        .catch(err => {
+          log('HOTEL', 'Error checking hotel', err);
+          setHotelLoading(false);
+          setHotelChecked(true);
+        });
+    }
+  }, [currentStep, hotelChecked]);
+
   // Handle Step Navigation
   const handleContinue = () => {
     log('NAVIGATION', `Continuing from step: ${currentStep}`);
     if (currentStep === 'trip') {
+      setCurrentStep('hotel');
+    } else if (currentStep === 'hotel') {
       setCurrentStep('roaming');
       setRoamingLoading(true);
       setError(null);
@@ -279,6 +317,86 @@ export default function TravelRecommendationFlow({ event, onClose }: Props) {
               onToggleItem={handleToggleItem}
               onContinue={handleContinue}
             />
+          </>
+        )}
+
+        {/* Hotel Section */}
+        {(currentStep === 'hotel' || currentStep === 'roaming' || currentStep === 'insurance' || currentStep === 'payment' || currentStep === 'complete') && (
+          <>
+            {hotelLoading && currentStep === 'hotel' && (
+              <>
+                <View style={styles.agentMessageWrapper}>
+                  <View style={styles.agentIcon}>
+                    <Text style={styles.agentIconText}>V</Text>
+                  </View>
+                  <View style={styles.agentBubble}>
+                    <Text style={styles.agentText}>Checking your hotel booking...</Text>
+                  </View>
+                </View>
+                <LoadingIndicator initialMessage="Checking hotel..." />
+              </>
+            )}
+
+            {!hotelLoading && hotelData && (
+              <>
+                <View style={styles.agentMessageWrapper}>
+                  <View style={styles.agentIcon}>
+                    <Text style={styles.agentIconText}>V</Text>
+                  </View>
+                  <View style={styles.agentBubble}>
+                    <Text style={styles.agentText}>I see you've already booked your accommodation.</Text>
+                  </View>
+                </View>
+
+                <View style={styles.hotelCard}>
+                  <View style={styles.hotelHeader}>
+                    <Ionicons name="home" size={24} color={colors.brand} />
+                    <View style={{ flex: 1, marginLeft: spacing.md }}>
+                      <Text style={styles.hotelName}>{hotelData.name || 'Hotel Booking'}</Text>
+                      <Text style={styles.hotelLocation}>{hotelData.location || event?.destination}</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.hotelDetails}>
+                    {hotelData.check_in && (
+                      <View style={styles.hotelDetailRow}>
+                        <Text style={styles.hotelDetailLabel}>Check-in</Text>
+                        <Text style={styles.hotelDetailValue}>{hotelData.check_in}</Text>
+                      </View>
+                    )}
+                    {hotelData.check_out && (
+                      <View style={styles.hotelDetailRow}>
+                        <Text style={styles.hotelDetailLabel}>Check-out</Text>
+                        <Text style={styles.hotelDetailValue}>{hotelData.check_out}</Text>
+                      </View>
+                    )}
+                  </View>
+
+                  {currentStep === 'hotel' && (
+                    <TouchableOpacity style={styles.continueButton} onPress={handleContinue}>
+                      <Text style={styles.continueButtonText}>Continue</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </>
+            )}
+
+            {!hotelLoading && !hotelData && currentStep === 'hotel' && (
+              <>
+                <View style={styles.agentMessageWrapper}>
+                  <View style={styles.agentIcon}>
+                    <Text style={styles.agentIconText}>V</Text>
+                  </View>
+                  <View style={styles.agentBubble}>
+                    <Text style={styles.agentText}>No hotel booking found for this trip.</Text>
+                  </View>
+                </View>
+
+                <TouchableOpacity style={styles.skipButton} onPress={handleContinue}>
+                  <Text style={styles.skipButtonText}>Continue to Roaming</Text>
+                </TouchableOpacity>
+              </>
+            )}
           </>
         )}
 
@@ -1086,5 +1204,76 @@ const styles = StyleSheet.create({
   },
   sendButtonDisabled: {
     opacity: 0.5,
+  },
+  hotelCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: spacing.lg,
+    marginBottom: spacing.lg,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  hotelHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+    paddingBottom: spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  hotelName: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#000',
+  },
+  hotelLocation: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: spacing.xs,
+  },
+  hotelDetails: {
+    marginBottom: spacing.lg,
+  },
+  hotelDetailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.md,
+  },
+  hotelDetailLabel: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '500',
+  },
+  hotelDetailValue: {
+    fontSize: 14,
+    color: '#000',
+    fontWeight: '600',
+  },
+  continueButton: {
+    backgroundColor: colors.brand,
+    borderRadius: 24,
+    paddingVertical: spacing.lg,
+    alignItems: 'center',
+  },
+  continueButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  skipButton: {
+    backgroundColor: '#F0F0F0',
+    borderRadius: 24,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+  },
+  skipButtonText: {
+    color: colors.brand,
+    fontSize: 16,
+    fontWeight: '700',
   },
 });

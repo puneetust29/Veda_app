@@ -69,6 +69,11 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ calendar_event_id: calendarEventId }),
     }),
+  getHotelBooking: (calendarEventId: string) =>
+    authedFetch<{ is_booked: boolean; booking_details?: any }>('/hotel/booking', {
+      method: 'POST',
+      body: JSON.stringify({ calendar_event_id: calendarEventId }),
+    }),
   subscribeRoaming: (params: {
     calendarEventId: string;
     roamingPlanId: string;
