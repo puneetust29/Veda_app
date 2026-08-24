@@ -97,25 +97,53 @@ export default function TravelRecommendationFlow({ event, onClose }: Props) {
     }));
   }, [hotelData]);
 
-  // Check hotel booking status from backend
+  // Check hotel booking status from backend with streaming messages
   useEffect(() => {
     if (!hotelChecked && currentStep === 'hotel') {
       setHotelLoading(true);
-      // Call hotel agent API to check booking status
-      api.getHotelBooking(event.id)
-        .then(result => {
-          log('HOTEL', 'Got hotel booking result', result);
-          if (result.is_booked && result.booking_details) {
-            setHotelData(result.booking_details);
+      setChatMessages([]); // Clear previous messages
+
+      // Stream hotel agent messages
+      const controller = new AbortController();
+      let hotelResult: any = null;
+
+      api.streamRoamingConversation({
+        calendarEventId: event.id,
+        signal: controller.signal,
+        onEvent: (event_) => {
+          // Display all agent messages in chat
+          if (event_.type === 'text' && event_.data.role === 'agent') {
+            const msg: ChatMessage = {
+              id: String(Date.now() + Math.random()),
+              role: 'agent',
+              text: event_.data.text,
+            };
+            setChatMessages(prev => [...prev, msg]);
+            log('HOTEL_MSG', 'Agent message', event_.data.text);
+          }
+          // Collect hotel result
+          if (event_.type === 'hotel_result') {
+            hotelResult = (event_ as any).data;
+            log('HOTEL_RESULT', 'Got hotel result', hotelResult);
+          }
+        },
+        onError: (err) => {
+          log('HOTEL', 'Stream error', err);
+          setHotelLoading(false);
+        },
+        onClose: () => {
+          if (hotelResult?.is_booked && hotelResult?.booking_details) {
+            setHotelData(hotelResult.booking_details);
           }
           setHotelLoading(false);
           setHotelChecked(true);
-        })
-        .catch(err => {
-          log('HOTEL', 'Error checking hotel', err);
-          setHotelLoading(false);
-          setHotelChecked(true);
-        });
+          log('HOTEL', 'Stream closed');
+        },
+      }).catch(err => {
+        log('HOTEL', 'Error', err);
+        setHotelLoading(false);
+        setHotelChecked(true);
+      });
     }
   }, [currentStep, hotelChecked]);
 
@@ -127,29 +155,56 @@ export default function TravelRecommendationFlow({ event, onClose }: Props) {
     } else if (currentStep === 'hotel') {
       setCurrentStep('roaming');
       setRoamingLoading(true);
+      setChatMessages([]); // Clear previous messages
       setError(null);
 
-      // Fetch roaming recommendation from LLM backend
-      api.recommendRoaming(event.id)
-        .then(recommendation => {
-          log('ROAMING', 'Got recommendation', recommendation);
-          if (!recommendation.candidate_plan) {
-            setError('No suitable roaming plan found. Try a different destination or dates.');
-          } else {
-            setRoamingRecommendation(recommendation);
+      // Stream roaming recommendation with LLM messages
+      const controller = new AbortController();
+      let roamingResult: any = null;
+
+      api.streamRoamingConversation({
+        calendarEventId: event.id,
+        signal: controller.signal,
+        onEvent: (event_) => {
+          // Display all LLM streaming messages in chat
+          if (event_.type === 'text' && event_.data.role === 'agent') {
+            const msg: ChatMessage = {
+              id: String(Date.now() + Math.random()),
+              role: 'agent',
+              text: event_.data.text,
+            };
+            setChatMessages(prev => [...prev, msg]);
+            log('ROAMING_MSG', 'Agent message', event_.data.text);
           }
+          // Collect recommendation data
+          if (event_.type === 'recommendation_ready') {
+            roamingResult = (event_ as any).data;
+            log('ROAMING_RESULT', 'Got recommendation', roamingResult);
+          }
+        },
+        onError: (err) => {
+          log('ROAMING', 'Stream error', err);
           setRoamingLoading(false);
-        })
-        .catch(err => {
-          log('ROAMING', 'Error fetching recommendation', err);
-          const errorMsg = err instanceof Error ? err.message : 'Failed to get recommendation';
-          if (errorMsg.includes('422')) {
+        },
+        onClose: () => {
+          if (roamingResult?.candidate_plan) {
+            setRoamingRecommendation(roamingResult);
+          } else if (chatMessages.length === 0) {
             setError('No suitable roaming plans available for this trip. Please try different dates.');
-          } else {
-            setError(errorMsg);
           }
           setRoamingLoading(false);
-        });
+          log('ROAMING', 'Stream closed');
+        },
+      }).catch(err => {
+        log('ROAMING', 'Error', err);
+        const errorMsg = err instanceof Error ? err.message : 'Failed to get recommendation';
+        if (errorMsg.includes('422')) {
+          setError('No suitable roaming plans available for this trip. Please try different dates.');
+        } else {
+          setError(errorMsg);
+        }
+        setRoamingLoading(false);
+      });
     } else if (currentStep === 'roaming') {
       setCurrentStep('insurance');
     } else if (currentStep === 'insurance') {
@@ -323,18 +378,8 @@ export default function TravelRecommendationFlow({ event, onClose }: Props) {
         {/* Hotel Section */}
         {(currentStep === 'hotel' || currentStep === 'roaming' || currentStep === 'insurance' || currentStep === 'payment' || currentStep === 'complete') && (
           <>
-            {hotelLoading && currentStep === 'hotel' && (
-              <>
-                <View style={styles.agentMessageWrapper}>
-                  <View style={styles.agentIcon}>
-                    <Text style={styles.agentIconText}>V</Text>
-                  </View>
-                  <View style={styles.agentBubble}>
-                    <Text style={styles.agentText}>Checking your hotel booking...</Text>
-                  </View>
-                </View>
-                <LoadingIndicator initialMessage="Checking hotel..." />
-              </>
+            {hotelLoading && currentStep === 'hotel' && chatMessages.length === 0 && (
+              <LoadingIndicator initialMessage="Checking hotel booking…" />
             )}
 
             {!hotelLoading && hotelData && (
@@ -416,7 +461,7 @@ export default function TravelRecommendationFlow({ event, onClose }: Props) {
                   </View>
                 </View>
 
-                {roamingLoading && <LoadingIndicator initialMessage="Assembling the answer…" />}
+                {roamingLoading && chatMessages.length === 0 && <LoadingIndicator initialMessage="Getting recommendations…" />}
 
                 {!roamingLoading && !roamingRecommendation && error && (
                   <View style={styles.errorMessage}>
