@@ -1,5 +1,6 @@
 import html
 import json
+import logging
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -12,6 +13,7 @@ from app.deps import get_current_customer
 from app.integrations import flight_classifier, google_calendar, google_oauth
 
 router = APIRouter(prefix="/calendar", tags=["calendar"])
+logger = logging.getLogger(__name__)
 
 
 class GoogleEventCreate(BaseModel):
@@ -355,12 +357,15 @@ def sync_device_events(
     """
     rows = []
     skipped_non_flight = 0
+    logger.info(f"[device_sync] Processing {len(payload.events)} device events")
     for event in payload.events:
         classification = flight_classifier.classify_event(
             title=event.title or "(no title)", location=event.location, notes=event.notes
         )
+        logger.debug(f"[device_sync] Classified event: {event.title} -> is_flight={classification.is_flight}, confidence={classification.confidence}")
 
         if payload.flights_only and not classification.is_flight:
+            logger.debug(f"[device_sync] Skipping non-flight event: {event.title} (flights_only=True)")
             skipped_non_flight += 1
             continue
 
@@ -414,15 +419,24 @@ def sync_device_events(
         )
 
         if existing.data:
+            logger.debug(f"[device_sync] Duplicate flight detected: {row.get('origin')}->{row.get('destination')} at {row.get('start_datetime')}")
             duplicates += 1
             continue
 
         deduped_rows.append(row)
 
+    logger.info(f"[device_sync] Ready to upsert: {len(deduped_rows)} new events, {duplicates} duplicates")
     if deduped_rows:
-        get_supabase().table("calendar_events").upsert(
-            deduped_rows, on_conflict="customer_id,device_event_id"
-        ).execute()
+        try:
+            get_supabase().table("calendar_events").upsert(
+                deduped_rows, on_conflict="customer_id,device_event_id"
+            ).execute()
+            logger.info(f"[device_sync] Successfully upserted {len(deduped_rows)} device events")
+        except Exception as e:
+            logger.error(f"[device_sync] Failed to upsert device events: {e}", exc_info=True)
+            raise
+    else:
+        logger.info(f"[device_sync] No new events to upsert (all duplicates or empty)")
 
     return {
         "fetched": len(payload.events),

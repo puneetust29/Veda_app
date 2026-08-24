@@ -269,10 +269,10 @@ def sync_gmail_messages(
                     ):
                         hotel_duplicates += 1
                     else:
-                        # Insert hotel to calendar_events (duplicates already checked)
+                        # Upsert hotel to calendar_events (duplicates already checked)
                         hotel_row = hotel.to_calendar_event()
-                        get_supabase().table("calendar_events").insert(
-                            [hotel_row]
+                        get_supabase().table("calendar_events").upsert(
+                            [hotel_row], on_conflict="customer_id,gmail_message_id"
                         ).execute()
                         hotels_extracted += 1
             except Exception as e:
