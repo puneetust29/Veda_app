@@ -38,3 +38,5 @@ class UberAgentState(AgentState, total=False):
     airport_options: list[dict]
     # Alternative airport options shown when origin is far from user's current location
     alternative_options: list[dict]
+    # Ranked ride offers from uber-mcp (empty when falling back to deeplink)
+    ride_offers: list[dict]

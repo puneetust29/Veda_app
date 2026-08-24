@@ -8,6 +8,7 @@ import type {
   RecommendResponse,
   RoamingPlan,
   Subscription,
+  UberBookResponse,
   UberDeeplinkResponse,
 } from '../types';
 
@@ -198,4 +199,47 @@ export const api = {
   },
   getUberAuthUrl: () =>
     authedFetch<{ available: boolean; auth_url: string | null; message: string }>(`/uber/auth-url`),
+  getUberSession: () =>
+    authedFetch<{ connected: boolean; user_sub: string | null; connect_url: string | null }>('/uber/session'),
+  getUberConnectUrl: (returnUrl?: string) => {
+    const query = returnUrl ? `?return_url=${encodeURIComponent(returnUrl)}` : '';
+    return authedFetch<{ auth_url: string }>(`/uber/connect${query}`);
+  },
+  getUberOptions: (params: {
+    calendarEventId: string;
+    pickupLatitude?: number;
+    pickupLongitude?: number;
+    pickupLabel?: string;
+  }) => {
+    const query = new URLSearchParams({ calendar_event_id: params.calendarEventId });
+    if (params.pickupLatitude != null && params.pickupLongitude != null) {
+      query.set('pickup_latitude', String(params.pickupLatitude));
+      query.set('pickup_longitude', String(params.pickupLongitude));
+      if (params.pickupLabel) query.set('pickup_label', params.pickupLabel);
+    }
+    return authedFetch<{
+      uber_app_url: string | null;
+      deep_link_url: string | null;
+      live_quote: unknown;
+      ride_products: import('../types').UberRideProduct[];
+      connect_uber_url: string | null;
+    }>(`/uber/options?${query.toString()}`);
+  },
+  bookUberRide: (params: {
+    calendarEventId: string;
+    productName: string;
+    pickupLatitude?: number;
+    pickupLongitude?: number;
+    pickupLabel?: string;
+  }) =>
+    authedFetch<UberBookResponse>('/uber/book', {
+      method: 'POST',
+      body: JSON.stringify({
+        calendar_event_id: params.calendarEventId,
+        product_name: params.productName,
+        pickup_latitude: params.pickupLatitude,
+        pickup_longitude: params.pickupLongitude,
+        pickup_label: params.pickupLabel,
+      }),
+    }),
 };

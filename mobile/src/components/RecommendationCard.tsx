@@ -1,9 +1,16 @@
-import { Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, AppState, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import * as ExpoLinking from 'expo-linking';
 
-import type { RecommendationCardPayload } from '../types';
+import { api } from '../lib/api';
+import type { RecommendationCardPayload, UberRideProduct } from '../types';
 
 type Props = {
   card: RecommendationCardPayload;
+  calendarEventId?: string;
+  pickupLatitude?: number;
+  pickupLongitude?: number;
+  pickupLabel?: string;
 };
 
 async function openUber(uberAppUrl: string | null, deepLinkUrl: string | null) {
@@ -13,7 +20,254 @@ async function openUber(uberAppUrl: string | null, deepLinkUrl: string | null) {
   if (deepLinkUrl) { await Linking.openURL(deepLinkUrl); }
 }
 
-export default function RecommendationCard({ card }: Props) {
+function confirmAndBook(
+  product: UberRideProduct,
+  calendarEventId: string | undefined,
+  pickupLatitude: number | undefined,
+  pickupLongitude: number | undefined,
+  pickupLabel: string | undefined,
+  onBooked: (msg: string) => void,
+) {
+  if (!calendarEventId) {
+    Alert.alert('Error', 'Missing trip info — cannot book.');
+    return;
+  }
+  Alert.alert(
+    `Book ${product.display_name}?`,
+    `${product.estimate}${product.eta_minutes ? ` · ~${product.eta_minutes} min` : ''}\n\nThis will charge your payment method on file with Uber.`,
+    [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Book Now',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            const res = await api.bookUberRide({
+              calendarEventId,
+              productName: product.display_name,
+              pickupLatitude,
+              pickupLongitude,
+              pickupLabel,
+            });
+            onBooked(res.message);
+          } catch (err: any) {
+            Alert.alert('Booking failed', err?.message ?? 'Unknown error');
+          }
+        },
+      },
+    ],
+  );
+}
+
+function UberRideCard({
+  card,
+  calendarEventId,
+  pickupLatitude,
+  pickupLongitude,
+  pickupLabel,
+}: {
+  card: Extract<RecommendationCardPayload, { kind: 'uber_ride' }>;
+  calendarEventId?: string;
+  pickupLatitude?: number;
+  pickupLongitude?: number;
+  pickupLabel?: string;
+}) {
+  const [bookedMsg, setBookedMsg] = useState<string | null>(null);
+  const [connectUrl, setConnectUrl] = useState<string | null>(card.connect_uber_url ?? null);
+  const [connecting, setConnecting] = useState(false);
+  const [freshProducts, setFreshProducts] = useState<UberRideProduct[] | null>(null);
+  const [loadingRates, setLoadingRates] = useState(false);
+  const appStateRef = useRef(AppState.currentState);
+
+  // When user returns from the browser after Uber login, re-check session and
+  // refresh prices — the original card was built before the token existed.
+  useEffect(() => {
+    if (!connectUrl) return;
+    const sub = AppState.addEventListener('change', async (nextState) => {
+      if (appStateRef.current.match(/inactive|background/) && nextState === 'active') {
+        try {
+          const session = await api.getUberSession();
+          if (session.connected) {
+            setConnectUrl(null); // session established
+            if (calendarEventId) {
+              setLoadingRates(true);
+              try {
+                const options = await api.getUberOptions({
+                  calendarEventId,
+                  pickupLatitude,
+                  pickupLongitude,
+                  pickupLabel,
+                });
+                setFreshProducts(options.ride_products ?? []);
+              } catch { /* keep showing whatever we had */
+              } finally {
+                setLoadingRates(false);
+              }
+            }
+          }
+        } catch { /* ignore */ }
+      }
+      appStateRef.current = nextState;
+    });
+    return () => sub.remove();
+  }, [connectUrl, calendarEventId, pickupLatitude, pickupLongitude, pickupLabel]);
+
+  const handleConnect = async () => {
+    try {
+      setConnecting(true);
+      const returnUrl = ExpoLinking.createURL('/');
+      const { auth_url } = await api.getUberConnectUrl(returnUrl);
+      await Linking.openURL(auth_url);
+    } catch (e: any) {
+      Alert.alert('Error', e?.message ?? 'Could not start Uber login.');
+    } finally {
+      setConnecting(false);
+    }
+  };
+
+  const airportOptions = card.airport_options ?? [];
+  const altOptions     = card.alternative_options ?? [];
+  const products       = freshProducts ?? card.ride_products ?? [];
+  const hasProducts    = products.length > 0;
+
+  return (
+    <View style={styles.card}>
+      <View style={styles.cardHeader}>
+        <Text style={styles.cardLabel}>UBER RIDE</Text>
+        <Text style={styles.uberLogo}>✈</Text>
+      </View>
+
+      <Text style={styles.uberMessage}>{card.suggested_message}</Text>
+
+      {/* Route row */}
+      {(card.pickup_label || card.dropoff_label) && (
+        <View style={styles.routeRow}>
+          <Text style={styles.routeCity} numberOfLines={1}>{card.pickup_label ?? 'Current location'}</Text>
+          <Text style={styles.routeArrow}>→</Text>
+          <Text style={styles.routeCity} numberOfLines={1}>{card.dropoff_label}</Text>
+        </View>
+      )}
+
+      {/* Booked confirmation */}
+      {bookedMsg && (
+        <View style={styles.bookedBanner}>
+          <Text style={styles.bookedText}>{bookedMsg}</Text>
+        </View>
+      )}
+
+      {/* Connect / Re-connect Uber */}
+      {connectUrl && (
+        <TouchableOpacity
+          style={styles.outlineBtn}
+          onPress={handleConnect}
+          disabled={connecting}
+        >
+          <Text style={styles.outlineBtnText}>
+            {connecting ? 'Opening…' : hasProducts ? 'Re-connect Uber account' : 'Connect Uber account'}
+          </Text>
+        </TouchableOpacity>
+      )}
+
+      {/* Fetching live rates after connecting */}
+      {loadingRates && (
+        <View style={styles.loadingRow}>
+          <ActivityIndicator color="#111" />
+          <Text style={styles.loadingText}>Fetching Uber rates…</Text>
+        </View>
+      )}
+
+      {/* Product list with Book buttons */}
+      {!bookedMsg && !loadingRates && hasProducts && (
+        <View>
+          <Text style={styles.sectionLabel}>Choose your ride</Text>
+          {products.map((p) => (
+            <View key={p.display_name} style={styles.productRow}>
+              <View style={styles.productInfo}>
+                <Text style={styles.productName}>{p.display_name}</Text>
+                <Text style={styles.productMeta}>
+                  {p.eta_minutes ? `~${p.eta_minutes} min` : ''}
+                  {p.capacity ? ` · ${p.capacity} seats` : ''}
+                </Text>
+              </View>
+              <Text style={styles.productPrice}>{p.estimate}</Text>
+              <TouchableOpacity
+                style={styles.bookBtn}
+                onPress={() =>
+                  confirmAndBook(p, calendarEventId, pickupLatitude, pickupLongitude, pickupLabel, setBookedMsg)
+                }
+              >
+                <Text style={styles.bookBtnText}>Book</Text>
+              </TouchableOpacity>
+            </View>
+          ))}
+        </View>
+      )}
+
+      {/* Fallback: no products — show deeplink or airport options */}
+      {!bookedMsg && !loadingRates && !hasProducts && !card.connect_uber_url && (
+        <>
+          {airportOptions.length === 0 && (card.uber_app_url || card.deep_link_url) && (
+            <TouchableOpacity
+              style={styles.primaryBtn}
+              onPress={() => openUber(card.uber_app_url, card.deep_link_url)}
+            >
+              <Text style={styles.primaryBtnText}>Open in Uber</Text>
+            </TouchableOpacity>
+          )}
+          {airportOptions.length > 0 && (
+            <View>
+              <Text style={styles.sectionLabel}>Choose your departure airport</Text>
+              {airportOptions.map((opt) => (
+                <TouchableOpacity
+                  key={opt.label}
+                  style={styles.optionBtn}
+                  onPress={() => openUber(opt.uber_app_url, opt.deep_link_url)}
+                >
+                  <Text style={styles.optionBtnText}>{opt.label}</Text>
+                  <Text style={styles.optionChevron}>›</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </>
+      )}
+
+      {/* Alternative airport options (origin far from user) */}
+      {altOptions.length > 0 && (
+        <View style={styles.altSection}>
+          <View style={styles.divider} />
+          <Text style={styles.sectionLabel}>Or fly from near you</Text>
+          {altOptions.map((opt) => (
+            <TouchableOpacity
+              key={opt.label}
+              style={styles.optionBtn}
+              onPress={() => openUber(opt.uber_app_url, opt.deep_link_url)}
+            >
+              <Text style={styles.optionBtnText}>{opt.label}</Text>
+              <Text style={styles.optionChevron}>›</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+
+      {!bookedMsg && (
+        <Text style={styles.disclaimer}>
+          {hasProducts
+            ? 'Booking charges your Uber payment method.'
+            : 'Opens Uber with pickup and destination pre-filled.'}
+        </Text>
+      )}
+    </View>
+  );
+}
+
+export default function RecommendationCard({
+  card,
+  calendarEventId,
+  pickupLatitude,
+  pickupLongitude,
+  pickupLabel,
+}: Props) {
   switch (card.kind) {
     // ── Roaming plan ─────────────────────────────────────────────────────────
     case 'roaming_plan': {
@@ -53,102 +307,16 @@ export default function RecommendationCard({ card }: Props) {
     }
 
     // ── Uber ride ─────────────────────────────────────────────────────────────
-    case 'uber_ride': {
-      const airportOptions  = card.airport_options  ?? [];
-      const altOptions      = card.alternative_options ?? [];
-
+    case 'uber_ride':
       return (
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.cardLabel}>UBER RIDE</Text>
-            <Text style={styles.uberLogo}>✈</Text>
-          </View>
-
-          <Text style={styles.uberMessage}>{card.suggested_message}</Text>
-
-          {/* Direct route */}
-          {(card.pickup_label || card.dropoff_label) && (
-            <View style={styles.routeRow}>
-              <Text style={styles.routeCity} numberOfLines={1}>{card.pickup_label ?? 'Current location'}</Text>
-              <Text style={styles.routeArrow}>→</Text>
-              <Text style={styles.routeCity} numberOfLines={1}>{card.dropoff_label}</Text>
-            </View>
-          )}
-
-          {/* Live quote */}
-          {card.live_quote && (
-            <View style={styles.quoteBlock}>
-              <Text style={styles.quotePrice}>{card.live_quote.estimate}</Text>
-              <Text style={styles.quoteMeta}>
-                {card.live_quote.product_name}
-                {card.live_quote.eta_minutes ? ` · ~${card.live_quote.eta_minutes} min` : ''}
-              </Text>
-            </View>
-          )}
-
-          {card.quote_status && (
-            <Text style={styles.quoteStatus}>{card.quote_status}</Text>
-          )}
-
-          {/* Connect Uber */}
-          {card.connect_uber_url && (
-            <TouchableOpacity
-              style={styles.outlineBtn}
-              onPress={() => Linking.openURL(card.connect_uber_url!)}
-            >
-              <Text style={styles.outlineBtnText}>Connect Uber account</Text>
-            </TouchableOpacity>
-          )}
-
-          {/* Single-airport deeplink */}
-          {airportOptions.length === 0 && !card.connect_uber_url && (card.uber_app_url || card.deep_link_url) && (
-            <TouchableOpacity
-              style={styles.primaryBtn}
-              onPress={() => openUber(card.uber_app_url, card.deep_link_url)}
-            >
-              <Text style={styles.primaryBtnText}>Open in Uber</Text>
-            </TouchableOpacity>
-          )}
-
-          {/* Multiple airport choices */}
-          {airportOptions.length > 0 && (
-            <View>
-              <Text style={styles.sectionLabel}>Choose your departure airport</Text>
-              {airportOptions.map((opt) => (
-                <TouchableOpacity
-                  key={opt.label}
-                  style={styles.optionBtn}
-                  onPress={() => openUber(opt.uber_app_url, opt.deep_link_url)}
-                >
-                  <Text style={styles.optionBtnText}>{opt.label}</Text>
-                  <Text style={styles.optionChevron}>›</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-
-          {/* Alternative airport options (origin is far from user) */}
-          {altOptions.length > 0 && (
-            <View style={styles.altSection}>
-              <View style={styles.divider} />
-              <Text style={styles.sectionLabel}>Or fly from near you</Text>
-              {altOptions.map((opt) => (
-                <TouchableOpacity
-                  key={opt.label}
-                  style={styles.optionBtn}
-                  onPress={() => openUber(opt.uber_app_url, opt.deep_link_url)}
-                >
-                  <Text style={styles.optionBtnText}>{opt.label}</Text>
-                  <Text style={styles.optionChevron}>›</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-
-          <Text style={styles.disclaimer}>Opens Uber with pickup and destination pre-filled.</Text>
-        </View>
+        <UberRideCard
+          card={card}
+          calendarEventId={calendarEventId}
+          pickupLatitude={pickupLatitude}
+          pickupLongitude={pickupLongitude}
+          pickupLabel={pickupLabel}
+        />
       );
-    }
 
     default: {
       const _exhaustive: never = card;
@@ -240,6 +408,17 @@ const styles = StyleSheet.create({
     color: '#ABABAB',
     textTransform: 'uppercase',
     marginBottom: 8,
+  },
+  loadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+    gap: 10,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: '#6B6B6B',
   },
   reasoningText: {
     fontSize: 14,
@@ -376,6 +555,60 @@ const styles = StyleSheet.create({
 
   altSection: {
     marginTop: 4,
+  },
+
+  // Product list
+  productRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#EDEDEB',
+    gap: 8,
+  },
+  productInfo: {
+    flex: 1,
+  },
+  productName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0F0F0F',
+  },
+  productMeta: {
+    fontSize: 12,
+    color: '#ABABAB',
+    marginTop: 2,
+  },
+  productPrice: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0F0F0F',
+    marginRight: 8,
+  },
+  bookBtn: {
+    backgroundColor: '#0F0F0F',
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  bookBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+
+  // Booked banner
+  bookedBanner: {
+    backgroundColor: '#EBF7EF',
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 8,
+    alignItems: 'center',
+  },
+  bookedText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#3A9E5F',
   },
 
   disclaimer: {

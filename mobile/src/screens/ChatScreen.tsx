@@ -42,7 +42,7 @@ function fmtDate(iso: string): string {
 
 export default function ChatScreen({ route, navigation }: Props) {
   const { event } = route.params;
-  const { items, phase, confirm, decline, retry, sendMessage } = useRoamingChat(event);
+  const { items, phase, confirm, decline, retry, sendMessage, pickup } = useRoamingChat(event);
   const scrollViewRef = useRef<ScrollView>(null);
   const [draft, setDraft] = useState('');
 
@@ -88,7 +88,16 @@ export default function ChatScreen({ route, navigation }: Props) {
         onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
       >
         {items.map((item) => (
-          <ChatItemView key={item.id} item={item} onConfirm={confirm} onDecline={decline} />
+          <ChatItemView
+            key={item.id}
+            item={item}
+            onConfirm={confirm}
+            onDecline={decline}
+            calendarEventId={event.id}
+            pickupLatitude={pickup?.latitude}
+            pickupLongitude={pickup?.longitude}
+            pickupLabel={pickup?.label}
+          />
         ))}
       </ScrollView>
 

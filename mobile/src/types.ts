@@ -69,6 +69,20 @@ export type UberLiveQuote = {
   eta_minutes?: number | null;
 };
 
+export type UberRideProduct = {
+  display_name: string;
+  estimate: string;
+  currency_code?: string | null;
+  eta_minutes?: number | null;
+  capacity?: number;
+};
+
+export type UberBookResponse = {
+  trip_uuid: string | null;
+  status: string;
+  message: string;
+};
+
 export type UberDeeplinkResponse = {
   uber_app_url: string | null;    // uber:// scheme — opens native app, reliably pre-fills fields
   deep_link_url: string | null;   // https://m.uber.com/ul/ — web fallback if app not installed
@@ -103,6 +117,7 @@ export type RecommendationCardPayload =
       connect_uber_url?: string | null;
       live_quote?: UberLiveQuote | null;
       quote_status?: string | null;
+      ride_products?: UberRideProduct[];
     };
 
 // The wire event contract emitted by `POST /chat/stream`. This is the backend's

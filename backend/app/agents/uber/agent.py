@@ -84,6 +84,9 @@ class UberAgent(BaseAgent):
         dropoff_label = final_state.get("dropoff_label")
         airport_options = final_state.get("airport_options", [])
         alternative_options = final_state.get("alternative_options", [])
+        live_quote = final_state.get("live_quote")
+        ride_products = final_state.get("ride_offers", [])
+        connect_uber_url = final_state.get("connect_uber_url")
         logger.info(
             "uber agent graph complete | run_id=%s | origin_type=%s | has_deeplink=%s | airport_options=%d | alternatives=%d",
             ctx.run_id,
@@ -104,6 +107,9 @@ class UberAgent(BaseAgent):
             deep_link_url=deep_link_url,
             airport_options=airport_options,
             alternative_options=alternative_options,
+            live_quote=live_quote,
+            ride_products=ride_products,
+            connect_uber_url=connect_uber_url,
         ).model_dump()
 
         logger.info(

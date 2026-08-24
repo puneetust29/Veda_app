@@ -30,6 +30,15 @@ class Settings(BaseSettings):
     uber_client_secret: str = ""
     uber_redirect_uri: str = "http://localhost:3000/callback"
 
+    uber_mcp_url: str = "http://localhost:3001"
+    uber_mcp_jwt_secret: str = ""
+    uber_mcp_user_sub: str = ""
+    uber_mcp_client_id: str = ""
+
+    # Base URL this backend is reachable at — used as the OAuth redirect_uri for uber-mcp.
+    # Set to the machine's LAN IP (e.g. http://192.168.1.x:8000) when testing from a phone.
+    backend_url: str = "http://localhost:8000"
+
 
 @lru_cache
 def get_settings() -> Settings:

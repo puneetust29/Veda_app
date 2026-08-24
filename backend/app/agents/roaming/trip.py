@@ -1,4 +1,4 @@
-from datetime import datetime
+from dateutil.parser import isoparse
 
 
 def extract_trip_context(calendar_event: dict) -> tuple[str, int]:
@@ -7,7 +7,7 @@ def extract_trip_context(calendar_event: dict) -> tuple[str, int]:
     if not destination_country:
         destination_country = calendar_event.get("destination", "Unknown")
 
-    start = datetime.fromisoformat(calendar_event["start_datetime"])
-    end = datetime.fromisoformat(calendar_event["end_datetime"])
+    start = isoparse(calendar_event["start_datetime"])
+    end = isoparse(calendar_event["end_datetime"])
     duration_days = max(1, (end - start).days)
     return destination_country, duration_days

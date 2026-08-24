@@ -11,16 +11,28 @@ type Props = {
   item: ChatItem;
   onConfirm: (actionId: string) => void;
   onDecline: (actionId: string) => void;
+  calendarEventId?: string;
+  pickupLatitude?: number;
+  pickupLongitude?: number;
+  pickupLabel?: string;
 };
 
-function ChatItemViewImpl({ item, onConfirm, onDecline }: Props) {
+function ChatItemViewImpl({ item, onConfirm, onDecline, calendarEventId, pickupLatitude, pickupLongitude, pickupLabel }: Props) {
   switch (item.kind) {
     case 'text':
       return <MessageBubble text={item.text} tone={item.role} />;
     case 'status':
       return <StatusLine label={item.label} state={item.state} />;
     case 'card':
-      return <RecommendationCard card={item.card} />;
+      return (
+        <RecommendationCard
+          card={item.card}
+          calendarEventId={calendarEventId}
+          pickupLatitude={pickupLatitude}
+          pickupLongitude={pickupLongitude}
+          pickupLabel={pickupLabel}
+        />
+      );
     case 'confirmation':
       return <ConfirmationPrompt item={item} onConfirm={onConfirm} onDecline={onDecline} />;
     case 'receipt':

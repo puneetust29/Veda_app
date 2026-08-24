@@ -39,6 +39,14 @@ class UberLiveQuote(BaseModel):
     eta_minutes: Optional[int] = None
 
 
+class UberRideProduct(BaseModel):
+    display_name: str
+    estimate: str
+    currency_code: Optional[str] = None
+    eta_minutes: Optional[int] = None
+    capacity: int = 4
+
+
 class UberRideSuggestionCard(BaseModel):
     """The recommendation_ready stream event card payload for the Uber agent.
 
@@ -60,3 +68,6 @@ class UberRideSuggestionCard(BaseModel):
     deep_link_url: Optional[str] = None
     airport_options: list[UberAirportOption] = Field(default_factory=list)
     alternative_options: list[UberAirportOption] = Field(default_factory=list)
+    live_quote: Optional[UberLiveQuote] = None
+    ride_products: list[UberRideProduct] = Field(default_factory=list)
+    connect_uber_url: Optional[str] = None

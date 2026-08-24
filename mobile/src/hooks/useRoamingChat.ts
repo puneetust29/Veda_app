@@ -23,6 +23,7 @@ export function useRoamingChat(event: CalendarEvent) {
     { id: nextId(), createdAt: Date.now(), kind: 'text', role: 'agent', text: greetingText(event) },
   ]);
   const [phase, setPhase] = useState<ChatPhase>('idle');
+  const [pickup, setPickup] = useState<Awaited<ReturnType<typeof getCurrentDeviceLocation>>>(null);
 
   // Mirrors `items` synchronously so callbacks (stream events, confirm/decline)
   // always read the latest thread state without depending on React's render
@@ -150,6 +151,7 @@ export function useRoamingChat(event: CalendarEvent) {
       resetWatchdog();
       (async () => {
         const pickup = await getOrLoadDeviceLocation();
+        if (pickup) setPickup(pickup);
         if (controller.signal.aborted) return;
         await api.streamRoamingConversation({
           calendarEventId: event.id,
@@ -337,5 +339,5 @@ export function useRoamingChat(event: CalendarEvent) {
     [phase, appendItems, startStream],
   );
 
-  return { items, phase, confirm, decline, retry, sendMessage };
+  return { items, phase, confirm, decline, retry, sendMessage, pickup };
 }
