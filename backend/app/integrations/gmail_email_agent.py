@@ -282,10 +282,8 @@ def check_duplicate_flight(
 
     try:
         # Parse datetime and create ±30 minute window
-        from dateutil.parser import isoparse
-
         if isinstance(start_datetime, str):
-            flight_time = isoparse(start_datetime)
+            flight_time = datetime.fromisoformat(start_datetime.replace('Z', '+00:00'))
         else:
             flight_time = start_datetime
 

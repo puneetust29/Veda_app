@@ -420,10 +420,7 @@ def sync_to_calendar_events(
         # - Same-day flights at different times (8am vs 2pm)
         # - Timezone parsing variance
         # - Connecting flights same day
-        from datetime import timedelta
-        from dateutil.parser import isoparse
-
-        flight_time = isoparse(row['start_datetime'])
+        flight_time = datetime.fromisoformat(row['start_datetime'].replace('Z', '+00:00'))
         window_start = (flight_time - timedelta(minutes=30)).isoformat()
         window_end = (flight_time + timedelta(minutes=30)).isoformat()
 
