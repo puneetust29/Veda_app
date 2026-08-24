@@ -88,6 +88,11 @@ export function applyStreamEvent(items: ChatItem[], event: AgentStreamEvent): Ch
       return [...withDone, { id: nextId(), createdAt: Date.now(), kind: 'card', card: event.data.card }];
     }
 
+    case 'hotel_result': {
+      const withDone = markActiveStatusesDone(items);
+      return [...withDone, { id: nextId(), createdAt: Date.now(), kind: 'hotel', hotel: event.data }];
+    }
+
     case 'confirmation_required': {
       const alreadyExists = items.some(
         (item) => item.kind === 'confirmation' && item.actionId === event.data.action_id,

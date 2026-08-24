@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import type { Subscription } from '../types';
+import type { Subscription } from '../../types';
 
 type Props = {
   subscription: Subscription;

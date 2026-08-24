@@ -2,12 +2,17 @@
   "expo": {
     "name": "Veda",
     "slug": "veda-companion",
+    "scheme": "veda",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCalendarsUsageDescription": "Veda reads your calendar to detect upcoming flights and suggest roaming plans before you travel.",
+        "NSLocationWhenInUseUsageDescription": "Veda uses your location to show local weather on your dashboard."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -20,6 +25,21 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-web-browser",
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "Veda reads your calendar to detect upcoming flights and suggest roaming plans before you travel."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Veda uses your location to show local weather on your dashboard."
+        }
+      ]
+    ]
   }
 }

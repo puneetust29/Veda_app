@@ -1,6 +1,6 @@
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-import type { ChatItem } from '../types';
+import type { ChatItem } from '../../types';
 
 type ConfirmationItem = Extract<ChatItem, { kind: 'confirmation' }>;
 

@@ -5,6 +5,11 @@ import type {
   AgentStreamEvent,
   CalendarEvent,
   Customer,
+  DeviceCalendarEvent,
+  DeviceSyncResult,
+  GoogleCalendarEvent,
+  GoogleCalendarStatus,
+  GoogleSyncResult,
   RecommendResponse,
   RoamingPlan,
   Subscription,
@@ -80,6 +85,65 @@ export const api = {
       }),
     }),
   listSubscriptions: () => authedFetch<Subscription[]>('/subscriptions'),
+
+  // --- Google Authentication (unified for Calendar + Gmail) ---
+  // The app never touches a Google token: it asks the backend for a consent URL,
+  // opens it, and afterwards re-reads status. Single auth flow for both services.
+  // See backend/app/routers/google_auth.py.
+  googleAuthStatus: () => authedFetch<GoogleCalendarStatus>('/auth/google/status'),
+  startGoogleAuth: (appRedirect: string) =>
+    authedFetch<{ authorization_url: string }>('/auth/google/connect', {
+      method: 'POST',
+      body: JSON.stringify({ app_redirect: appRedirect }),
+    }),
+  disconnectGoogleAuth: () =>
+    authedFetch<{ calendar_disconnected: boolean; gmail_disconnected: boolean }>(
+      '/auth/google/connection',
+      { method: 'DELETE' },
+    ),
+
+  // --- Google Calendar ---
+  googleCalendarStatus: () => authedFetch<GoogleCalendarStatus>('/calendar/google/status'),
+  startGoogleCalendarAuth: (appRedirect: string) =>
+    authedFetch<{ authorization_url: string }>('/calendar/google/connect', {
+      method: 'POST',
+      body: JSON.stringify({ app_redirect: appRedirect }),
+    }),
+  disconnectGoogleCalendar: () =>
+    authedFetch<{ disconnected: boolean }>('/calendar/google/connection', { method: 'DELETE' }),
+  listGoogleCalendarEvents: (maxResults = 20, flightsOnly = false) =>
+    authedFetch<GoogleCalendarEvent[]>(
+      `/calendar/google/events?max_results=${maxResults}&flights_only=${flightsOnly}`,
+    ),
+  syncGoogleCalendar: (maxResults = 20, flightsOnly = true) =>
+    authedFetch<GoogleSyncResult>(
+      `/calendar/google/sync?max_results=${maxResults}&flights_only=${flightsOnly}`,
+      { method: 'POST' },
+    ),
+
+  // --- Device calendar (Apple Calendar via expo-calendar) ---
+  syncDeviceCalendar: (events: DeviceCalendarEvent[], flightsOnly = true) =>
+    authedFetch<DeviceSyncResult>('/calendar/device-events', {
+      method: 'POST',
+      body: JSON.stringify({ events, flights_only: flightsOnly }),
+    }),
+
+  // --- Gmail ---
+  gmailStatus: () => authedFetch<GoogleCalendarStatus>('/gmail/status'),
+  startGmailAuth: (appRedirect: string) =>
+    authedFetch<{ authorization_url: string }>('/gmail/connect', {
+      method: 'POST',
+      body: JSON.stringify({ app_redirect: appRedirect }),
+    }),
+  disconnectGmail: () =>
+    authedFetch<{ disconnected: boolean }>('/gmail/connection', { method: 'DELETE' }),
+  listGmailMessages: (maxResults = 10) =>
+    authedFetch<{ messages: any[]; count: number }>(`/gmail/messages?max_results=${maxResults}`),
+  syncGmail: (maxResults = 10) =>
+    authedFetch<{ fetched: number; synced: number; result_size_estimate: number }>(
+      `/gmail/sync?max_results=${maxResults}`,
+      { method: 'POST' },
+    ),
   streamRoamingConversation: async (params: {
     calendarEventId: string;
     signal: AbortSignal;

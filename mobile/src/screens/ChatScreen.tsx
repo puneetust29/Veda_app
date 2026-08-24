@@ -3,7 +3,7 @@ import { useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import ChatItemView from '../components/ChatItemView';
+import ChatItemView from '../components/chat/ChatItemView';
 import { useRoamingChat } from '../hooks/useRoamingChat';
 import type { RootStackParamList } from '../types';
 

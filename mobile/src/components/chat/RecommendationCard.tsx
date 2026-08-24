@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import type { RecommendationCardPayload } from '../types';
+import type { RecommendationCardPayload } from '../../types';
 
 type Props = {
   card: RecommendationCardPayload;

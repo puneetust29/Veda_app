@@ -1,7 +1,8 @@
 import { memo } from 'react';
 
-import type { ChatItem } from '../types';
+import type { ChatItem } from '../../types';
 import ConfirmationPrompt from './ConfirmationPrompt';
+import HotelBookingCard from '../common/HotelBookingCard';
 import MessageBubble from './MessageBubble';
 import ReceiptCard from './ReceiptCard';
 import RecommendationCard from './RecommendationCard';
@@ -21,6 +22,14 @@ function ChatItemViewImpl({ item, onConfirm, onDecline }: Props) {
       return <StatusLine label={item.label} state={item.state} />;
     case 'card':
       return <RecommendationCard card={item.card} />;
+    case 'hotel':
+      return (
+        <HotelBookingCard
+          hotel={item.hotel.hotel}
+          suggestion={item.hotel.suggestion}
+          recommendations={item.hotel.recommendations}
+        />
+      );
     case 'confirmation':
       return <ConfirmationPrompt item={item} onConfirm={onConfirm} onDecline={onDecline} />;
     case 'receipt':

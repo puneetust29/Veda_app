@@ -138,6 +138,111 @@ Notes:
 
 ---
 
+## Google Calendar (real, not the mocked `calendar_events` rows)
+
+`calendar_events` is seeded mock data. Real Google Calendar lives under
+`/calendar/google/*` and is **optional** — those routes return `503` until
+`GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are set, so a deployment without
+them still boots and every other route works.
+
+**Tokens stay server-side.** The mobile app never receives a Google access
+token; it calls this backend, which holds the refresh token in
+`google_calendar_credentials`. That keeps the non-expiring credential off the
+device, and revoking one customer is a single row delete.
+
+### One-time Cloud Console setup
+
+Nobody can do this for you — it needs your own Google account in a browser.
+
+1. Create a project at <https://console.cloud.google.com> and enable the
+   **Google Calendar API** (APIs & Services → Library → "Google Calendar API").
+2. Configure the OAuth consent screen: **External**, publishing status
+   **Testing**, and add your Google account under **Test users**. In Testing mode
+   only listed users can sign in at all.
+3. Create an OAuth client of type **Web application** (not "iOS"/"Android" — the
+   consent flow terminates on this backend, not in the app), and register an
+   Authorized redirect URI for every host you will run the backend on. It must
+   match `GOOGLE_REDIRECT_URI` character for character:
+
+   | Where the app runs | Redirect URI to register |
+   |---|---|
+   | iOS simulator | `http://localhost:8000/calendar/google/callback` |
+   | Android emulator | `http://10.0.2.2:8000/calendar/google/callback` |
+   | Physical device on your LAN | `http://<your-machine-ip>:8000/calendar/google/callback` |
+   | Deployed backend | `https://<your-host>/calendar/google/callback` |
+
+4. Uncomment `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` in `backend/.env` and
+   paste the values in, then set `GOOGLE_REDIRECT_URI` to the row above that
+   matches how you are running. Restart the backend.
+
+Verify with `curl -H "Authorization: Bearer <token>" localhost:8000/calendar/google/status`
+— it should report `"configured": true`.
+
+> **Testing-mode caveat:** while the consent screen is in Testing, Google expires
+> refresh tokens after 7 days. Connections need re-consenting until you publish.
+
+### Connecting from the mobile app
+
+`Dashboard → Calendar` opens the connect/disconnect screen
+([`GoogleCalendarScreen.tsx`](mobile/src/screens/GoogleCalendarScreen.tsx)). It
+works identically on iOS and Android:
+
+1. The app asks the backend for a consent URL, passing its own return URL from
+   `Linking.createURL('google-calendar')`.
+2. `WebBrowser.openAuthSessionAsync` shows Google's consent page in a system auth
+   session (SFAuthenticationSession on iOS, Custom Tab on Android).
+3. Google redirects to `/calendar/google/callback`; that page stores the
+   credentials and bounces the browser to the app's return URL, which closes the
+   auth session automatically.
+4. The app re-reads `/calendar/google/status`.
+
+The return URL is client-supplied because it differs per runtime — Expo Go serves
+`exp://`, a dev or standalone build serves `veda://` (the `scheme` in
+`mobile/app.json`). The backend stores it with the handshake and only accepts
+allowlisted app schemes, since it renders that value into a page on its own
+origin. Step 4 runs on every exit path, so the flow still recovers if the user
+backs out or a browser refuses the scripted jump to a custom scheme.
+
+### Endpoints
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/calendar/google/status` | Whether this customer is connected. Never returns a token. |
+| `POST` | `/calendar/google/connect` | Returns `authorization_url` to open in a browser. Optional body `{"app_redirect": "..."}` sets where the callback returns the browser to (app schemes only). |
+| `GET` | `/calendar/google/callback` | Where Google redirects. **Unauthenticated by design** — a fresh browser navigation has no `Authorization` header; the single-use `state` ties it back to the customer. |
+| `GET` | `/calendar/google/events` | Live read from Google. |
+| `POST` | `/calendar/google/events` | Create an event (timezone-aware datetimes required). |
+| `POST` | `/calendar/google/sync` | Mirror Google events into `calendar_events`. |
+| `DELETE` | `/calendar/google/connection` | Revoke at Google and forget the credentials. |
+
+### Why `sync` exists
+
+Agents read `calendar_events`, not Google. `POST /calendar/google/sync` upserts
+on `(customer_id, google_event_id)`, so the roaming agent sees real trips with no
+agent changes, re-running updates instead of duplicating, and the seeded mock
+rows (null `google_event_id`) are untouched.
+
+All-day events are skipped: `calendar_events` requires `timestamptz` on both
+ends, and all-day Google events carry `date` rather than `dateTime`. The count is
+reported as `skipped_all_day` rather than silently dropped.
+
+### Migration
+
+Apply `supabase/migrations/0003_google_calendar.sql` before using these routes —
+it creates `google_calendar_credentials` and `google_oauth_states`, and adds
+`google_event_id` / `source` to `calendar_events`. Either:
+
+```bash
+# With the Supabase CLI, from backend/
+supabase db push
+```
+
+or paste the file into the Supabase dashboard's **SQL Editor** and run it. The
+script is idempotent (`if not exists` throughout), so re-running is safe.
+
+
+---
+
 ## Common Commands
 
 ### Backend

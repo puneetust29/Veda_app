@@ -1,25 +1,64 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useFocusEffect } from '@react-navigation/native';
+import * as Calendar from 'expo-calendar';
 import { useCallback, useState } from 'react';
-import {
-  ActivityIndicator,
-  FlatList,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import type { DropdownMenuItem } from '../components/common/DropdownMenu';
+import AskVintoButton from '../components/dashboard/AskVintoButton';
+import AttentionCarousel from '../components/dashboard/AttentionCarousel';
+import DashboardHeader from '../components/dashboard/DashboardHeader';
+import GreetingWeather from '../components/dashboard/GreetingWeather';
+import SuggestionGrid, { type Suggestion } from '../components/dashboard/SuggestionGrid';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
-import type { CalendarEvent, RootStackParamList } from '../types';
-import { useFocusEffect } from '@react-navigation/native';
+import { readDeviceCalendarEvents } from '../lib/deviceCalendar';
+import { FALLBACK_WEATHER, getDeviceWeatherSummary } from '../lib/weather';
+import { colors, spacing, typography } from '../theme';
+import type { CalendarEvent, RootStackParamList, WeatherSummary } from '../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Dashboard'>;
 
+// Used when location permission is denied or weather cannot be fetched.
+const PLACEHOLDER_WEATHER = FALLBACK_WEATHER;
+
+// Silently mirrors calendar sources into calendar_events before the
+// dashboard reads them, so a returning user sees up-to-date flights without
+// manual syncing. Deliberately non-blocking on failure (best-effort background
+// refresh) and never prompts for anything the user hasn't already granted --
+// it only acts on connections/permissions that already exist:
+//   - Google Calendar: synced if customer completed OAuth consent
+//   - Device Calendar: synced if permission is GRANTED
+//   - Gmail flights: synced if customer connected Gmail (extracts flights from emails)
+async function silentlySyncCalendars(): Promise<void> {
+  await Promise.allSettled([
+    (async () => {
+      const status = await api.googleAuthStatus();
+      if (status.configured && status.calendar_connected) {
+        await api.syncGoogleCalendar();
+      }
+    })(),
+    (async () => {
+      const { status } = await Calendar.getCalendarPermissionsAsync();
+      if (status === Calendar.PermissionStatus.GRANTED) {
+        const events = await readDeviceCalendarEvents();
+        await api.syncDeviceCalendar(events, true);
+      }
+    })(),
+    (async () => {
+      try {
+        await api.syncGmail();
+      } catch (err) {
+        console.warn('[Dashboard] Gmail sync failed', err);
+      }
+    })(),
+  ]);
+}
+
 export default function DashboardScreen({ navigation }: Props) {
-  const { signOut } = useAuth();
+  const { customer, signOut } = useAuth();
   const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [weather, setWeather] = useState<WeatherSummary>(PLACEHOLDER_WEATHER);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -28,94 +67,137 @@ export default function DashboardScreen({ navigation }: Props) {
     setEvents(data);
   }, []);
 
+  const loadWeather = useCallback(async () => {
+    try {
+      setWeather(await getDeviceWeatherSummary());
+    } catch (err) {
+      console.warn('[Dashboard] weather fetch failed', err);
+      setWeather(PLACEHOLDER_WEATHER);
+    }
+  }, []);
+
+
+  const syncAndLoadEvents = useCallback(async () => {
+    // Best-effort: a sync failure (offline, expired Google token, etc.)
+    // shouldn't block showing whatever calendar_events already has.
+    await Promise.allSettled([
+      (async () => {
+        await silentlySyncCalendars().catch((err) =>
+          console.warn('[Dashboard] background calendar sync failed', err),
+        );
+        await loadEvents();
+      })(),
+      loadWeather(),
+    ]);
+  }, [loadEvents, loadWeather]);
+
   useFocusEffect(
     useCallback(() => {
       setLoading(true);
-      loadEvents().finally(() => setLoading(false));
-    }, [loadEvents]),
+      syncAndLoadEvents().finally(() => setLoading(false));
+    }, [syncAndLoadEvents]),
   );
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await loadEvents();
+    await syncAndLoadEvents();
     setRefreshing(false);
   };
 
   const upcomingFlights = events.filter((event) => event.event_type === 'flight');
+  const firstName = customer?.full_name?.split(' ')[0] ?? 'there';
+
+  // "Connect apps" tiles are visual placeholders for integrations that
+  // aren't wired up yet; the rest route into existing screens/nav entries.
+  const suggestions: Suggestion[] = [
+    { id: 'school-fees', icon: 'school-outline', label: 'Pay school fees' },
+    { id: 'health-checkup', icon: 'medkit-outline', label: 'Book annual health checkup' },
+    { id: 'broadband', icon: 'home-outline', label: 'Renew home broadband' },
+    { id: 'groceries', icon: 'cart-outline', label: 'Restock weekly groceries', connectApps: true },
+    {
+      id: 'meetings',
+      icon: 'calendar-outline',
+      label: "Plan next week's meetings",
+      connectApps: true,
+      onPress: () => navigation.navigate('DeviceCalendar'),
+    },
+    { id: 'food', icon: 'fast-food-outline', label: 'Order food', connectApps: true },
+  ];
+
+  // No dedicated profile/settings screen exists in the Figma design yet, so
+  // these account-level actions live in the header's avatar dropdown.
+  const menuItems: DropdownMenuItem[] = [
+    { id: 'all-plans', icon: 'list-outline', label: 'All plans', onPress: () => navigation.navigate('RoamingPlans') },
+    { id: 'my-plans', icon: 'card-outline', label: 'My plans', onPress: () => navigation.navigate('Subscriptions') },
+    {
+      id: 'device-calendar',
+      icon: 'calendar-outline',
+      label: 'Calendars',
+      onPress: () => navigation.navigate('DeviceCalendar'),
+    },
+    {
+      id: 'gmail',
+      icon: 'mail-outline',
+      label: 'Gmail',
+      onPress: () => navigation.navigate('Gmail'),
+    },
+    { id: 'sign-out', icon: 'log-out-outline', label: 'Sign out', onPress: signOut, destructive: true },
+  ];
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Upcoming trips</Text>
-        <View style={styles.headerActions}>
-          <TouchableOpacity onPress={() => navigation.navigate('RoamingPlans')}>
-            <Text style={styles.link}>All plans</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => navigation.navigate('Subscriptions')}>
-            <Text style={styles.link}>My plans</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={signOut}>
-            <Text style={styles.link}>Sign out</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      <DashboardHeader avatarInitial={firstName.charAt(0).toUpperCase()} menuItems={menuItems} />
 
       {loading ? (
         <ActivityIndicator style={styles.loading} />
       ) : (
-        <FlatList
-          data={upcomingFlights}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.list}
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
-          ListEmptyComponent={<Text style={styles.empty}>No upcoming flights found.</Text>}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={styles.card}
-              onPress={() => navigation.navigate('Chat', { event: item })}
-            >
-              <Text style={styles.cardTitle}>{item.title}</Text>
-              <Text style={styles.cardSubtitle}>
-                {item.origin} → {item.destination}
-              </Text>
-              <Text style={styles.cardDate}>
-                {new Date(item.start_datetime).toLocaleDateString()} –{' '}
-                {new Date(item.end_datetime).toLocaleDateString()}
-              </Text>
-              <Text style={styles.cardCta}>Roaming not enabled for this trip →</Text>
-            </TouchableOpacity>
-          )}
-        />
+        >
+          <GreetingWeather name={firstName} weather={weather} />
+
+          <View style={styles.attentionHeader}>
+            <Text style={styles.attentionTitle}>What needs your attention</Text>
+            {upcomingFlights.length > 0 ? (
+              <View style={styles.countBadge}>
+                <Text style={styles.countBadgeText}>{upcomingFlights.length}</Text>
+              </View>
+            ) : null}
+          </View>
+
+          <AttentionCarousel
+            flights={upcomingFlights}
+            onPressFlight={(event) => navigation.navigate('Chat', { event })}
+          />
+
+          <SuggestionGrid suggestions={suggestions} />
+        </ScrollView>
       )}
+
+      <AskVintoButton />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff', paddingTop: 60 },
-  header: {
+  container: { flex: 1, backgroundColor: colors.background },
+  loading: { marginTop: spacing.xxxl },
+  scrollContent: { paddingBottom: spacing.xl },
+  attentionHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    marginBottom: 12,
+    gap: spacing.sm,
+    marginHorizontal: spacing.xl,
+    marginTop: spacing.xxl,
+    marginBottom: spacing.md,
   },
-  headerActions: { flexDirection: 'row', gap: 16 },
-  title: { fontSize: 24, fontWeight: '700' },
-  link: { color: '#0a66c2', fontSize: 14, marginLeft: 16 },
-  loading: { marginTop: 40 },
-  list: { padding: 20, gap: 12 },
-  empty: { color: '#666', textAlign: 'center', marginTop: 40 },
-  card: {
-    borderWidth: 1,
-    borderColor: '#eee',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    backgroundColor: '#fafafa',
+  attentionTitle: { ...typography.sectionTitle, color: colors.textPrimary },
+  countBadge: {
+    backgroundColor: colors.brandTint,
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
   },
-  cardTitle: { fontSize: 17, fontWeight: '600' },
-  cardSubtitle: { color: '#444', marginTop: 4 },
-  cardDate: { color: '#888', marginTop: 4, fontSize: 13 },
-  cardCta: { color: '#c0392b', marginTop: 10, fontWeight: '600', fontSize: 13 },
+  countBadgeText: { ...typography.small, color: colors.brand },
 });

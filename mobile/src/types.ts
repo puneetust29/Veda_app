@@ -17,8 +17,15 @@ export type CalendarEvent = {
   destination: string | null;
   start_datetime: string;
   end_datetime: string;
+  source: 'google' | 'device' | 'gmail' | 'mock';
   raw_details: Record<string, unknown>;
   created_at: string;
+};
+
+export type WeatherSummary = {
+  temperatureC: number;
+  location: string;
+  weatherCode: number | null;
 };
 
 export type RoamingPlan = {
@@ -56,19 +63,118 @@ export type Subscription = {
   calendar_events: CalendarEvent;
 };
 
+// --- Google Calendar ---
+
+// `configured: false` means the backend has no GOOGLE_CLIENT_ID/SECRET, so every
+// Google route answers 503. Distinct from `connected: false`, which means the
+// backend is set up but this customer hasn't consented yet.
+// `calendar_connected` and `gmail_connected` indicate which individual services
+// are authenticated (both are set after unified /auth/google auth).
+export type GoogleCalendarStatus = {
+  configured: boolean;
+  connected: boolean;
+  calendar_connected?: boolean;
+  gmail_connected?: boolean;
+  google_account_email?: string | null;
+  scope?: string | null;
+};
+
+// A raw Google Calendar API event resource, passed through untouched by
+// GET /calendar/google/events. Only the fields the UI reads are typed.
+export type GoogleCalendarEvent = {
+  id: string;
+  summary?: string;
+  description?: string;
+  location?: string;
+  htmlLink?: string;
+  status?: string;
+  start?: { dateTime?: string; date?: string };
+  end?: { dateTime?: string; date?: string };
+};
+
+export type GoogleSyncResult = {
+  fetched: number;
+  synced: number;
+  skipped_all_day: number;
+  skipped_non_flight: number;
+};
+
+// `source` distinguishes which account synced the underlying calendar to the
+// device: 'google' when expo-calendar's Calendar.Source looks like a Google
+// account (source.type === 'com.google' on Android, or a CalDAV source named
+// after a gmail.com address on iOS), 'apple' for the device's local/iCloud
+// calendars, 'other' for anything else (Outlook, Yahoo, etc.). This is
+// client-side display metadata only -- the backend's /calendar/device-events
+// ignores unrecognized fields and always stores these as source: "device".
+export type DeviceCalendarSource = 'google' | 'apple' | 'other';
+
+export type DeviceCalendarEvent = {
+  device_event_id: string;
+  title: string;
+  location?: string;
+  notes?: string;
+  start: string;
+  end: string;
+  calendarTitle: string;
+  source: DeviceCalendarSource;
+};
+
+export type DeviceSyncResult = {
+  fetched: number;
+  synced: number;
+  skipped_non_flight: number;
+};
+
 export type RootStackParamList = {
-  SignIn: undefined;
+  Onboarding: undefined;
   Dashboard: undefined;
   FlightDetail: { event: CalendarEvent };
   Chat: { event: CalendarEvent };
   Subscriptions: undefined;
   RoamingPlans: undefined;
+  // Single merged calendar screen: reads every calendar expo-calendar exposes
+  // on-device (Apple Calendar, plus Google/Outlook/etc. if the user added
+  // those accounts in the OS Settings app) and displays them together.
+  DeviceCalendar: undefined;
+  Gmail: undefined;
+};
+
+// --- Onboarding flow (pre-auth) ---
+
+export type PlanTier = 'lite' | 'balanced' | 'complete';
+
+export type OnboardingStackParamList = {
+  Landing: undefined;
+  PhoneEntry: undefined;
+  OtpVerification: undefined;
+  Welcome: undefined;
+  PlanSelection: undefined;
+  AppPermissions: undefined;
+  AccountSelection: undefined;
+  Consent: undefined;
+  Success: undefined;
 };
 
 // --- Chat / streaming agent contract ---
 
 export type RecommendationCardPayload =
   | { kind: 'roaming_plan'; plan: RoamingPlan; reasoning: string; judge_approved: boolean; judge_feedback: string };
+
+export type HotelBooking = {
+  found: boolean;
+  hotel_name?: string | null;
+  check_in?: string | null;
+  check_out?: string | null;
+  location?: string | null;
+  source?: 'calendar' | 'email' | null;
+  confidence?: number;
+};
+
+export type HotelDetectionResultPayload = {
+  hotel: HotelBooking | null;
+  suggestion: string;
+  recommendations?: Array<{ name: string; rating: number; price: number; location: string }> | null;
+};
 
 // The wire event contract emitted by `POST /chat/stream`. This is the backend's
 // still-being-finalized shape — only `chatThread.ts` should need to know both this
@@ -80,6 +186,7 @@ export type AgentStreamEvent =
   | { type: 'tool_completed'; data: { tool: string } }
   | { type: 'text'; data: { role: 'agent' | 'user'; text: string } }
   | { type: 'recommendation_ready'; data: { card: RecommendationCardPayload } }
+  | { type: 'hotel_result'; data: HotelDetectionResultPayload }
   | {
       type: 'confirmation_required';
       data: { action_id: string; summary: string; risk: 'commit' | 'read'; plan_id: string; calendar_event_id: string };
@@ -96,6 +203,7 @@ export type ChatItem =
   | (ChatItemBase & { kind: 'text'; role: 'agent' | 'user'; text: string })
   | (ChatItemBase & { kind: 'status'; tool?: string; label: string; state: 'active' | 'done' })
   | (ChatItemBase & { kind: 'card'; card: RecommendationCardPayload })
+  | (ChatItemBase & { kind: 'hotel'; hotel: HotelDetectionResultPayload })
   | (ChatItemBase & {
       kind: 'confirmation';
       actionId: string;

@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
 from app.orchestration.orchestrator import get_orchestrator
-from app.routers import auth, calendar, conversation, roaming, subscriptions
+from app.routers import auth, calendar, conversation, gmail, google_auth, roaming, subscriptions
 
 settings = get_settings()
 
@@ -23,14 +23,17 @@ app = FastAPI(title="AI Companion App API", version="0.1.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[o.strip() for o in settings.cors_origins.split(",")],
+    allow_origins=["*"],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 app.include_router(auth.router)
 app.include_router(auth.me_router)
+app.include_router(google_auth.router)
 app.include_router(calendar.router)
+app.include_router(gmail.router)
 app.include_router(roaming.router)
 app.include_router(subscriptions.router)
 app.include_router(conversation.router)
