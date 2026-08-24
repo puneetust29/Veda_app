@@ -7,11 +7,11 @@ type Props = {
 };
 
 // Fixed-position CTA pinned to the bottom of the Dashboard, matching the
-// Figma "Tap to ask Veda" button.
-export default function AskVedaButton({ onPress }: Props) {
+// Figma "Tap to ask Vinto" button.
+export default function AskVintoButton({ onPress }: Props) {
   return (
     <TouchableOpacity style={styles.button} onPress={onPress} activeOpacity={0.85}>
-      <Text style={styles.label}>Tap to ask Veda</Text>
+      <Text style={styles.label}>Tap to ask Vinto</Text>
     </TouchableOpacity>
   );
 }

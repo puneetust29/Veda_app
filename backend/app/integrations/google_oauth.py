@@ -16,17 +16,6 @@ import httpx
 
 from app.config import get_settings
 
-# Development-only: disable SSL verification for local testing with self-signed certs
-# This is NOT safe for production and should only be used in development environments
-_verify_ssl = True
-_settings_cache = None
-
-def _get_verify_ssl() -> bool:
-    global _settings_cache
-    if _settings_cache is None:
-        _settings_cache = get_settings()
-    return _settings_cache.environment != "development"
-
 AUTH_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth"
 TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token"
 REVOKE_ENDPOINT = "https://oauth2.googleapis.com/revoke"
@@ -87,7 +76,7 @@ def _post_token(payload: dict) -> dict:
         "client_secret": settings.google_client_secret,
         **payload,
     }
-    with httpx.Client(timeout=_TIMEOUT, verify=_get_verify_ssl()) as client:
+    with httpx.Client(timeout=_TIMEOUT) as client:
         response = client.post(TOKEN_ENDPOINT, data=body)
     if response.status_code >= 400:
         raise GoogleOAuthError(f"token endpoint returned {response.status_code}: {response.text}")
@@ -116,13 +105,13 @@ def refresh_access_token(refresh_token: str) -> dict:
 
 def revoke(token: str) -> None:
     """Best-effort revoke. Google answers 400 for an already-dead token, which is fine."""
-    with httpx.Client(timeout=_TIMEOUT, verify=_get_verify_ssl()) as client:
+    with httpx.Client(timeout=_TIMEOUT) as client:
         client.post(REVOKE_ENDPOINT, data={"token": token})
 
 
 def token_info(access_token: str) -> dict:
     """Google's own view of a token -- the only authoritative source on granted scopes."""
-    with httpx.Client(timeout=_TIMEOUT, verify=_get_verify_ssl()) as client:
+    with httpx.Client(timeout=_TIMEOUT) as client:
         response = client.get(TOKENINFO_ENDPOINT, params={"access_token": access_token})
     if response.status_code >= 400:
         raise GoogleOAuthError(f"tokeninfo returned {response.status_code}: {response.text}")
@@ -136,7 +125,7 @@ def userinfo(access_token: str) -> dict:
     them Google still returns 200 but with an empty/partial body, so callers
     should treat every field here as optional.
     """
-    with httpx.Client(timeout=_TIMEOUT, verify=_get_verify_ssl()) as client:
+    with httpx.Client(timeout=_TIMEOUT) as client:
         response = client.get(USERINFO_ENDPOINT, headers={"Authorization": f"Bearer {access_token}"})
     if response.status_code >= 400:
         raise GoogleOAuthError(f"userinfo returned {response.status_code}: {response.text}")

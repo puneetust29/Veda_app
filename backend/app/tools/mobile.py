@@ -10,59 +10,12 @@ from app.tools.registry import ToolSpec, tool_registry
 
 
 def fetch_roaming_catalog(destination_country: str) -> list[dict]:
-    """Mocked telecom roaming-plan product API, backed by the roaming_plans table.
-
-    Handles city names (NYC -> United States), country names, and country codes.
-    """
+    """Mocked telecom roaming-plan product API, backed by the roaming_plans table."""
     supabase = get_supabase()
-
-    # City -> country code mapping for common destinations
-    city_to_country = {
-        "NYC": "US",
-        "New York": "US",
-        "LA": "US",
-        "Los Angeles": "US",
-        "London": "GB",
-        "Paris": "FR",
-        "Tokyo": "JP",
-        "Delhi": "IN",
-        "Mumbai": "IN",
-        "Singapore": "SG",
-        "Sydney": "AU",
-        "Casablanca": "MA",
-    }
-
-    # Normalize input: remove whitespace, check city mapping
-    search_value = destination_country.strip()
-    country_code = city_to_country.get(search_value)
-
-    # If city mapping found, search by country_code
-    if country_code:
-        result = (
-            supabase.table("roaming_plans")
-            .select("*")
-            .eq("country_code", country_code)
-            .order("duration_days")
-            .execute()
-        )
-        return result.data
-
-    # Try exact match on country_name first
     result = (
         supabase.table("roaming_plans")
         .select("*")
-        .eq("country_name", search_value)
-        .order("duration_days")
-        .execute()
-    )
-    if result.data:
-        return result.data
-
-    # Try country_code (case-insensitive)
-    result = (
-        supabase.table("roaming_plans")
-        .select("*")
-        .eq("country_code", search_value.upper())
+        .eq("country_name", destination_country)
         .order("duration_days")
         .execute()
     )
