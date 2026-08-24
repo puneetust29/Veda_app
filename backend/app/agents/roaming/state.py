@@ -17,6 +17,7 @@ class RoamingAgentState(AgentState, total=False):
 
     destination_country: str
     trip_duration_days: int
+    trip_details: Optional[dict]
 
     roaming_catalog: list[dict]
 

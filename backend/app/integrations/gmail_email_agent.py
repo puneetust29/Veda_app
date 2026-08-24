@@ -12,6 +12,7 @@ from typing import Optional
 
 from app.db.client import get_supabase
 from app.integrations import flight_classifier
+from app.utils.airport_mapper import get_destination_country
 
 
 class FlightEmailParsing:
@@ -46,7 +47,7 @@ class FlightEmailParsing:
 
     def to_calendar_event(self) -> dict:
         """Convert to calendar_events table row format."""
-        return {
+        event_dict = {
             "customer_id": self.customer_id,
             "title": self.title,
             "event_type": "flight",
@@ -64,6 +65,11 @@ class FlightEmailParsing:
                 "parsed_from": "email_body",
             },
         }
+
+        destination_country = get_destination_country(self.destination, event_dict)
+        event_dict["raw_details"]["destination_country"] = destination_country
+
+        return event_dict
 
 
 def parse_flight_email(email: dict, customer_id: str) -> Optional[FlightEmailParsing]:

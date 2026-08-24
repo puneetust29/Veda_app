@@ -27,9 +27,40 @@ def node_extract_trip_context(state: RoamingAgentState, writer: StreamWriter) ->
     # no-op under .invoke() (verified against langgraph/utils/runnable.py), so this is
     # inert for the legacy blocking routes.
     writer({"kind": "status", "text": "Reading your flight details…"})
-    country, days = extract_trip_context(state["calendar_event"])
-    writer({"kind": "status", "text": f"You're going to {country} for {days} days."})
-    return {"destination_country": country, "trip_duration_days": days}
+    country, days, trip_details = extract_trip_context(state["calendar_event"])
+
+    # Format trip details for display
+    from datetime import datetime
+    try:
+        departure_date = datetime.fromisoformat(trip_details["departure_date"].replace("Z", "+00:00"))
+        departure_str = departure_date.strftime("%b %d")
+    except Exception:
+        departure_str = "Unknown date"
+
+    if trip_details["is_round_trip"] and trip_details["return_date"]:
+        try:
+            return_date = datetime.fromisoformat(trip_details["return_date"].replace("Z", "+00:00"))
+            return_str = return_date.strftime("%b %d")
+        except Exception:
+            return_str = "Unknown date"
+        trip_summary = (
+            f"Round-trip: {trip_details['departure_city']} ({departure_str}) "
+            f"→ {trip_details['destination_city']} ({return_str})\n"
+            f"Destination: {country} | Duration: {days} days"
+        )
+    else:
+        trip_summary = (
+            f"One-way flight: {trip_details['departure_city']} ({departure_str}) "
+            f"→ {trip_details['destination_city']}\n"
+            f"Destination: {country} | Duration: {days} days"
+        )
+
+    writer({"kind": "status", "text": trip_summary})
+    return {
+        "destination_country": country,
+        "trip_duration_days": days,
+        "trip_details": trip_details,
+    }
 
 
 def node_fetch_catalog(state: RoamingAgentState, writer: StreamWriter) -> dict:

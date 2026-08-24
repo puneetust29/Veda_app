@@ -11,6 +11,8 @@ from app.config import get_settings
 from app.db.client import get_supabase
 from app.deps import get_current_customer
 from app.integrations import flight_classifier, google_calendar, google_oauth
+from app.utils.airport_mapper import get_destination_country
+from app.services.trip_service import get_round_trips
 
 router = APIRouter(prefix="/calendar", tags=["calendar"])
 logger = logging.getLogger(__name__)
@@ -77,6 +79,24 @@ def get_event(event_id: str, customer: dict = Depends(get_current_customer)) -> 
     if not result.data:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
     return result.data[0]
+
+
+@router.get("/trips")
+def list_trips(customer: dict = Depends(get_current_customer)) -> dict:
+    """Get grouped round-trip flights for dashboard.
+
+    Groups flights where:
+    - Outbound: A → B on date D1
+    - Return: B → A on date D2 (D2 > D1, within 60 days)
+
+    Returns both round-trip and one-way flights.
+    """
+    trips = get_round_trips(customer["id"])
+    return {
+        "trips": [trip.to_calendar_display() for trip in trips],
+        "total_trips": len(trips),
+        "total_round_trips": sum(1 for t in trips if t.is_round_trip),
+    }
 
 
 # --------------------------------------------------------------------------- #
@@ -369,23 +389,29 @@ def sync_device_events(
             skipped_non_flight += 1
             continue
 
-        rows.append(
-            {
-                "customer_id": customer["id"],
-                "device_event_id": event.device_event_id,
-                "source": "device",
-                "title": event.title or "(no title)",
-                "event_type": "flight" if classification.is_flight else "other",
-                "origin": classification.origin or event.location or None,
-                "destination": classification.destination,
-                "start_datetime": event.start.isoformat(),
-                "end_datetime": event.end.isoformat(),
-                "raw_details": {
-                    "notes": event.notes or None,
-                    "flight_confidence": classification.confidence,
-                },
-            }
-        )
+        row = {
+            "customer_id": customer["id"],
+            "device_event_id": event.device_event_id,
+            "source": "device",
+            "title": event.title or "(no title)",
+            "event_type": "flight" if classification.is_flight else "other",
+            "origin": classification.origin or event.location or None,
+            "destination": classification.destination,
+            "start_datetime": event.start.isoformat(),
+            "end_datetime": event.end.isoformat(),
+            "raw_details": {
+                "notes": event.notes or None,
+                "flight_confidence": classification.confidence,
+            },
+        }
+
+        # Add destination_country for flights
+        if row["event_type"] == "flight" and row["destination"]:
+            row["raw_details"]["destination_country"] = get_destination_country(
+                row["destination"], row
+            )
+
+        rows.append(row)
 
     # Filter out rows that already exist from any source (cross-source dedup)
     supabase = get_supabase()
