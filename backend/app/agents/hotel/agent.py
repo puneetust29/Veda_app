@@ -62,6 +62,10 @@ class HotelAgent(BaseAgent):
             except (ValueError, TypeError):
                 arrival_date = datetime.now()
 
+            # Stream status messages for hotel detection process
+            ctx.emit({"type": "status", "data": {"text": f"Checking hotel bookings for {destination}…"}})
+            ctx.emit({"type": "status", "data": {"text": "Searching your calendar and emails…"}})
+
             # Detect hotel booking
             hotel = detect_hotel_for_flight(customer_id, destination, arrival_date)
 

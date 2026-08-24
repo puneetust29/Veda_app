@@ -159,6 +159,7 @@ export const api = {
     priorPlan?: RoamingPlan;
     priorReasoning?: string;
     priorJudgeFeedback?: string;
+    agentType?: 'hotel' | 'roaming';
   }): Promise<void> => {
     if (process.env.EXPO_PUBLIC_CHAT_MOCK === '1') {
       return mockStreamRoamingConversation(params);
@@ -170,6 +171,9 @@ export const api = {
     }
 
     const body: any = { calendar_event_id: params.calendarEventId };
+    if (params.agentType) {
+      body.agent_type = params.agentType;
+    }
     if (params.message) {
       body.message = params.message;
       body.prior_plan = params.priorPlan;

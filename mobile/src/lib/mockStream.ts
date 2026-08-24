@@ -19,6 +19,7 @@ export type MockStreamParams = {
   priorPlan?: RoamingPlan;
   priorReasoning?: string;
   priorJudgeFeedback?: string;
+  agentType?: 'hotel' | 'roaming';
 };
 
 const MOCK_PLAN: RoamingPlan = {
@@ -34,6 +35,32 @@ const MOCK_PLAN: RoamingPlan = {
   description: 'High-speed data for a week in Japan, no daily cap.',
 };
 
+function hotelScriptedEvents(calendarEventId: string): Array<{ delayMs: number; event: AgentStreamEvent }> {
+  const runId = `mock-run-${Date.now()}`;
+
+  return [
+    { delayMs: 50, event: { type: 'run_started', data: { run_id: runId, agents: ['hotel_agent'] } } },
+    { delayMs: 150, event: { type: 'status', data: { text: 'Checking hotel bookings for NYC…' } } },
+    { delayMs: 600, event: { type: 'status', data: { text: 'Searching your calendar and emails…' } } },
+    {
+      delayMs: 500,
+      event: {
+        type: 'hotel_result',
+        data: {
+          hotel: null,
+          suggestion: "I don't see a hotel booking in your calendar or emails for NYC. Would you like me to suggest some great hotels for your arrival date?",
+          recommendations: [
+            { name: 'The Plaza', location: 'Fifth Avenue', rating: 4.8, price: 450 },
+            { name: 'The Peninsula', location: 'Midtown', rating: 4.9, price: 520 },
+            { name: 'The Carlyle', location: 'Upper East Side', rating: 4.7, price: 480 },
+          ],
+        },
+      },
+    },
+    { delayMs: 200, event: { type: 'done', data: { status: 'ok' } } },
+  ];
+}
+
 function scriptedEvents(calendarEventId: string): Array<{ delayMs: number; event: AgentStreamEvent }> {
   const runId = `mock-run-${Date.now()}`;
   const planId = MOCK_PLAN.id;
@@ -41,17 +68,11 @@ function scriptedEvents(calendarEventId: string): Array<{ delayMs: number; event
   return [
     { delayMs: 50, event: { type: 'run_started', data: { run_id: runId, agents: ['roaming_agent'] } } },
     { delayMs: 150, event: { type: 'status', data: { text: 'Reading your flight details…' } } },
-    { delayMs: 600, event: { type: 'status', data: { text: "You're going to Japan for 7 days." } } },
+    { delayMs: 600, event: { type: 'status', data: { text: "You're going to NYC for 7 days." } } },
     { delayMs: 500, event: { type: 'tool_started', data: { tool: 'mobile.get_roaming_plans' } } },
     { delayMs: 900, event: { type: 'tool_completed', data: { tool: 'mobile.get_roaming_plans' } } },
-    { delayMs: 400, event: { type: 'status', data: { text: 'Comparing 3 roaming plans…' } } },
-    {
-      delayMs: 1100,
-      event: {
-        type: 'status',
-        data: { text: 'Second opinion: 30 days is wasteful for a 7-day trip. Trying again…', attempt: 2 },
-      },
-    },
+    { delayMs: 400, event: { type: 'status', data: { text: 'Comparing 2 roaming plans for a 7-day trip…' } } },
+    { delayMs: 400, event: { type: 'status', data: { text: 'Double-checked — this plan fits.' } } },
     {
       delayMs: 900,
       event: {
@@ -132,7 +153,16 @@ export async function mockStreamRoamingConversation(params: MockStreamParams): P
   };
 
   try {
-    const events = params.message ? followupScriptedEvents(params.message) : scriptedEvents(params.calendarEventId);
+    let events: Array<{ delayMs: number; event: AgentStreamEvent }>;
+
+    if (params.message) {
+      events = followupScriptedEvents(params.message);
+    } else if (params.agentType === 'hotel') {
+      events = hotelScriptedEvents(params.calendarEventId);
+    } else {
+      events = scriptedEvents(params.calendarEventId);
+    }
+
     for (const { delayMs, event } of events) {
       await delay(delayMs, params.signal);
       params.onEvent(event);

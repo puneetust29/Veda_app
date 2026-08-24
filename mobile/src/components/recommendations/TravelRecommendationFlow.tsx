@@ -31,6 +31,7 @@ type ChatMessage = {
   id: string;
   role: 'user' | 'agent';
   text: string;
+  completed?: boolean;
 };
 
 type Props = {
@@ -43,6 +44,8 @@ const API_BASE = 'http://localhost:8000';
 export default function TravelRecommendationFlow({ event, onClose }: Props) {
   const { token } = useAuth();
   const scrollViewRef = useRef<ScrollView>(null);
+  const hotelStreamControllerRef = useRef<AbortController | null>(null);
+  const roamingStreamControllerRef = useRef<AbortController | null>(null);
 
   // State Management
   const [currentStep, setCurrentStep] = useState<Step>('trip');
@@ -89,6 +92,14 @@ export default function TravelRecommendationFlow({ event, onClose }: Props) {
     return () => clearTimeout(timer);
   }, [currentStep, chatMessages, confirmedItems]);
 
+  // Cleanup streams on unmount
+  useEffect(() => {
+    return () => {
+      hotelStreamControllerRef.current?.abort();
+      roamingStreamControllerRef.current?.abort();
+    };
+  }, []);
+
   // Update hotel booking status based on hotel data from agent
   useEffect(() => {
     setCompletedItems(prev => ({
@@ -97,34 +108,51 @@ export default function TravelRecommendationFlow({ event, onClose }: Props) {
     }));
   }, [hotelData]);
 
+  // Hotel suggestion message - from hotelResult
+  const [hotelSuggestionMsg, setHotelSuggestionMsg] = useState<string>('');
+
   // Check hotel booking status from backend with streaming messages
   useEffect(() => {
-    if (!hotelChecked && currentStep === 'hotel') {
+    // Run stream if: first visit (!hotelChecked) OR revisiting with no active stream (!hotelLoading)
+    if (currentStep === 'hotel' && (!hotelChecked || !hotelLoading)) {
+      // Messages already cleared in handleContinue, don't clear again to avoid blank screen
+      setRoamingRecommendation(null); // Clear roaming data when entering hotel
+      setError(null); // Clear any errors
       setHotelLoading(true);
-      setChatMessages([]); // Clear previous messages
 
       // Stream hotel agent messages
+      // Abort any previous hotel stream
+      hotelStreamControllerRef.current?.abort();
+
       const controller = new AbortController();
+      hotelStreamControllerRef.current = controller;
       let hotelResult: any = null;
 
       api.streamRoamingConversation({
         calendarEventId: event.id,
         signal: controller.signal,
+        agentType: 'hotel',
         onEvent: (event_) => {
-          // Display all agent messages in chat
-          if (event_.type === 'text' && event_.data.role === 'agent') {
+          // Display all streaming messages in chat - handle both 'text' and 'status' event types
+          if ((event_.type === 'text' && event_.data.role === 'agent') || event_.type === 'status') {
+            const messageText = event_.type === 'text' ? event_.data.text : event_.data.text;
             const msg: ChatMessage = {
               id: String(Date.now() + Math.random()),
               role: 'agent',
-              text: event_.data.text,
+              text: messageText,
             };
             setChatMessages(prev => [...prev, msg]);
-            log('HOTEL_MSG', 'Agent message', event_.data.text);
+            log('HOTEL_MSG', 'Agent message', messageText);
           }
-          // Collect hotel result
+          // Collect hotel result with correct field names
           if (event_.type === 'hotel_result') {
             hotelResult = (event_ as any).data;
             log('HOTEL_RESULT', 'Got hotel result', hotelResult);
+
+            // Use the hotel.suggestion (correct one from API)
+            if (hotelResult?.hotel && hotelResult.hotel.suggestion) {
+              setHotelSuggestionMsg(hotelResult.hotel.suggestion);
+            }
           }
         },
         onError: (err) => {
@@ -132,18 +160,29 @@ export default function TravelRecommendationFlow({ event, onClose }: Props) {
           setHotelLoading(false);
         },
         onClose: () => {
-          if (hotelResult?.is_booked && hotelResult?.booking_details) {
-            setHotelData(hotelResult.booking_details);
+          // Mark all messages as completed when stream finishes
+          setChatMessages(prev => prev.map(msg => ({ ...msg, completed: true })));
+
+          // Check if hotel was found using correct field name from HotelDetectionResult
+          if (hotelResult?.hotel && hotelResult.hotel.found) {
+            setHotelData(hotelResult.hotel);
           }
           setHotelLoading(false);
           setHotelChecked(true);
-          log('HOTEL', 'Stream closed');
+          log('HOTEL', 'Stream closed', { hotelData: hotelResult?.hotel });
         },
       }).catch(err => {
         log('HOTEL', 'Error', err);
         setHotelLoading(false);
         setHotelChecked(true);
       });
+
+      return () => {
+        // Abort hotel stream when leaving hotel step
+        if (currentStep !== 'hotel') {
+          hotelStreamControllerRef.current?.abort();
+        }
+      };
     }
   }, [currentStep, hotelChecked]);
 
@@ -151,35 +190,72 @@ export default function TravelRecommendationFlow({ event, onClose }: Props) {
   const handleContinue = () => {
     log('NAVIGATION', `Continuing from step: ${currentStep}`);
     if (currentStep === 'trip') {
+      setChatMessages([]); // Clear before entering hotel
       setCurrentStep('hotel');
     } else if (currentStep === 'hotel') {
+      setChatMessages([]); // Clear hotel messages before moving to roaming
+
+      // Abort any previous roaming stream
+      roamingStreamControllerRef.current?.abort();
+
       setCurrentStep('roaming');
       setRoamingLoading(true);
-      setChatMessages([]); // Clear previous messages
       setError(null);
 
       // Stream roaming recommendation with LLM messages
       const controller = new AbortController();
+      roamingStreamControllerRef.current = controller;
       let roamingResult: any = null;
 
       api.streamRoamingConversation({
         calendarEventId: event.id,
         signal: controller.signal,
+        agentType: 'roaming',
         onEvent: (event_) => {
-          // Display all LLM streaming messages in chat
-          if (event_.type === 'text' && event_.data.role === 'agent') {
+          // Display all streaming messages in chat - handle both 'text' and 'status' event types
+          if ((event_.type === 'text' && event_.data.role === 'agent') || event_.type === 'status') {
+            const messageText = event_.type === 'text' ? event_.data.text : event_.data.text;
             const msg: ChatMessage = {
               id: String(Date.now() + Math.random()),
               role: 'agent',
-              text: event_.data.text,
+              text: messageText,
             };
             setChatMessages(prev => [...prev, msg]);
-            log('ROAMING_MSG', 'Agent message', event_.data.text);
+            log('ROAMING_MSG', 'Agent message', messageText);
           }
-          // Collect recommendation data
+          // Collect recommendation data - backend sends 'card' not 'candidate_plan'
           if (event_.type === 'recommendation_ready') {
             roamingResult = (event_ as any).data;
             log('ROAMING_RESULT', 'Got recommendation', roamingResult);
+
+            // Display multiple streaming messages for recommendation
+            if (roamingResult?.card && roamingResult.card.plan) {
+              const plan = roamingResult.card.plan;
+
+              // Add multiple messages to simulate streaming
+              const messages: ChatMessage[] = [
+                {
+                  id: String(Date.now() + Math.random()),
+                  role: 'agent',
+                  text: `Found a great match: ${plan.plan_name}`,
+                  completed: true,
+                },
+                {
+                  id: String(Date.now() + Math.random()),
+                  role: 'agent',
+                  text: `${plan.data_gb}GB data, ${plan.duration_days} days - €${plan.price}`,
+                  completed: true,
+                },
+                {
+                  id: String(Date.now() + Math.random()),
+                  role: 'agent',
+                  text: `Perfect for your ${plan.duration_days}-day trip to ${plan.country_name}`,
+                  completed: true,
+                },
+              ];
+
+              setChatMessages(prev => [...prev, ...messages]);
+            }
           }
         },
         onError: (err) => {
@@ -187,8 +263,16 @@ export default function TravelRecommendationFlow({ event, onClose }: Props) {
           setRoamingLoading(false);
         },
         onClose: () => {
-          if (roamingResult?.candidate_plan) {
-            setRoamingRecommendation(roamingResult);
+          // Mark all messages as completed when stream finishes
+          setChatMessages(prev => prev.map(msg => ({ ...msg, completed: true })));
+
+          // Backend sends 'card' with the plan, transform to match UI expectations
+          if (roamingResult?.card && roamingResult.card.plan) {
+            setRoamingRecommendation({
+              candidate_plan: roamingResult.card.plan,
+              reasoning: roamingResult.card.reasoning,
+              judge_feedback: roamingResult.card.judge_feedback,
+            });
           } else if (chatMessages.length === 0) {
             setError('No suitable roaming plans available for this trip. Please try different dates.');
           }
@@ -351,20 +435,22 @@ export default function TravelRecommendationFlow({ event, onClose }: Props) {
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
       >
-        {/* Trip Summary */}
-        {currentStep === 'trip' && (
+        {/* Trip Summary - Always visible */}
+        {(
           <>
-            <View style={styles.agentMessageWrapper}>
-              <View style={styles.agentIcon}>
-                <Text style={styles.agentIconText}>V</Text>
+            {currentStep === 'trip' && (
+              <View style={styles.agentMessageWrapper}>
+                <View style={styles.agentIcon}>
+                  <Text style={styles.agentIconText}>V</Text>
+                </View>
+                <View style={styles.agentBubble}>
+                  <Text style={styles.agentText}>
+                    I see you're travelling to {event?.destination || 'Australia'} in August.{'\n'}
+                    You've halfway there, and I've two recommendations to make you travel ready.
+                  </Text>
+                </View>
               </View>
-              <View style={styles.agentBubble}>
-                <Text style={styles.agentText}>
-                  I see you're travelling to {event?.destination || 'Australia'} in August.{'\n'}
-                  You've halfway there, and I've two recommendations to make you travel ready.
-                </Text>
-              </View>
-            </View>
+            )}
 
             <TripSummaryCard
               event={event}
@@ -378,68 +464,121 @@ export default function TravelRecommendationFlow({ event, onClose }: Props) {
         {/* Hotel Section */}
         {(currentStep === 'hotel' || currentStep === 'roaming' || currentStep === 'insurance' || currentStep === 'payment' || currentStep === 'complete') && (
           <>
-            {hotelLoading && currentStep === 'hotel' && chatMessages.length === 0 && (
+            {hotelLoading && currentStep === 'hotel' && chatMessages.length === 0 && !hotelData && (
               <LoadingIndicator initialMessage="Checking hotel booking…" />
             )}
 
             {!hotelLoading && hotelData && (
-              <>
-                <View style={styles.agentMessageWrapper}>
-                  <View style={styles.agentIcon}>
-                    <Text style={styles.agentIconText}>V</Text>
-                  </View>
-                  <View style={styles.agentBubble}>
-                    <Text style={styles.agentText}>I see you've already booked your accommodation.</Text>
+              <View style={styles.hotelCard}>
+                <View style={styles.hotelHeader}>
+                  <Ionicons name="home" size={24} color={colors.brand} />
+                  <View style={{ flex: 1, marginLeft: spacing.md }}>
+                    <Text style={styles.hotelName}>{hotelData.hotel_name || 'Hotel Booking'}</Text>
+                    <Text style={styles.hotelLocation}>{hotelData.location || event?.destination}</Text>
                   </View>
                 </View>
 
-                <View style={styles.hotelCard}>
-                  <View style={styles.hotelHeader}>
-                    <Ionicons name="home" size={24} color={colors.brand} />
-                    <View style={{ flex: 1, marginLeft: spacing.md }}>
-                      <Text style={styles.hotelName}>{hotelData.name || 'Hotel Booking'}</Text>
-                      <Text style={styles.hotelLocation}>{hotelData.location || event?.destination}</Text>
+                {hotelData.confidence && (
+                  <View style={styles.hotelRating}>
+                    <Ionicons name="star" size={16} color="#FFB800" />
+                    <Text style={styles.hotelRatingText}>{(hotelData.confidence * 100).toFixed(0)}% match</Text>
+                  </View>
+                )}
+
+                <View style={styles.hotelDetails}>
+                  {hotelData.check_in && (
+                    <View style={styles.hotelDetailRow}>
+                      <Text style={styles.hotelDetailLabel}>Check-in</Text>
+                      <Text style={styles.hotelDetailValue}>{hotelData.check_in}</Text>
                     </View>
-                  </View>
-
-                  <View style={styles.hotelDetails}>
-                    {hotelData.check_in && (
-                      <View style={styles.hotelDetailRow}>
-                        <Text style={styles.hotelDetailLabel}>Check-in</Text>
-                        <Text style={styles.hotelDetailValue}>{hotelData.check_in}</Text>
-                      </View>
-                    )}
-                    {hotelData.check_out && (
-                      <View style={styles.hotelDetailRow}>
-                        <Text style={styles.hotelDetailLabel}>Check-out</Text>
-                        <Text style={styles.hotelDetailValue}>{hotelData.check_out}</Text>
-                      </View>
-                    )}
-                  </View>
-
-                  {currentStep === 'hotel' && (
-                    <TouchableOpacity style={styles.continueButton} onPress={handleContinue}>
-                      <Text style={styles.continueButtonText}>Continue</Text>
-                    </TouchableOpacity>
+                  )}
+                  {hotelData.check_out && (
+                    <View style={styles.hotelDetailRow}>
+                      <Text style={styles.hotelDetailLabel}>Check-out</Text>
+                      <Text style={styles.hotelDetailValue}>{hotelData.check_out}</Text>
+                    </View>
                   )}
                 </View>
-              </>
+
+                {currentStep === 'hotel' && (
+                  <TouchableOpacity style={styles.continueButton} onPress={handleContinue}>
+                    <Text style={styles.continueButtonText}>Continue to Roaming</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             )}
 
             {!hotelLoading && !hotelData && currentStep === 'hotel' && (
               <>
-                <View style={styles.agentMessageWrapper}>
-                  <View style={styles.agentIcon}>
-                    <Text style={styles.agentIconText}>V</Text>
+                {/* Chat Messages - display hotel streaming messages */}
+                {chatMessages.length > 0 && (
+                  <View style={styles.chatMessagesContainer}>
+                    {chatMessages.map((msg) => (
+                      <View
+                        key={msg.id}
+                        style={msg.role === 'agent' ? styles.agentChatMessage : styles.userChatMessage}
+                      >
+                        {msg.role === 'agent' && (
+                          <View style={styles.statusIcon}>
+                            {msg.completed ? (
+                              <Text style={styles.completedIcon}>✓</Text>
+                            ) : (
+                              <ActivityIndicator size="small" color={colors.brand} />
+                            )}
+                          </View>
+                        )}
+                        <View
+                          style={msg.role === 'agent' ? styles.agentChatBubble : styles.userChatBubble}
+                        >
+                          <Text
+                            style={msg.role === 'agent' ? styles.agentChatText : styles.userChatText}
+                          >
+                            {msg.text}
+                          </Text>
+                        </View>
+                      </View>
+                    ))}
+                    {chatLoading && <LoadingIndicator />}
                   </View>
-                  <View style={styles.agentBubble}>
-                    <Text style={styles.agentText}>No hotel booking found for this trip.</Text>
-                  </View>
-                </View>
+                )}
 
-                <TouchableOpacity style={styles.skipButton} onPress={handleContinue}>
-                  <Text style={styles.skipButtonText}>Continue to Roaming</Text>
-                </TouchableOpacity>
+                {/* Hotel suggestion message card - from hotel_result.hotel.suggestion */}
+                {hotelSuggestionMsg && (
+                  <View style={styles.hotelSuggestionCard}>
+                    <View style={styles.hotelSuggestionHeader}>
+                      <Ionicons name="home" size={24} color="#8B6F47" />
+                      <Text style={styles.hotelSuggestionTitle}>Hotel Booking</Text>
+                    </View>
+                    <View style={styles.hotelSuggestionContent}>
+                      <Text style={styles.hotelSuggestionText}>
+                        {hotelSuggestionMsg}
+                      </Text>
+                    </View>
+                  </View>
+                )}
+
+                <View style={styles.hotelActionButtons}>
+                  <TouchableOpacity
+                    style={styles.bookHotelButton}
+                    onPress={() => {
+                      log('HOTEL', 'Book hotel clicked');
+                      // TODO: Open hotel booking UI
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.bookHotelButtonText}>Book Hotel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.skipButton}
+                    onPress={() => {
+                      log('SKIP_BUTTON', 'Continue to Roaming clicked');
+                      handleContinue();
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.skipButtonText}>Continue to Roaming</Text>
+                  </TouchableOpacity>
+                </View>
               </>
             )}
           </>
@@ -460,6 +599,38 @@ export default function TravelRecommendationFlow({ event, onClose }: Props) {
                     </Text>
                   </View>
                 </View>
+
+                {/* Chat Messages - display after intro message */}
+                {chatMessages.length > 0 && (
+                  <View style={styles.chatMessagesContainer}>
+                    {chatMessages.map((msg) => (
+                      <View
+                        key={msg.id}
+                        style={msg.role === 'agent' ? styles.agentChatMessage : styles.userChatMessage}
+                      >
+                        {msg.role === 'agent' && (
+                          <View style={styles.statusIcon}>
+                            {msg.completed ? (
+                              <Text style={styles.completedIcon}>✓</Text>
+                            ) : (
+                              <ActivityIndicator size="small" color={colors.brand} />
+                            )}
+                          </View>
+                        )}
+                        <View
+                          style={msg.role === 'agent' ? styles.agentChatBubble : styles.userChatBubble}
+                        >
+                          <Text
+                            style={msg.role === 'agent' ? styles.agentChatText : styles.userChatText}
+                          >
+                            {msg.text}
+                          </Text>
+                        </View>
+                      </View>
+                    ))}
+                    {chatLoading && <LoadingIndicator />}
+                  </View>
+                )}
 
                 {roamingLoading && chatMessages.length === 0 && <LoadingIndicator initialMessage="Getting recommendations…" />}
 
@@ -490,7 +661,7 @@ export default function TravelRecommendationFlow({ event, onClose }: Props) {
                         </View>
                       </View>
 
-                      {/* Why this one */}
+                      {/* Why this one - existing section */}
                       <View style={styles.roamingSection}>
                         <Text style={styles.roamingSectionTitle}>Why this one</Text>
                         <View style={styles.roamingChecklistItem}>
@@ -507,41 +678,53 @@ export default function TravelRecommendationFlow({ event, onClose }: Props) {
                         </View>
                       </View>
 
-                      {/* Family setup */}
+                      {/* Judge Approved - new section from backend */}
+                      {roamingRecommendation.judge_feedback && (
+                        <View style={styles.roamingSection}>
+                          <View style={styles.judgeApprovedHeader}>
+                            <Ionicons name="checkmark-circle" size={20} color={colors.brand} />
+                            <Text style={styles.roamingSectionTitle}>Judge Approved</Text>
+                          </View>
+                          <Text style={styles.judgeFeedbackText}>
+                            {roamingRecommendation.judge_feedback}
+                          </Text>
+                        </View>
+                      )}
+
+                      {/* Why this plan - new section from backend reasoning */}
+                      {roamingRecommendation.reasoning && (
+                        <View style={styles.roamingSection}>
+                          <Text style={styles.roamingSectionTitle}>Why this plan</Text>
+                          <Text style={styles.reasoningText}>
+                            {roamingRecommendation.reasoning}
+                          </Text>
+                        </View>
+                      )}
+
+                      {/* Family setup - from travelerSelections state */}
                       <View style={styles.roamingSection}>
                         <Text style={styles.roamingSectionTitle}>Family setup</Text>
 
-                        <View style={styles.travelerRow}>
-                          <View style={styles.travelerAvatar}>
-                            <Text style={styles.travelerInitial}>E</Text>
+                        {Object.entries(travelerSelections).map(([traveler, selection]) => (
+                          <View key={traveler} style={styles.travelerRow}>
+                            <View style={styles.travelerAvatar}>
+                              <Text style={styles.travelerInitial}>
+                                {traveler.charAt(0).toUpperCase()}
+                              </Text>
+                            </View>
+                            <View style={styles.travelerInfo}>
+                              <Text style={styles.travelerName}>{traveler}</Text>
+                              <Text style={styles.travelerDetails}>
+                                {selection.gb > 0
+                                  ? `${selection.gb} GB${selection.gb > 1 ? ` | ${selection.gb * 50} mins and ${selection.gb * 50} texts` : ''}`
+                                  : 'No plan needed'}
+                              </Text>
+                            </View>
+                            {selection.price > 0 && (
+                              <Text style={styles.travelerPrice}>£{selection.price}</Text>
+                            )}
                           </View>
-                          <View style={styles.travelerInfo}>
-                            <Text style={styles.travelerName}>Emily</Text>
-                            <Text style={styles.travelerDetails}>2 GB | 100 mins and 100 texts</Text>
-                          </View>
-                          <Text style={styles.travelerPrice}>£18</Text>
-                        </View>
-
-                        <View style={styles.travelerRow}>
-                          <View style={styles.travelerAvatar}>
-                            <Text style={styles.travelerInitial}>S</Text>
-                          </View>
-                          <View style={styles.travelerInfo}>
-                            <Text style={styles.travelerName}>Sophia</Text>
-                            <Text style={styles.travelerDetails}>2 GB</Text>
-                          </View>
-                          <Text style={styles.travelerPrice}>£12.75</Text>
-                        </View>
-
-                        <View style={styles.travelerRow}>
-                          <View style={styles.travelerAvatar}>
-                            <Text style={styles.travelerInitial}>O</Text>
-                          </View>
-                          <View style={styles.travelerInfo}>
-                            <Text style={styles.travelerName}>Oliver</Text>
-                            <Text style={styles.travelerDetails}>No plan needed</Text>
-                          </View>
-                        </View>
+                        ))}
                       </View>
 
                       {/* Total */}
@@ -550,7 +733,7 @@ export default function TravelRecommendationFlow({ event, onClose }: Props) {
                         <Text style={styles.totalPrice}>£{roamingRecommendation.candidate_plan.price}</Text>
                       </View>
 
-                      {/* Action Buttons */}
+                      {/* Action Buttons - Modify & Approve side by side */}
                       <View style={styles.actionButtonRow}>
                         <TouchableOpacity
                           style={styles.modifyButton}
@@ -571,6 +754,26 @@ export default function TravelRecommendationFlow({ event, onClose }: Props) {
                       </View>
                     </View>
                     <AIDisclaimerChip />
+
+                    {/* Show traveler customization when Modify is clicked */}
+                    {expandedSections.has('roaming') && (
+                      <TravelerCustomization
+                        selections={travelerSelections}
+                        onSelect={(traveler, gb, price) => {
+                          setTravelerSelections({
+                            ...travelerSelections,
+                            [traveler]: { gb, price },
+                          });
+                        }}
+                        total={calculateTotal()}
+                        onApply={() => {
+                          // Close expanded section and approve
+                          expandedSections.delete('roaming');
+                          setExpandedSections(new Set(expandedSections));
+                          handleApprove();
+                        }}
+                      />
+                    )}
                   </>
                 )}
               </>
@@ -636,33 +839,6 @@ export default function TravelRecommendationFlow({ event, onClose }: Props) {
           </View>
         )}
 
-        {/* Chat Messages */}
-        {chatMessages.length > 0 && (
-          <View style={styles.chatMessagesContainer}>
-            {chatMessages.map((msg) => (
-              <View
-                key={msg.id}
-                style={msg.role === 'agent' ? styles.agentChatMessage : styles.userChatMessage}
-              >
-                {msg.role === 'agent' && (
-                  <View style={styles.agentChatIcon}>
-                    <Text style={styles.agentChatIconText}>V</Text>
-                  </View>
-                )}
-                <View
-                  style={msg.role === 'agent' ? styles.agentChatBubble : styles.userChatBubble}
-                >
-                  <Text
-                    style={msg.role === 'agent' ? styles.agentChatText : styles.userChatText}
-                  >
-                    {msg.text}
-                  </Text>
-                </View>
-              </View>
-            ))}
-            {chatLoading && <LoadingIndicator />}
-          </View>
-        )}
 
         <View style={styles.bottomPadding} />
       </ScrollView>
@@ -672,8 +848,8 @@ export default function TravelRecommendationFlow({ event, onClose }: Props) {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.footerSection}
       >
-        {/* Action Button - Only for roaming, insurance, payment steps */}
-        {currentStep !== 'complete' && currentStep !== 'trip' && !roamingLoading && (
+        {/* Action Button - Only for insurance, payment steps (not hotel/roaming, they have inline buttons) */}
+        {currentStep !== 'complete' && currentStep !== 'trip' && currentStep !== 'hotel' && currentStep !== 'roaming' && !roamingLoading && (
           <View style={styles.actionContainer}>
             {/* Payment Options Dropdown */}
             {currentStep === 'payment' && showPaymentOptions && (
@@ -689,7 +865,7 @@ export default function TravelRecommendationFlow({ event, onClose }: Props) {
             )}
 
             <View style={styles.buttonRow}>
-              {(currentStep !== 'roaming' || roamingRecommendation?.candidate_plan) && (
+              {currentStep !== 'roaming' && (
                 <TouchableOpacity
                   style={styles.button}
                   onPress={() => {
@@ -926,6 +1102,24 @@ const styles = StyleSheet.create({
     color: '#666',
     marginBottom: spacing.md,
   },
+  judgeApprovedHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  judgeFeedbackText: {
+    fontSize: 14,
+    color: '#333',
+    lineHeight: 20,
+    fontWeight: '400',
+  },
+  reasoningText: {
+    fontSize: 14,
+    color: '#333',
+    lineHeight: 20,
+    fontWeight: '400',
+  },
   roamingChecklistItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1010,6 +1204,14 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     paddingVertical: spacing.lg,
     alignItems: 'center',
+  },
+  modifyButtonFullWidth: {
+    borderWidth: 2,
+    borderColor: colors.brand,
+    borderRadius: 24,
+    paddingVertical: spacing.lg,
+    alignItems: 'center',
+    marginBottom: spacing.lg,
   },
   modifyButtonText: {
     fontSize: 16,
@@ -1132,6 +1334,18 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: 'white',
+  },
+  statusIcon: {
+    width: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: spacing.sm,
+  },
+  completedIcon: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.brand,
   },
   agentChatBubble: {
     flex: 1,
@@ -1297,6 +1511,28 @@ const styles = StyleSheet.create({
     color: '#000',
     fontWeight: '600',
   },
+  hotelRating: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  hotelRatingText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#000',
+  },
+  hotelPriceRow: {
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
+  },
+  hotelPriceValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.brand,
+  },
   continueButton: {
     backgroundColor: colors.brand,
     borderRadius: 24,
@@ -1318,6 +1554,50 @@ const styles = StyleSheet.create({
   },
   skipButtonText: {
     color: colors.brand,
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  hotelSuggestionCard: {
+    backgroundColor: '#FFFAF0',
+    borderLeftWidth: 4,
+    borderLeftColor: '#D4AF87',
+    borderRadius: 12,
+    padding: spacing.lg,
+    marginBottom: spacing.lg,
+  },
+  hotelSuggestionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginBottom: spacing.md,
+  },
+  hotelSuggestionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#000',
+  },
+  hotelSuggestionContent: {
+    paddingLeft: spacing.md,
+  },
+  hotelSuggestionText: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: '#333',
+    fontWeight: '400',
+  },
+  hotelActionButtons: {
+    gap: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  bookHotelButton: {
+    backgroundColor: colors.brand,
+    borderRadius: 24,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    alignItems: 'center',
+  },
+  bookHotelButtonText: {
+    color: 'white',
     fontSize: 16,
     fontWeight: '700',
   },
