@@ -303,6 +303,16 @@ def sync_gmail_messages(
         raise _not_connected() from exc
     except (google_gmail.GmailError, google_oauth.GoogleOAuthError) as exc:
         raise _upstream_failed(exc) from exc
+    except Exception as exc:
+        # Catch any other unhandled exception and log it
+        import sys
+        print(f"[ERROR] Unexpected error in sync_gmail_messages: {exc}", file=sys.stderr)
+        import traceback
+        traceback.print_exc(file=sys.stderr)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Internal error during Gmail sync: {str(exc)}"
+        ) from exc
 
 
 def _not_connected() -> HTTPException:
