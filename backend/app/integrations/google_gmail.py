@@ -290,6 +290,9 @@ def list_messages(
     # Build query with optional date filter for incremental sync
     query = "in:inbox"
     if after_timestamp:
+        # Convert string timestamp to datetime if needed
+        if isinstance(after_timestamp, str):
+            after_timestamp = datetime.fromisoformat(after_timestamp)
         # Gmail API format: YYYY/MM/DD
         date_str = after_timestamp.strftime("%Y/%m/%d")
         query += f" after:{date_str}"
