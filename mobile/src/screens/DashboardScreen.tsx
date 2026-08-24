@@ -5,7 +5,10 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import type { DropdownMenuItem } from '../components/common/DropdownMenu';
-import AskVintoButton from '../components/dashboard/AskVintoButton';
+import AskVedaButton from '../components/dashboard/AskVedaButton';
+import AskVedaModal from '../components/dashboard/AskVedaModal';
+import VedaChatScreen from '../components/chat/VedaChatScreen';
+import TravelRecommendationFlow from '../components/recommendations/TravelRecommendationFlow';
 import AttentionCarousel from '../components/dashboard/AttentionCarousel';
 import DashboardHeader from '../components/dashboard/DashboardHeader';
 import GreetingWeather from '../components/dashboard/GreetingWeather';
@@ -56,6 +59,9 @@ export default function DashboardScreen({ navigation }: Props) {
   const [weather, setWeather] = useState<WeatherSummary>(PLACEHOLDER_WEATHER);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [vedaModalVisible, setVedaModalVisible] = useState(false);
+  const [vedaChatVisible, setVedaChatVisible] = useState(false);
+  const [selectedFlightEvent, setSelectedFlightEvent] = useState<CalendarEvent | null>(null);
 
   const loadEvents = useCallback(async () => {
     const data = await api.listCalendarEvents();
@@ -133,6 +139,14 @@ export default function DashboardScreen({ navigation }: Props) {
     { id: 'sign-out', icon: 'log-out-outline', label: 'Sign out', onPress: signOut, destructive: true },
   ];
 
+  if (selectedFlightEvent) {
+    return <TravelRecommendationFlow event={selectedFlightEvent} onClose={() => setSelectedFlightEvent(null)} />;
+  }
+
+  if (vedaChatVisible) {
+    return <VedaChatScreen onClose={() => setVedaChatVisible(false)} />;
+  }
+
   return (
     <View style={styles.container}>
       <DashboardHeader avatarInitial={firstName.charAt(0).toUpperCase()} menuItems={menuItems} />
@@ -157,14 +171,21 @@ export default function DashboardScreen({ navigation }: Props) {
 
           <AttentionCarousel
             flights={upcomingFlights}
-            onPressFlight={(event) => navigation.navigate('Chat', { event })}
+            onPressFlight={(event) => setSelectedFlightEvent(event)}
           />
 
           <SuggestionGrid suggestions={suggestions} />
         </ScrollView>
       )}
 
-      <AskVintoButton />
+      <AskVedaButton onPress={() => setVedaModalVisible(true)} />
+      <AskVedaModal
+        visible={vedaModalVisible}
+        onClose={() => setVedaModalVisible(false)}
+        onStartChat={(message) => {
+          setVedaChatVisible(true);
+        }}
+      />
     </View>
   );
 }
