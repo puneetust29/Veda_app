@@ -170,13 +170,14 @@ def sync_gmail_messages(
     max_results: int = 10,
     customer: dict = Depends(get_current_customer),
 ) -> dict:
-    """Fetch messages from Gmail API, store in database, and extract flight confirmations.
+    """Fetch messages from Gmail API, store in database, and extract flights and hotels.
 
     Supports incremental sync: reads last_gmail_synced_at from customers table and only
     fetches messages since last sync.
 
     Returns:
-        {fetched, synced, flights_extracted, duplicates, result_size_estimate, incremental_sync}
+        {fetched, synced, flights_extracted, flight_duplicates, hotels_extracted,
+         hotel_duplicates, result_size_estimate, incremental_sync}
     """
     from datetime import datetime, timezone
 
