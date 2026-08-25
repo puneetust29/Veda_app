@@ -186,9 +186,41 @@ export function useRoamingChat(event: CalendarEvent) {
               createdAt: Date.now(),
               kind: 'text',
               role: 'agent',
-              text: 'This trip is already covered — no need to do anything else.',
+              text: "Your roaming is covered. Now, let me make sure you're protected with travel insurance too.",
+            },
+            {
+              id: nextId(),
+              createdAt: Date.now(),
+              kind: 'status',
+              label: 'Checking travel insurance options…',
+              state: 'active',
             },
           ]);
+
+          // Fetch and show first available insurance plan
+          try {
+            const plans = await api.getInsurancePlans();
+            if (plans && plans.length > 0) {
+              appendItems([
+                {
+                  id: nextId(),
+                  createdAt: Date.now(),
+                  kind: 'travel_insurance',
+                  plan: plans[0],
+                },
+                {
+                  id: nextId(),
+                  createdAt: Date.now(),
+                  kind: 'text',
+                  role: 'agent',
+                  text: "Here's a plan that covers your trip. You can purchase it anytime before you travel.",
+                },
+              ]);
+            }
+          } catch (err) {
+            if (__DEV__) console.warn('[useRoamingChat] Failed to fetch insurance plans', err);
+          }
+
           setPhase('complete');
           return;
         }
@@ -253,10 +285,44 @@ export function useRoamingChat(event: CalendarEvent) {
               createdAt: Date.now(),
               kind: 'text',
               role: 'agent',
-              text: "You're all set — I'll keep an eye on things for the rest of the trip.",
+              text: "You're all set with roaming. Now, let's make sure you're protected with travel insurance.",
+            },
+            {
+              id: nextId(),
+              createdAt: Date.now(),
+              kind: 'status',
+              label: 'Checking travel insurance options…',
+              state: 'active',
             },
           ]);
-          setPhase('complete');
+
+          // Fetch and show first available insurance plan
+          api
+            .getInsurancePlans()
+            .then((plans) => {
+              if (plans && plans.length > 0) {
+                appendItems([
+                  {
+                    id: nextId(),
+                    createdAt: Date.now(),
+                    kind: 'travel_insurance',
+                    plan: plans[0],
+                  },
+                  {
+                    id: nextId(),
+                    createdAt: Date.now(),
+                    kind: 'text',
+                    role: 'agent',
+                    text: "Here's a plan that covers your trip. You can purchase it anytime before you travel.",
+                  },
+                ]);
+              }
+              setPhase('complete');
+            })
+            .catch((err) => {
+              if (__DEV__) console.warn('[useRoamingChat] Failed to fetch insurance plans', err);
+              setPhase('complete');
+            });
         })
         .catch((err) => {
           updateConfirmationItem(actionId, {

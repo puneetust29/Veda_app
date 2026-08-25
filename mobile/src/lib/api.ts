@@ -13,6 +13,7 @@ import type {
   RecommendResponse,
   RoamingPlan,
   Subscription,
+  TravelInsurancePlan,
 } from '../types';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
@@ -192,4 +193,29 @@ export const api = {
       onClose: params.onClose,
     });
   },
+
+  // --- Travel Insurance ---
+  getInsurancePlan: (planId: number) =>
+    authedFetch<TravelInsurancePlan>(`/insurance/plans/${planId}`, {
+      method: 'GET',
+    }),
+
+  getInsurancePlans: () =>
+    authedFetch<TravelInsurancePlan[]>('/insurance/plans', {
+      method: 'GET',
+    }),
+
+  createInsurancePaymentIntent: (planId: number, paymentMethodId: string) =>
+    authedFetch<{
+      client_secret: string;
+      ephemeral_key_secret: string;
+      customer_id: string;
+      publishable_key: string;
+    }>('/payments/insurance/intent', {
+      method: 'POST',
+      body: JSON.stringify({
+        plan_id: planId,
+        payment_method_id: paymentMethodId,
+      }),
+    }),
 };

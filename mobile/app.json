@@ -39,6 +39,12 @@
         {
           "locationWhenInUsePermission": "Veda uses your location to show local weather on your dashboard."
         }
+      ],
+      [
+        "@stripe/stripe-react-native",
+        {
+          "merchantIdentifier": "com.veda.app"
+        }
       ]
     ]
   }
