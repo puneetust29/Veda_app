@@ -220,7 +220,7 @@ export type ChatItem =
   | (ChatItemBase & { kind: 'status'; tool?: string; label: string; state: 'active' | 'done' })
   | (ChatItemBase & { kind: 'card'; card: RecommendationCardPayload })
   | (ChatItemBase & { kind: 'hotel'; hotel: HotelDetectionResultPayload })
-  | (ChatItemBase & { kind: 'travel_insurance'; plan: TravelInsurancePlan })
+  | (ChatItemBase & { kind: 'travel_insurance'; plan: TravelInsurancePlan; calendarEventId: string })
   | (ChatItemBase & {
       kind: 'confirmation';
       actionId: string;

@@ -623,5 +623,255 @@
       ]
     },
     "stripeAmountCents": 6800
+  },
+  {
+    "id": 16,
+    "country": "United Kingdom",
+    "coverageDurationDays": 7,
+    "provider": "AXA Travel",
+    "planName": "Budget Travel Insurance",
+    "planType": "Essential coverage at great value",
+    "coverageStart": "12th August 2024",
+    "coverageEnd": "20th August 2024",
+    "premiumAmount": 23,
+    "currency": "£",
+    "currencyCode": "gbp",
+    "whyThisOne": [
+      "Affordable essential coverage",
+      "Medical emergency up to £100,000",
+      "Baggage coverage included",
+      "Simple claims process"
+    ],
+    "benefitsSummary": "No-frills essential coverage providing the basics you need at an unbeatable price.",
+    "fullCoverageDetails": {
+      "Medical Coverage": [
+        "Emergency medical: £100,000",
+        "Dental treatment: £200",
+        "Hospital stay: Covered"
+      ],
+      "Trip Protection": [
+        "Baggage loss: £500",
+        "Trip cancellation: £500",
+        "Delays over 24 hours: £25"
+      ],
+      "Basic Benefits": [
+        "Emergency assistance: 24/7",
+        "Document replacement: £100",
+        "Personal liability: £500,000"
+      ]
+    },
+    "stripeAmountCents": 2300
+  },
+  {
+    "id": 17,
+    "country": "United Kingdom",
+    "coverageDurationDays": 14,
+    "provider": "Allianz Assistance",
+    "planName": "Family Travel Insurance",
+    "planType": "Comprehensive family coverage",
+    "coverageStart": "12th August 2024",
+    "coverageEnd": "20th August 2024",
+    "premiumAmount": 43,
+    "currency": "£",
+    "currencyCode": "gbp",
+    "whyThisOne": [
+      "Covers medical emergencies up to £250,000",
+      "Trip cancellation up to £1,000 per person",
+      "Baggage and personal effects up to £500",
+      "24/7 emergency support in 150+ countries"
+    ],
+    "benefitsSummary": "Comprehensive family coverage with medical emergency support, trip cancellation, and 24/7 global assistance.",
+    "fullCoverageDetails": {
+      "Medical Coverage": [
+        "Emergency medical expenses: £250,000",
+        "Dental treatment: £500",
+        "Prescription medications abroad: Covered"
+      ],
+      "Trip Protection": [
+        "Trip cancellation: £1,000 per person",
+        "Trip delay over 12 hours: £50",
+        "Missed connection: £100"
+      ],
+      "Baggage & Personal": [
+        "Baggage loss/delay: £500",
+        "Personal effects theft: £500",
+        "Travel documents replacement: £200"
+      ],
+      "Additional Benefits": [
+        "Personal liability: £1,000,000",
+        "Legal expenses: £50,000",
+        "Emergency evacuation: Unlimited"
+      ]
+    },
+    "stripeAmountCents": 4300
+  },
+  {
+    "id": 18,
+    "country": "United Kingdom",
+    "coverageDurationDays": 30,
+    "provider": "World Nomads",
+    "planName": "Adventure Travel Plan",
+    "planType": "Coverage for adventure activities",
+    "coverageStart": "12th August 2024",
+    "coverageEnd": "20th August 2024",
+    "premiumAmount": 63,
+    "currency": "£",
+    "currencyCode": "gbp",
+    "whyThisOne": [
+      "Covers adventure sports (skiing, mountaineering)",
+      "Medical emergency up to £500,000",
+      "Equipment damage/theft coverage",
+      "Adventure-specific claims support"
+    ],
+    "benefitsSummary": "Specialist coverage designed for adventure travelers including activity-specific protections and higher medical limits.",
+    "fullCoverageDetails": {
+      "Adventure Activities": [
+        "Skiing and snowboarding",
+        "Mountaineering up to 5,500m",
+        "Bungee jumping",
+        "Whitewater rafting"
+      ],
+      "Medical Coverage": [
+        "Emergency medical: £500,000",
+        "Repatriation: Unlimited",
+        "Rescue expenses: £100,000"
+      ],
+      "Equipment Coverage": [
+        "Sports equipment loss: £2,000",
+        "Camera equipment: £1,000",
+        "Expensive items: Up to £500 each"
+      ],
+      "Additional Benefits": [
+        "Active lifestyle support",
+        "Online claims submission",
+        "Multi-trip annual options available"
+      ]
+    },
+    "stripeAmountCents": 6300
+  },
+  {
+    "id": 19,
+    "country": "United Arab Emirates",
+    "coverageDurationDays": 7,
+    "provider": "AXA Travel",
+    "planName": "Budget Travel Insurance",
+    "planType": "Essential coverage at great value",
+    "coverageStart": "12th August 2024",
+    "coverageEnd": "20th August 2024",
+    "premiumAmount": 35,
+    "currency": "£",
+    "currencyCode": "gbp",
+    "whyThisOne": [
+      "Affordable essential coverage",
+      "Medical emergency up to £100,000",
+      "Baggage coverage included",
+      "Simple claims process"
+    ],
+    "benefitsSummary": "No-frills essential coverage providing the basics you need at an unbeatable price.",
+    "fullCoverageDetails": {
+      "Medical Coverage": [
+        "Emergency medical: £100,000",
+        "Dental treatment: £200",
+        "Hospital stay: Covered"
+      ],
+      "Trip Protection": [
+        "Baggage loss: £500",
+        "Trip cancellation: £500",
+        "Delays over 24 hours: £25"
+      ],
+      "Basic Benefits": [
+        "Emergency assistance: 24/7",
+        "Document replacement: £100",
+        "Personal liability: £500,000"
+      ]
+    },
+    "stripeAmountCents": 3500
+  },
+  {
+    "id": 20,
+    "country": "United Arab Emirates",
+    "coverageDurationDays": 14,
+    "provider": "Allianz Assistance",
+    "planName": "Family Travel Insurance",
+    "planType": "Comprehensive family coverage",
+    "coverageStart": "12th August 2024",
+    "coverageEnd": "20th August 2024",
+    "premiumAmount": 55,
+    "currency": "£",
+    "currencyCode": "gbp",
+    "whyThisOne": [
+      "Covers medical emergencies up to £250,000",
+      "Trip cancellation up to £1,000 per person",
+      "Baggage and personal effects up to £500",
+      "24/7 emergency support in 150+ countries"
+    ],
+    "benefitsSummary": "Comprehensive family coverage with medical emergency support, trip cancellation, and 24/7 global assistance.",
+    "fullCoverageDetails": {
+      "Medical Coverage": [
+        "Emergency medical expenses: £250,000",
+        "Dental treatment: £500",
+        "Prescription medications abroad: Covered"
+      ],
+      "Trip Protection": [
+        "Trip cancellation: £1,000 per person",
+        "Trip delay over 12 hours: £50",
+        "Missed connection: £100"
+      ],
+      "Baggage & Personal": [
+        "Baggage loss/delay: £500",
+        "Personal effects theft: £500",
+        "Travel documents replacement: £200"
+      ],
+      "Additional Benefits": [
+        "Personal liability: £1,000,000",
+        "Legal expenses: £50,000",
+        "Emergency evacuation: Unlimited"
+      ]
+    },
+    "stripeAmountCents": 5500
+  },
+  {
+    "id": 21,
+    "country": "United Arab Emirates",
+    "coverageDurationDays": 30,
+    "provider": "World Nomads",
+    "planName": "Adventure Travel Plan",
+    "planType": "Coverage for adventure activities",
+    "coverageStart": "12th August 2024",
+    "coverageEnd": "20th August 2024",
+    "premiumAmount": 75,
+    "currency": "£",
+    "currencyCode": "gbp",
+    "whyThisOne": [
+      "Covers adventure sports (skiing, mountaineering)",
+      "Medical emergency up to £500,000",
+      "Equipment damage/theft coverage",
+      "Adventure-specific claims support"
+    ],
+    "benefitsSummary": "Specialist coverage designed for adventure travelers including activity-specific protections and higher medical limits.",
+    "fullCoverageDetails": {
+      "Adventure Activities": [
+        "Skiing and snowboarding",
+        "Mountaineering up to 5,500m",
+        "Bungee jumping",
+        "Whitewater rafting"
+      ],
+      "Medical Coverage": [
+        "Emergency medical: £500,000",
+        "Repatriation: Unlimited",
+        "Rescue expenses: £100,000"
+      ],
+      "Equipment Coverage": [
+        "Sports equipment loss: £2,000",
+        "Camera equipment: £1,000",
+        "Expensive items: Up to £500 each"
+      ],
+      "Additional Benefits": [
+        "Active lifestyle support",
+        "Online claims submission",
+        "Multi-trip annual options available"
+      ]
+    },
+    "stripeAmountCents": 7500
   }
 ]

@@ -226,4 +226,33 @@ export const api = {
         payment_method_id: paymentMethodId,
       }),
     }),
+
+  confirmInsurancePurchase: (planId: number, paymentIntentId: string, calendarEventId?: string) =>
+    authedFetch<{
+      id: string;
+      status: string;
+      plan_id: number;
+      purchased_at: string;
+      plan_details: any;
+    }>('/payments/insurance/confirm', {
+      method: 'POST',
+      body: JSON.stringify({
+        plan_id: planId,
+        payment_intent_id: paymentIntentId,
+        calendar_event_id: calendarEventId,
+      }),
+    }),
+
+  getActiveInsurance: () =>
+    authedFetch<{
+      purchases: Array<{
+        id: string;
+        calendar_event_id: string;
+        status: string;
+        purchased_at: string;
+        plan_details: any;
+      }>;
+    }>('/payments/insurance/active', {
+      method: 'GET',
+    }),
 };

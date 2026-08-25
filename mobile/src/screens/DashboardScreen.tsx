@@ -59,14 +59,16 @@ export default function DashboardScreen({ navigation }: Props) {
   const { customer, signOut } = useAuth();
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [activeRoamingEventIds, setActiveRoamingEventIds] = useState<Set<string>>(new Set());
+  const [activeInsuranceEventIds, setActiveInsuranceEventIds] = useState<Set<string>>(new Set());
   const [weather, setWeather] = useState<WeatherSummary>(PLACEHOLDER_WEATHER);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const loadEvents = useCallback(async () => {
-    const [calendarEvents, subscriptions] = await Promise.all([
+    const [calendarEvents, subscriptions, insuranceStatus] = await Promise.all([
       api.listCalendarEvents(),
       api.listSubscriptions(),
+      api.getActiveInsurance().catch(() => ({ event_ids_with_insurance: [] })),
     ]);
     setEvents(calendarEvents);
     setActiveRoamingEventIds(
@@ -75,6 +77,9 @@ export default function DashboardScreen({ navigation }: Props) {
           .filter((subscription) => subscription.status === 'active')
           .map((subscription) => subscription.calendar_event_id),
       ),
+    );
+    setActiveInsuranceEventIds(
+      new Set(insuranceStatus.purchases.map((p) => p.calendar_event_id))
     );
   }, []);
 
@@ -180,6 +185,7 @@ export default function DashboardScreen({ navigation }: Props) {
           <AttentionCarousel
             flights={upcomingFlights}
             activeRoamingEventIds={activeRoamingEventIds}
+            activeInsuranceEventIds={activeInsuranceEventIds}
             onPressFlight={(event) => navigation.navigate('Chat', { event })}
           />
 

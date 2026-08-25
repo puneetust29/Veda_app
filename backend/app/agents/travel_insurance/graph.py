@@ -27,6 +27,8 @@ class TravelInsuranceAgentState(TypedDict, total=False):
     destination_country: str
     trip_duration_days: int
     trip_details: dict
+    trip_start_date: str
+    trip_end_date: str
     insurance_catalog: list
     candidate_plan: Optional[dict]
     reasoning: str
@@ -40,16 +42,37 @@ def _llm():
     )
 
 
+def _format_date(date_str: str) -> str:
+    """Format ISO date to readable format: 'December 25th 2024'."""
+    from datetime import datetime
+    try:
+        dt = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+        day = dt.day
+        suffix = 'st' if day % 10 == 1 and day != 11 else 'nd' if day % 10 == 2 and day != 12 else 'rd' if day % 10 == 3 and day != 13 else 'th'
+        return dt.strftime(f'%{day}{suffix} %B %Y').replace(f'%{day}', f'{day}{suffix}')
+    except:
+        return date_str
+
+
 def node_extract_trip_context(state: TravelInsuranceAgentState, writer: StreamWriter) -> dict:
-    """Extract trip destination and duration from calendar event."""
+    """Extract trip destination, duration, and dates from calendar event."""
     logger.info(f"[graph] extract_trip_context START")
     try:
         country, days, trip_details = extract_trip_context(state["calendar_event"])
-        logger.info(f"[graph] extract_trip_context: country={country}, days={days}")
+
+        # Extract and format trip dates
+        start_datetime = state["calendar_event"].get("start_datetime", "")
+        end_datetime = state["calendar_event"].get("end_datetime", "")
+        trip_start_date = _format_date(start_datetime) if start_datetime else "Unknown"
+        trip_end_date = _format_date(end_datetime) if end_datetime else "Unknown"
+
+        logger.info(f"[graph] extract_trip_context: country={country}, days={days}, dates={trip_start_date} to {trip_end_date}")
         return {
             "destination_country": country,
             "trip_duration_days": days,
             "trip_details": trip_details,
+            "trip_start_date": trip_start_date,
+            "trip_end_date": trip_end_date,
         }
     except Exception as e:
         logger.exception(f"[graph] extract_trip_context FAILED: {e}")
@@ -121,8 +144,15 @@ def node_recommend_plan(state: TravelInsuranceAgentState, writer: StreamWriter) 
         chosen = next((p for p in catalog if p.get("id") == result.plan_id), None)
         if not chosen:
             logger.warning(f"[graph] plan_id {result.plan_id} not in catalog!")
-        logger.info(f"[graph] recommend_plan: chosen={chosen.get('planName') if chosen else 'none'}")
-        return {"candidate_plan": chosen, "reasoning": result.reasoning, "insurance_catalog": catalog}
+            return {"candidate_plan": None, "reasoning": result.reasoning, "insurance_catalog": catalog}
+
+        # Apply dynamic coverage dates based on actual trip dates
+        chosen_copy = dict(chosen)
+        chosen_copy["coverageStart"] = state.get("trip_start_date", chosen.get("coverageStart"))
+        chosen_copy["coverageEnd"] = state.get("trip_end_date", chosen.get("coverageEnd"))
+
+        logger.info(f"[graph] recommend_plan: chosen={chosen_copy.get('planName')}, coverage={chosen_copy.get('coverageStart')} to {chosen_copy.get('coverageEnd')}")
+        return {"candidate_plan": chosen_copy, "reasoning": result.reasoning, "insurance_catalog": catalog}
     except Exception as e:
         logger.exception(f"[graph] recommend_plan FAILED: {e}")
         raise

@@ -8,9 +8,11 @@ import { api } from '../../lib/api';
 
 type Props = {
   plan: TravelInsurancePlan;
+  calendarEventId: string;
+  onInsurancePurchased?: (data: any) => void;
 };
 
-export default function TravelInsuranceCardChat({ plan }: Props) {
+export default function TravelInsuranceCardChat({ plan, calendarEventId, onInsurancePurchased }: Props) {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(true);
@@ -33,9 +35,11 @@ export default function TravelInsuranceCardChat({ plan }: Props) {
     setShowPaymentModal(true);
   };
 
-  const handlePaymentSuccess = () => {
+  const handlePaymentSuccess = (purchaseData: any) => {
     setShowPaymentModal(false);
-    // Could show a success message in the chat here if needed
+    if (onInsurancePurchased) {
+      onInsurancePurchased(purchaseData);
+    }
   };
 
   // Use a test payment method for now (in production, this would come from saved cards)
@@ -47,6 +51,7 @@ export default function TravelInsuranceCardChat({ plan }: Props) {
       <ConfirmPaymentModal
         visible={showPaymentModal}
         plan={plan}
+        calendarEventId={calendarEventId}
         savedPaymentMethodId={paymentMethodId}
         onClose={() => setShowPaymentModal(false)}
         onSuccess={handlePaymentSuccess}

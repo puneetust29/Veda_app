@@ -17,7 +17,7 @@ function greetingText(event: CalendarEvent): string {
   return `Looks like you're flying to ${destination} on ${date} — you don't have a roaming plan for this trip. Let me find you some options…`;
 }
 
-export function useRoamingChat(event: CalendarEvent) {
+export function useRoamingChat(event: CalendarEvent, onInsurancePurchased?: (data: any) => void) {
   const [items, setItems] = useState<ChatItem[]>(() => [
     { id: nextId(), createdAt: Date.now(), kind: 'text', role: 'agent', text: greetingText(event) },
   ]);
@@ -169,17 +169,25 @@ export function useRoamingChat(event: CalendarEvent) {
 
     (async () => {
       try {
-        const subscriptions = await api.listSubscriptions();
+        const [subscriptions, insuranceStatus] = await Promise.all([
+          api.listSubscriptions(),
+          api.getActiveInsurance(),
+        ]);
         if (cancelled) return;
-        const existing = subscriptions.find((s) => s.calendar_event_id === event.id && s.status === 'active');
-        if (existing) {
+
+        const existingInsurance = insuranceStatus.purchases.find(
+          (p) => p.calendar_event_id === event.id && p.status === 'active'
+        );
+        const existingRoaming = subscriptions.find((s) => s.calendar_event_id === event.id && s.status === 'active');
+
+        if (existingRoaming) {
           appendItems([
             {
               id: nextId(),
               createdAt: Date.now(),
               kind: 'receipt',
-              subscription: existing,
-              planName: existing.roaming_plans?.plan_name ?? 'your roaming plan',
+              subscription: existingRoaming,
+              planName: existingRoaming.roaming_plans?.plan_name ?? 'your roaming plan',
             },
             {
               id: nextId(),
@@ -188,44 +196,75 @@ export function useRoamingChat(event: CalendarEvent) {
               role: 'agent',
               text: "Your roaming is covered. Now, let me make sure you're protected with travel insurance too.",
             },
-            {
-              id: nextId(),
-              createdAt: Date.now(),
-              kind: 'status',
-              label: 'Checking travel insurance options…',
-              state: 'active',
-            },
           ]);
 
-          // Fetch and show recommended insurance plan
-          try {
-            const plan = await api.getInsuranceRecommendation(event.id);
-            if (plan) {
-              // Replace the "Checking insurance options..." status with the actual plan
-              commitItems(
-                itemsRef.current.map((item) =>
-                  item.kind === 'status' && item.label === 'Checking travel insurance options…'
-                    ? {
-                        id: nextId(),
-                        createdAt: Date.now(),
-                        kind: 'travel_insurance',
-                        plan: plan,
-                      }
-                    : item,
-                ),
-              );
-              appendItems([
-                {
-                  id: nextId(),
-                  createdAt: Date.now(),
-                  kind: 'text',
-                  role: 'agent',
-                  text: "Here's a plan that covers your trip. You can purchase it anytime before you travel.",
-                },
-              ]);
+          // Check if insurance is already purchased
+          if (existingInsurance) {
+            const planDetails = existingInsurance.plan_details || {};
+            const planName = planDetails.planName || 'Travel Insurance';
+
+            appendItems([
+              {
+                id: nextId(),
+                createdAt: Date.now(),
+                kind: 'receipt',
+                subscription: {
+                  id: existingInsurance.id,
+                  status: existingInsurance.status,
+                  subscribed_at: existingInsurance.purchased_at,
+                } as any,
+                planName: planName,
+              },
+              {
+                id: nextId(),
+                createdAt: Date.now(),
+                kind: 'text',
+                role: 'agent',
+                text: '✓ You already have travel insurance for this trip. You\'re all set!',
+              },
+            ]);
+          } else {
+            // Fetch and show recommended insurance plan
+            appendItems([
+              {
+                id: nextId(),
+                createdAt: Date.now(),
+                kind: 'status',
+                label: 'Checking travel insurance options…',
+                state: 'active',
+              },
+            ]);
+
+            try {
+              const plan = await api.getInsuranceRecommendation(event.id);
+              if (plan) {
+                // Replace the "Checking insurance options..." status with the actual plan
+                commitItems(
+                  itemsRef.current.map((item) =>
+                    item.kind === 'status' && item.label === 'Checking travel insurance options…'
+                      ? {
+                          id: nextId(),
+                          createdAt: Date.now(),
+                          kind: 'travel_insurance',
+                          plan: plan,
+                          calendarEventId: event.id,
+                        }
+                      : item,
+                  ),
+                );
+                appendItems([
+                  {
+                    id: nextId(),
+                    createdAt: Date.now(),
+                    kind: 'text',
+                    role: 'agent',
+                    text: "Here's a plan that covers your trip. You can purchase it anytime before you travel.",
+                  },
+                ]);
+              }
+            } catch (err) {
+              if (__DEV__) console.warn('[useRoamingChat] Failed to fetch insurance recommendation', err);
             }
-          } catch (err) {
-            if (__DEV__) console.warn('[useRoamingChat] Failed to fetch insurance recommendation', err);
           }
 
           setPhase('complete');
@@ -317,6 +356,7 @@ export function useRoamingChat(event: CalendarEvent) {
                           createdAt: Date.now(),
                           kind: 'travel_insurance',
                           plan: plan,
+                          calendarEventId: event.id,
                         }
                       : item,
                   ),
@@ -369,6 +409,40 @@ export function useRoamingChat(event: CalendarEvent) {
     [appendItems, updateConfirmationItem],
   );
 
+  const handleInsurancePurchased = useCallback(
+    (purchaseData: any) => {
+      if (onInsurancePurchased) {
+        onInsurancePurchased(purchaseData);
+      }
+
+      const planDetails = purchaseData.plan_details || {};
+      const planName = planDetails.planName || 'Travel Insurance';
+
+      // Add insurance receipt to chat
+      appendItems([
+        {
+          id: nextId(),
+          createdAt: Date.now(),
+          kind: 'receipt',
+          subscription: {
+            id: purchaseData.id,
+            status: purchaseData.status,
+            subscribed_at: purchaseData.purchased_at,
+          } as any,
+          planName: planName,
+        },
+        {
+          id: nextId(),
+          createdAt: Date.now(),
+          kind: 'text',
+          role: 'agent',
+          text: '✓ Your travel insurance is now active. You\'re all set for your trip!',
+        },
+      ]);
+    },
+    [appendItems, onInsurancePurchased],
+  );
+
   const retry = useCallback(() => {
     abortControllerRef.current?.abort();
     const controller = new AbortController();
@@ -403,5 +477,5 @@ export function useRoamingChat(event: CalendarEvent) {
     [phase, appendItems, startStream],
   );
 
-  return { items, phase, confirm, decline, retry, sendMessage };
+  return { items, phase, confirm, decline, retry, sendMessage, handleInsurancePurchased };
 }

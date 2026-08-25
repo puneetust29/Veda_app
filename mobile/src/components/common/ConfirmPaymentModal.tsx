@@ -17,14 +17,16 @@ type State = 'idle' | 'processing' | 'success' | 'error';
 type Props = {
   visible: boolean;
   plan: TravelInsurancePlan | null;
+  calendarEventId?: string;
   savedPaymentMethodId: string;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (purchaseData: any) => void;
 };
 
 export default function ConfirmPaymentModal({
   visible,
   plan,
+  calendarEventId,
   savedPaymentMethodId,
   onClose,
   onSuccess,
@@ -69,10 +71,20 @@ export default function ConfirmPaymentModal({
         return;
       }
 
+      // Extract payment intent ID from client secret
+      const paymentIntentId = intent.client_secret?.split('_secret_')[0] || '';
+
+      // Confirm the insurance purchase on the backend
+      const purchaseData = await api.confirmInsurancePurchase(
+        plan.id,
+        paymentIntentId,
+        calendarEventId,
+      );
+
       // Success!
       setState('success');
       setTimeout(() => {
-        onSuccess();
+        onSuccess(purchaseData);
       }, 1500);
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : 'Payment failed');
