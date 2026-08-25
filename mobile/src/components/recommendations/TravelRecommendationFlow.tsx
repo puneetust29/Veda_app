@@ -115,7 +115,10 @@ export default function TravelRecommendationFlow({ event, onClose }: Props) {
   useEffect(() => {
     // Run stream if: first visit (!hotelChecked) OR revisiting with no active stream (!hotelLoading)
     if (currentStep === 'hotel' && (!hotelChecked || !hotelLoading)) {
-      // Messages already cleared in handleContinue, don't clear again to avoid blank screen
+      // Only clear messages on revisit to avoid blank screen on first visit
+      if (hotelChecked && !hotelLoading) {
+        setChatMessages([]);
+      }
       setRoamingRecommendation(null); // Clear roaming data when entering hotel
       setError(null); // Clear any errors
       setHotelLoading(true);
@@ -508,12 +511,16 @@ export default function TravelRecommendationFlow({ event, onClose }: Props) {
               </View>
             )}
 
-            {!hotelLoading && !hotelData && currentStep === 'hotel' && (
+            {!hotelData && currentStep === 'hotel' && (
               <>
-                {/* Chat Messages - display hotel streaming messages */}
-                {chatMessages.length > 0 && (
+                {hotelLoading && chatMessages.length === 0 && (
+                  <LoadingIndicator initialMessage="Checking hotel bookings…" />
+                )}
+
+                {/* Chat Messages - display hotel streaming messages only (filter out roaming messages) */}
+                {chatMessages.filter(msg => !msg.text.includes('roaming') && !msg.text.includes('Comparing') && !msg.text.includes('plan')).length > 0 && (
                   <View style={styles.chatMessagesContainer}>
-                    {chatMessages.map((msg) => (
+                    {chatMessages.filter(msg => !msg.text.includes('roaming') && !msg.text.includes('Comparing') && !msg.text.includes('plan')).map((msg) => (
                       <View
                         key={msg.id}
                         style={msg.role === 'agent' ? styles.agentChatMessage : styles.userChatMessage}
@@ -543,42 +550,44 @@ export default function TravelRecommendationFlow({ event, onClose }: Props) {
                 )}
 
                 {/* Hotel suggestion message card - from hotel_result.hotel.suggestion */}
-                {hotelSuggestionMsg && (
-                  <View style={styles.hotelSuggestionCard}>
-                    <View style={styles.hotelSuggestionHeader}>
-                      <Ionicons name="home" size={24} color="#8B6F47" />
-                      <Text style={styles.hotelSuggestionTitle}>Hotel Booking</Text>
+                {!hotelLoading && hotelSuggestionMsg && (
+                  <>
+                    <View style={styles.hotelSuggestionCard}>
+                      <View style={styles.hotelSuggestionHeader}>
+                        <Ionicons name="home" size={24} color="#8B6F47" />
+                        <Text style={styles.hotelSuggestionTitle}>Hotel Booking</Text>
+                      </View>
+                      <View style={styles.hotelSuggestionContent}>
+                        <Text style={styles.hotelSuggestionText}>
+                          {hotelSuggestionMsg}
+                        </Text>
+                      </View>
                     </View>
-                    <View style={styles.hotelSuggestionContent}>
-                      <Text style={styles.hotelSuggestionText}>
-                        {hotelSuggestionMsg}
-                      </Text>
-                    </View>
-                  </View>
-                )}
 
-                <View style={styles.hotelActionButtons}>
-                  <TouchableOpacity
-                    style={styles.bookHotelButton}
-                    onPress={() => {
-                      log('HOTEL', 'Book hotel clicked');
-                      // TODO: Open hotel booking UI
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.bookHotelButtonText}>Book Hotel</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.skipButton}
-                    onPress={() => {
-                      log('SKIP_BUTTON', 'Continue to Roaming clicked');
-                      handleContinue();
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.skipButtonText}>Continue to Roaming</Text>
-                  </TouchableOpacity>
-                </View>
+                    <View style={styles.hotelActionButtons}>
+                      <TouchableOpacity
+                        style={styles.bookHotelButton}
+                        onPress={() => {
+                          log('HOTEL', 'Book hotel clicked');
+                          // TODO: Open hotel booking UI
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={styles.bookHotelButtonText}>Book Hotel</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.skipButton}
+                        onPress={() => {
+                          log('SKIP_BUTTON', 'Continue to Roaming clicked');
+                          handleContinue();
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={styles.skipButtonText}>Continue to Roaming</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </>
+                )}
               </>
             )}
           </>
@@ -1307,9 +1316,6 @@ const styles = StyleSheet.create({
   },
   chatMessagesContainer: {
     marginTop: spacing.lg,
-    borderTopWidth: 1,
-    borderTopColor: colors.textSecondary,
-    borderTopOpacity: 0.1,
     paddingTop: spacing.lg,
   },
   agentChatMessage: {
