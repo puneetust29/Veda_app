@@ -55,11 +55,10 @@ async function authedFetch<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  // POC-only: mints a token without a real OTP round-trip (see backend/app/routers/auth.py::dev_login).
-  devLogin: (phoneNumber: string) =>
+  devLogin: (phoneNumber: string, otp?: string) =>
     rawFetch<{ access_token: string; customer: Customer }>('/auth/dev-login', {
       method: 'POST',
-      body: JSON.stringify({ phone_number: phoneNumber }),
+      body: JSON.stringify({ phone_number: phoneNumber, otp }),
     }),
   getMe: () => authedFetch<Customer>('/me'),
   listCalendarEvents: () => authedFetch<CalendarEvent[]>('/calendar/events'),
