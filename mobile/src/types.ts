@@ -41,6 +41,22 @@ export type RoamingPlan = {
   description: string;
 };
 
+export type TravelInsurancePlan = {
+  id: number;
+  provider: string;
+  planName: string;
+  planType: string;
+  coverageStart: string;
+  coverageEnd: string;
+  premiumAmount: number;
+  currency: string;
+  currencyCode: string;
+  whyThisOne: string[];
+  benefitsSummary: string;
+  fullCoverageDetails: Record<string, string[]>;
+  stripeAmountCents: number;
+};
+
 export type RecommendResponse = {
   calendar_event_id: string;
   destination_country: string;
@@ -204,6 +220,7 @@ export type ChatItem =
   | (ChatItemBase & { kind: 'status'; tool?: string; label: string; state: 'active' | 'done' })
   | (ChatItemBase & { kind: 'card'; card: RecommendationCardPayload })
   | (ChatItemBase & { kind: 'hotel'; hotel: HotelDetectionResultPayload })
+  | (ChatItemBase & { kind: 'travel_insurance'; plan: TravelInsurancePlan; calendarEventId: string })
   | (ChatItemBase & {
       kind: 'confirmation';
       actionId: string;

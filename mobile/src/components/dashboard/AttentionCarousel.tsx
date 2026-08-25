@@ -20,6 +20,7 @@ import type { CalendarEvent } from '../../types';
 type Props = {
   flights: CalendarEvent[];
   activeRoamingEventIds: Set<string>;
+  activeInsuranceEventIds: Set<string>;
   onPressFlight: (flight: CalendarEvent) => void;
 };
 
@@ -78,12 +79,12 @@ function formatDateRange(start: string, end: string) {
 // image banner with source badges, title/subtitle, tag chips (tap to
 // confirm), CTA row, pagination dots below. Built on RN's built-in Animated
 // API rather than reanimated, which isn't a dependency yet.
-export default function AttentionCarousel({ flights, activeRoamingEventIds, onPressFlight }: Props) {
+export default function AttentionCarousel({ flights, activeRoamingEventIds, activeInsuranceEventIds, onPressFlight }: Props) {
   const [activeIndex, setActiveIndex] = useState(0);
   const scrollX = useRef(new Animated.Value(0)).current;
-  // Per-flight, per-tag confirmation state for chips with no backend-tracked status
-  // (currently just "insurance"). Tapping toggles it into the confirmed (green) state.
-  const [confirmed, setConfirmed] = useState<Record<string, Set<TagKey>>>({});
+  // Per-flight, per-tag confirmation state for chips with no backend-tracked status.
+  // Insurance status now comes from backend, so only track local confirmations if needed.
+  const [confirmed, setConfirmed] = useState<Record<string, Set<TagKey>>>({}); // TODO: Consider removing if not needed
 
   const toggleTag = (flightId: string, tag: TagKey) => {
     setConfirmed((prev) => {
@@ -127,6 +128,7 @@ export default function AttentionCarousel({ flights, activeRoamingEventIds, onPr
             index={index}
             scrollX={scrollX}
             roamingActive={activeRoamingEventIds.has(flight.id)}
+            insuranceActive={activeInsuranceEventIds.has(flight.id)}
             confirmedTags={confirmed[flight.id] ?? new Set<TagKey>()}
             onToggleTag={(tag) => toggleTag(flight.id, tag)}
             onPress={() => onPressFlight(flight)}
@@ -150,6 +152,7 @@ function AttentionCard({
   index,
   scrollX,
   roamingActive,
+  insuranceActive,
   confirmedTags,
   onToggleTag,
   onPress,
@@ -158,6 +161,7 @@ function AttentionCard({
   index: number;
   scrollX: Animated.Value;
   roamingActive: boolean;
+  insuranceActive: boolean;
   confirmedTags: Set<TagKey>;
   onToggleTag: (tag: TagKey) => void;
   onPress: () => void;
@@ -214,8 +218,9 @@ function AttentionCard({
         <CheckableTag
           icon="map-outline"
           label="Travel Insurance"
-          confirmed={confirmedTags.has('insurance')}
+          confirmed={insuranceActive}
           onPress={() => onToggleTag('insurance')}
+          disabled={insuranceActive}
         />
       </View>
 

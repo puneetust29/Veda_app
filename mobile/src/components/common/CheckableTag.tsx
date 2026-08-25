@@ -8,18 +8,19 @@ type Props = {
   label: string;
   confirmed: boolean;
   onPress: () => void;
+  disabled?: boolean;
 };
 
 // Reusable pill chip with a leading icon and a trailing checkmark that fills
 // in green once confirmed. Originally built inline for the dashboard's
 // flight-attention cards (Roaming / Travel Insurance); pulled out to
 // `common/` so any other confirmable-item list can reuse it.
-export default function CheckableTag({ icon, label, confirmed, onPress }: Props) {
+export default function CheckableTag({ icon, label, confirmed, onPress, disabled }: Props) {
   return (
     <TouchableOpacity
-      style={[styles.tag, confirmed && styles.tagConfirmed]}
-      onPress={onPress}
-      activeOpacity={0.7}
+      style={[styles.tag, confirmed && styles.tagConfirmed, disabled && styles.tagDisabled]}
+      onPress={!disabled ? onPress : undefined}
+      activeOpacity={disabled ? 1 : 0.7}
     >
       <Ionicons name={icon} size={14} color={colors.textPrimary} />
       <Text style={styles.tagText}>{label}</Text>
@@ -43,5 +44,6 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   tagConfirmed: { backgroundColor: colors.successTint },
+  tagDisabled: { opacity: 0.6 },
   tagText: { ...typography.small, color: colors.textPrimary },
 });
