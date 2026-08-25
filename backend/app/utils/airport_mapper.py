@@ -1,6 +1,7 @@
 """Intelligent airport-to-country mapper with hybrid caching strategy."""
 from typing import Optional
 import anthropic
+from app.config import get_settings
 from app.db.client import get_supabase
 
 # Hardcoded mapping of common airports to countries (~150 most-used routes)
@@ -167,6 +168,82 @@ COMMON_AIRPORTS = {
 }
 
 
+# "<city>, <region abbreviation>" destinations (e.g. "New York, NY", "Toronto, ON")
+# carry no airport code at all, so they need a region-code lookup instead. Built from
+# each country's official state/province/territory postal abbreviations; codes that
+# collide across countries (e.g. Australia's WA/NT also being US state codes) are
+# deliberately left out since there's no reliable way to disambiguate from the
+# abbreviation alone -- those destinations fall through to the airport-code /
+# Claude-lookup paths below instead of risking a wrong country.
+REGION_ABBREVIATION_TO_COUNTRY = {
+    # US states + DC
+    "AL": "United States", "AK": "United States", "AZ": "United States", "AR": "United States",
+    "CA": "United States", "CO": "United States", "CT": "United States", "DE": "United States",
+    "FL": "United States", "GA": "United States", "HI": "United States", "ID": "United States",
+    "IL": "United States", "IN": "United States", "IA": "United States", "KS": "United States",
+    "KY": "United States", "LA": "United States", "ME": "United States", "MD": "United States",
+    "MA": "United States", "MI": "United States", "MN": "United States", "MS": "United States",
+    "MO": "United States", "MT": "United States", "NE": "United States", "NV": "United States",
+    "NH": "United States", "NJ": "United States", "NM": "United States", "NY": "United States",
+    "NC": "United States", "ND": "United States", "OH": "United States", "OK": "United States",
+    "OR": "United States", "PA": "United States", "RI": "United States", "SC": "United States",
+    "SD": "United States", "TN": "United States", "TX": "United States", "UT": "United States",
+    "VT": "United States", "VA": "United States", "WA": "United States", "WV": "United States",
+    "WI": "United States", "WY": "United States", "DC": "United States",
+    # Canadian provinces + territories (no collisions with US postal codes)
+    "AB": "Canada", "BC": "Canada", "MB": "Canada", "NB": "Canada", "NL": "Canada",
+    "NS": "Canada", "ON": "Canada", "PE": "Canada", "QC": "Canada", "SK": "Canada",
+    "YT": "Canada", "NU": "Canada",
+    # Australian states/territories that don't collide with a US/Canadian code above
+    # (WA, NT, SA are ambiguous with US/ISO codes and are skipped)
+    "VIC": "Australia", "QLD": "Australia", "TAS": "Australia", "ACT": "Australia",
+    "NSW": "Australia",
+}
+
+
+def get_country_from_region_abbreviation(destination_text: str) -> Optional[str]:
+    """Match "<city>, <region abbreviation>" against known state/province/territory
+    codes across countries whose destinations often lack an airport code entirely."""
+    import re
+    match = re.search(r',\s*([A-Z]{2,3})\s*$', destination_text.upper().strip())
+    if match:
+        return REGION_ABBREVIATION_TO_COUNTRY.get(match.group(1))
+    return None
+
+
+# Customer profiles store ISO-3166 alpha-2 codes (e.g. "US"), while destination
+# resolution (airports, region abbreviations, roaming_plans.country_name) always deals
+# in full country names (e.g. "United States") -- this bridges the two so callers like
+# the roaming agent's home-country check can compare them directly.
+ISO2_TO_COUNTRY_NAME = {
+    "US": "United States", "GB": "United Kingdom", "FR": "France", "DE": "Germany",
+    "IT": "Italy", "ES": "Spain", "NL": "Netherlands", "CH": "Switzerland",
+    "AT": "Austria", "CZ": "Czech Republic", "PL": "Poland", "IE": "Ireland",
+    "GR": "Greece", "LT": "Lithuania", "LV": "Latvia", "EE": "Estonia",
+    "CN": "China", "JP": "Japan", "KR": "South Korea", "VN": "Vietnam",
+    "TH": "Thailand", "SG": "Singapore", "MY": "Malaysia", "ID": "Indonesia",
+    "HK": "Hong Kong", "TW": "Taiwan", "IN": "India", "AU": "Australia",
+    "NZ": "New Zealand", "AE": "United Arab Emirates", "QA": "Qatar",
+    "SA": "Saudi Arabia", "KW": "Kuwait", "BH": "Bahrain", "OM": "Oman",
+    "EG": "Egypt", "ZA": "South Africa", "KE": "Kenya", "AO": "Angola",
+    "ZM": "Zambia", "ZW": "Zimbabwe", "MX": "Mexico", "DO": "Dominican Republic",
+    "PA": "Panama", "CO": "Colombia", "VE": "Venezuela", "AR": "Argentina",
+    "UY": "Uruguay", "CL": "Chile", "EC": "Ecuador", "PE": "Peru",
+    "CR": "Costa Rica", "BZ": "Belize", "BB": "Barbados", "JM": "Jamaica",
+    "BO": "Bolivia", "PY": "Paraguay", "BR": "Brazil", "CA": "Canada",
+    "MA": "Morocco",
+}
+
+
+def normalize_country_name(value: str) -> str:
+    """Resolve an ISO-3166 alpha-2 code to its full country name; pass full names
+    (or unrecognized codes) through unchanged."""
+    if not value:
+        return value
+    normalized = value.strip().upper()
+    return ISO2_TO_COUNTRY_NAME.get(normalized, value)
+
+
 def get_country_from_airport_cached(airport_code: str) -> Optional[str]:
     """Try to get country from hardcoded cache of common airports."""
     normalized_code = airport_code.upper().strip() if airport_code else ""
@@ -206,7 +283,7 @@ def get_country_from_airport_claude(airport_code: str) -> Optional[str]:
         return None
 
     try:
-        client = anthropic.Anthropic()
+        client = anthropic.Anthropic(api_key=get_settings().anthropic_api_key)
 
         prompt = f"""You are an airport-to-country mapping assistant.
 Given an airport code or city name, identify the country it belongs to.
@@ -268,7 +345,7 @@ def extract_country_from_event_text(event: dict) -> Optional[str]:
         return None
 
     try:
-        client = anthropic.Anthropic()
+        client = anthropic.Anthropic(api_key=get_settings().anthropic_api_key)
 
         prompt = f"""Extract the destination country from this flight event text.
 Event: {event_text}
@@ -308,6 +385,12 @@ def get_destination_country(airport_code: str, event_dict: Optional[dict] = None
             return "Unknown"
 
         airport_code = airport_code.upper().strip()
+
+        # "New York, NY" / "Toronto, ON" etc. -- a city + region abbreviation, not an
+        # airport code.
+        region_country = get_country_from_region_abbreviation(airport_code)
+        if region_country:
+            return region_country
 
         # Extract airport code from format like "Bangalore (BLR)" or "Paris CDG"
         import re

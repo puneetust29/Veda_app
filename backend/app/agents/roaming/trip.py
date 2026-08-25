@@ -1,5 +1,6 @@
 from datetime import datetime
 from app.services.trip_service import get_trip_duration_for_roaming, get_round_trips
+from app.utils.airport_mapper import get_destination_country
 
 
 def extract_trip_context(calendar_event: dict) -> tuple[str, int, dict]:
@@ -11,8 +12,14 @@ def extract_trip_context(calendar_event: dict) -> tuple[str, int, dict]:
     Returns: (destination_country, duration_days, trip_details)
     """
     destination_country = calendar_event.get("raw_details", {}).get("destination_country")
-    if not destination_country:
-        destination_country = calendar_event.get("destination", "Unknown")
+    if not destination_country or destination_country == "Unknown":
+        # Older events synced before the airport-to-country mapper existed (or events
+        # whose mapping failed at sync time) won't have raw_details.destination_country
+        # populated. Fall back to resolving it now from the destination field (e.g.
+        # "Delhi (DEL)") so the roaming catalog lookup doesn't match on raw city text.
+        destination_country = get_destination_country(
+            calendar_event.get("destination", ""), calendar_event
+        )
 
     # Get trip duration (detects matching return flight within 60 days)
     try:

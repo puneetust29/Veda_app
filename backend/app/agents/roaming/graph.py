@@ -8,6 +8,7 @@ from app.agents.roaming.state import RoamingAgentState
 from app.agents.roaming.trip import extract_trip_context
 from app.config import get_settings
 from app.tools.mobile import fetch_roaming_catalog, subscribe_roaming_plan
+from app.utils.airport_mapper import normalize_country_name
 
 MAX_RETRIES = 2
 
@@ -63,11 +64,54 @@ def node_extract_trip_context(state: RoamingAgentState, writer: StreamWriter) ->
     }
 
 
+def node_check_home_country(state: RoamingAgentState, writer: StreamWriter) -> dict:
+    customer_country = normalize_country_name((state.get("customer") or {}).get("country", ""))
+    destination = state.get("destination_country", "")
+    is_home = bool(customer_country) and customer_country.strip().lower() == destination.strip().lower()
+    if is_home:
+        writer(
+            {
+                "kind": "status",
+                "text": f"{destination} is your home country — no roaming plan needed.",
+            }
+        )
+    return {"is_home_country": is_home}
+
+
+def route_after_home_check(state: RoamingAgentState) -> str:
+    return "home" if state.get("is_home_country") else "needs_plan"
+
+
 def node_fetch_catalog(state: RoamingAgentState, writer: StreamWriter) -> dict:
     writer({"kind": "tool_started", "tool": "mobile.get_roaming_plans"})
     catalog = fetch_roaming_catalog(state["destination_country"])
     writer({"kind": "tool_completed", "tool": "mobile.get_roaming_plans", "count": len(catalog)})
+    if not catalog:
+        writer(
+            {
+                "kind": "status",
+                "text": f"No roaming plans are currently available for "
+                f"{state['destination_country']}.",
+            }
+        )
     return {"roaming_catalog": catalog}
+
+
+def route_after_fetch_catalog(state: RoamingAgentState) -> str:
+    # No point running recommend/judge against an empty catalog -- that just burns
+    # MAX_RETRIES rounds of LLM calls to arrive at the same "no plan" outcome.
+    return "empty" if not state.get("roaming_catalog") else "has_plans"
+
+
+def _next_tier_plan(catalog: list[dict], trip_duration_days: int) -> dict | None:
+    """Shortest plan whose duration_days covers the trip; if the trip outlasts every
+    plan in the catalog, fall back to the longest one available."""
+    covering = [p for p in catalog if p["duration_days"] >= trip_duration_days]
+    if covering:
+        return min(covering, key=lambda p: p["duration_days"])
+    if catalog:
+        return max(catalog, key=lambda p: p["duration_days"])
+    return None
 
 
 def node_recommend_plan(state: RoamingAgentState, writer: StreamWriter) -> dict:
@@ -75,12 +119,14 @@ def node_recommend_plan(state: RoamingAgentState, writer: StreamWriter) -> dict:
 
     # Re-fetch catalog for current destination (in case it changed during follow-up pivot)
     catalog = fetch_roaming_catalog(state["destination_country"])
+    suggested_plan = _next_tier_plan(catalog, state["trip_duration_days"])
 
     prompt = recommend_prompt(
         destination_country=state["destination_country"],
         trip_duration_days=state["trip_duration_days"],
         roaming_catalog=catalog,
         judge_feedback=state.get("judge_feedback", ""),
+        suggested_plan=suggested_plan,
     )
 
     writer(
@@ -185,13 +231,19 @@ def build_follow_up_graph():
     """
     graph = StateGraph(RoamingAgentState)
     graph.add_node("extract_trip_context", node_extract_trip_context)
+    graph.add_node("check_home_country", node_check_home_country)
     graph.add_node("fetch_catalog", node_fetch_catalog)
     graph.add_node("handle_follow_up", node_handle_follow_up)
     graph.add_node("recommend_plan", node_recommend_plan)
     graph.add_node("judge", node_judge)
 
     graph.set_entry_point("extract_trip_context")
-    graph.add_edge("extract_trip_context", "fetch_catalog")
+    graph.add_edge("extract_trip_context", "check_home_country")
+    graph.add_conditional_edges(
+        "check_home_country",
+        route_after_home_check,
+        {"home": END, "needs_plan": "fetch_catalog"},
+    )
     graph.add_edge("fetch_catalog", "handle_follow_up")
     graph.add_conditional_edges(
         "handle_follow_up",
@@ -211,13 +263,23 @@ def build_recommend_graph():
     """Steps 1-4: extract trip context -> fetch catalog -> recommend -> judge (with retry)."""
     graph = StateGraph(RoamingAgentState)
     graph.add_node("extract_trip_context", node_extract_trip_context)
+    graph.add_node("check_home_country", node_check_home_country)
     graph.add_node("fetch_catalog", node_fetch_catalog)
     graph.add_node("recommend_plan", node_recommend_plan)
     graph.add_node("judge", node_judge)
 
     graph.set_entry_point("extract_trip_context")
-    graph.add_edge("extract_trip_context", "fetch_catalog")
-    graph.add_edge("fetch_catalog", "recommend_plan")
+    graph.add_edge("extract_trip_context", "check_home_country")
+    graph.add_conditional_edges(
+        "check_home_country",
+        route_after_home_check,
+        {"home": END, "needs_plan": "fetch_catalog"},
+    )
+    graph.add_conditional_edges(
+        "fetch_catalog",
+        route_after_fetch_catalog,
+        {"empty": END, "has_plans": "recommend_plan"},
+    )
     graph.add_edge("recommend_plan", "judge")
     graph.add_conditional_edges(
         "judge",
