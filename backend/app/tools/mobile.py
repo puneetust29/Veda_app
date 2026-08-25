@@ -15,7 +15,7 @@ def fetch_roaming_catalog(destination_country: str) -> list[dict]:
     result = (
         supabase.table("roaming_plans")
         .select("*")
-        .eq("country_name", destination_country)
+        .ilike("country_name", destination_country.strip())
         .order("duration_days")
         .execute()
     )

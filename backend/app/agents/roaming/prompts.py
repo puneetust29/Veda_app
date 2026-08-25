@@ -4,12 +4,28 @@ so the graph module stays focused on topology/control-flow."""
 import json
 
 
-def recommend_prompt(destination_country: str, trip_duration_days: int, roaming_catalog: list, judge_feedback: str = "") -> str:
+def recommend_prompt(
+    destination_country: str,
+    trip_duration_days: int,
+    roaming_catalog: list,
+    judge_feedback: str = "",
+    suggested_plan: dict | None = None,
+) -> str:
     feedback_note = ""
     if judge_feedback:
         feedback_note = (
             f"\n\nYour previous recommendation was rejected: {judge_feedback}. "
             "Pick a different, better-fitting plan."
+        )
+
+    tier_note = ""
+    if suggested_plan:
+        tier_note = (
+            f"\n\nTiering rule: plans only come in fixed durations, so pick the shortest "
+            f"plan whose duration_days is >= the trip length (or the longest available plan "
+            f"if the trip outlasts every option). By that rule, the plan to pick here is "
+            f"'{suggested_plan['plan_name']}' (id: {suggested_plan['id']}, "
+            f"{suggested_plan['duration_days']} days) unless another plan clearly fits better."
         )
 
     return (
@@ -19,6 +35,7 @@ def recommend_prompt(destination_country: str, trip_duration_days: int, roaming_
         "Pick the single best-fitting plan id for this trip, balancing data allowance "
         "vs. trip length vs. price. Prefer a plan whose duration_days covers the whole "
         "trip without being wastefully long, and enough data_gb for typical use."
+        f"{tier_note}"
         f"{feedback_note}"
     )
 
@@ -30,8 +47,12 @@ def judge_prompt(trip_duration_days: int, destination_country: str, candidate_pl
         f"Trip: {trip_duration_days} days to {destination_country}.\n"
         f"Recommended plan: {json.dumps(candidate_plan)}\n"
         f"Advisor's reasoning: {reasoning}\n\n"
-        "Approve only if the plan's duration_days covers the trip length and the data "
-        "allowance is reasonable for the trip length. Reject with clear feedback otherwise."
+        "Approve if the plan's duration_days is >= the trip length and the data allowance "
+        "is reasonable. Roaming plans only come in fixed tiers (e.g. 7/14/30 days) — if this "
+        "is the shortest tier that still covers the trip, APPROVE it even though it runs "
+        "longer than the trip itself; that is expected, not a flaw. Reject only if a "
+        "shorter plan in the same catalog also covers the trip and wasn't chosen, or if the "
+        "data allowance is clearly unreasonable for the trip length."
     )
 
 
