@@ -10,6 +10,8 @@ class TravelInsurancePlan(BaseModel):
     provider: str
     planName: str
     planType: str
+    country: Optional[str] = None
+    coverageDurationDays: Optional[int] = None
     coverageStart: str
     coverageEnd: str
     premiumAmount: float
@@ -32,9 +34,13 @@ class StrapiClient:
             data = json.load(f)
         self._plans = {plan["id"]: TravelInsurancePlan(**plan) for plan in data}
 
-    def get_travel_insurance_plans(self) -> List[TravelInsurancePlan]:
-        """Return all travel insurance plans."""
-        return list(self._plans.values())
+    def get_travel_insurance_plans(self, country: Optional[str] = None) -> List[TravelInsurancePlan]:
+        """Return travel insurance plans, optionally filtered by country (case-insensitive)."""
+        plans = list(self._plans.values())
+        if country:
+            country_lower = country.strip().lower()
+            plans = [p for p in plans if p.country and p.country.lower() == country_lower]
+        return plans
 
     def get_travel_insurance_plan(self, plan_id: int) -> Optional[TravelInsurancePlan]:
         """Fetch a single plan by ID."""

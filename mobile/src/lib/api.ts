@@ -205,6 +205,14 @@ export const api = {
       method: 'GET',
     }),
 
+  getInsuranceRecommendation: (calendarEventId: string) =>
+    authedFetch<TravelInsurancePlan | null>(
+      `/insurance/plans/recommend?calendar_event_id=${encodeURIComponent(calendarEventId)}`,
+      {
+        method: 'GET',
+      },
+    ),
+
   createInsurancePaymentIntent: (planId: number, paymentMethodId: string) =>
     authedFetch<{
       client_secret: string;

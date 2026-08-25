@@ -39,7 +39,7 @@ export default function TravelInsuranceCardChat({ plan }: Props) {
   };
 
   // Use a test payment method for now (in production, this would come from saved cards)
-  const paymentMethodId = 'pm_card_visa';
+  const paymentMethodId = 'pm_card_mastercard';
 
   return (
     <View style={styles.container}>

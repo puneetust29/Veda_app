@@ -197,17 +197,24 @@ export function useRoamingChat(event: CalendarEvent) {
             },
           ]);
 
-          // Fetch and show first available insurance plan
+          // Fetch and show recommended insurance plan
           try {
-            const plans = await api.getInsurancePlans();
-            if (plans && plans.length > 0) {
+            const plan = await api.getInsuranceRecommendation(event.id);
+            if (plan) {
+              // Replace the "Checking insurance options..." status with the actual plan
+              commitItems(
+                itemsRef.current.map((item) =>
+                  item.kind === 'status' && item.label === 'Checking travel insurance options…'
+                    ? {
+                        id: nextId(),
+                        createdAt: Date.now(),
+                        kind: 'travel_insurance',
+                        plan: plan,
+                      }
+                    : item,
+                ),
+              );
               appendItems([
-                {
-                  id: nextId(),
-                  createdAt: Date.now(),
-                  kind: 'travel_insurance',
-                  plan: plans[0],
-                },
                 {
                   id: nextId(),
                   createdAt: Date.now(),
@@ -218,7 +225,7 @@ export function useRoamingChat(event: CalendarEvent) {
               ]);
             }
           } catch (err) {
-            if (__DEV__) console.warn('[useRoamingChat] Failed to fetch insurance plans', err);
+            if (__DEV__) console.warn('[useRoamingChat] Failed to fetch insurance recommendation', err);
           }
 
           setPhase('complete');
@@ -296,18 +303,25 @@ export function useRoamingChat(event: CalendarEvent) {
             },
           ]);
 
-          // Fetch and show first available insurance plan
+          // Fetch and show recommended insurance plan
           api
-            .getInsurancePlans()
-            .then((plans) => {
-              if (plans && plans.length > 0) {
+            .getInsuranceRecommendation(event.id)
+            .then((plan) => {
+              if (plan) {
+                // Replace the "Checking insurance options..." status with the actual plan
+                commitItems(
+                  itemsRef.current.map((item) =>
+                    item.kind === 'status' && item.label === 'Checking travel insurance options…'
+                      ? {
+                          id: nextId(),
+                          createdAt: Date.now(),
+                          kind: 'travel_insurance',
+                          plan: plan,
+                        }
+                      : item,
+                  ),
+                );
                 appendItems([
-                  {
-                    id: nextId(),
-                    createdAt: Date.now(),
-                    kind: 'travel_insurance',
-                    plan: plans[0],
-                  },
                   {
                     id: nextId(),
                     createdAt: Date.now(),
@@ -320,7 +334,7 @@ export function useRoamingChat(event: CalendarEvent) {
               setPhase('complete');
             })
             .catch((err) => {
-              if (__DEV__) console.warn('[useRoamingChat] Failed to fetch insurance plans', err);
+              if (__DEV__) console.warn('[useRoamingChat] Failed to fetch insurance recommendation', err);
               setPhase('complete');
             });
         })
