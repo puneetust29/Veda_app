@@ -5,21 +5,41 @@ import { api } from '../lib/api';
 import type { AgentStreamEvent, CalendarEvent, ChatItem, RoamingPlan } from '../types';
 
 export type ChatPhase = 'idle' | 'streaming' | 'awaiting_confirmation' | 'complete' | 'failed';
+export type ViewMode = 'roaming' | 'insurance';
+export type PlanState = {
+  hasRoaming: boolean;
+  hasInsurance: boolean;
+  showToggle: boolean;
+};
 
 type ConfirmationItem = Extract<ChatItem, { kind: 'confirmation' }>;
 type CardItem = Extract<ChatItem, { kind: 'card' }>;
 
 const WATCHDOG_MS = 90_000;
 
-function greetingText(event: CalendarEvent): string {
+function greetingText(event: CalendarEvent, state: PlanState): string {
   const date = new Date(event.start_datetime).toLocaleDateString();
   const destination = event.destination ?? 'your destination';
-  return `Looks like you're flying to ${destination} on ${date} — you don't have a roaming plan for this trip. Let me find you some options…`;
+
+  if (state.showToggle) {
+    return `Flying to ${destination} on ${date}? You don't have roaming or travel insurance yet. Which would you like to explore first?`;
+  } else if (state.hasRoaming && !state.hasInsurance) {
+    return `Your roaming is covered. Now, let me make sure you're protected with travel insurance too.`;
+  } else if (!state.hasRoaming && state.hasInsurance) {
+    return `Your travel insurance is ready. Now let's get you connected with roaming for your trip.`;
+  }
+
+  return `Looks like you're flying to ${destination} on ${date}. Let me help you with travel plans…`;
 }
 
 export function useRoamingChat(event: CalendarEvent, onInsurancePurchased?: (data: any) => void) {
+  const [planState, setPlanState] = useState<PlanState>({ hasRoaming: false, hasInsurance: false, showToggle: false });
+  const [currentView, setCurrentView] = useState<ViewMode>('roaming');
+  const [cachedInsurancePlan, setCachedInsurancePlan] = useState<any>(null);
+  const [initialInsuranceExists, setInitialInsuranceExists] = useState(false);
+
   const [items, setItems] = useState<ChatItem[]>(() => [
-    { id: nextId(), createdAt: Date.now(), kind: 'text', role: 'agent', text: greetingText(event) },
+    { id: nextId(), createdAt: Date.now(), kind: 'text', role: 'agent', text: greetingText(event, { hasRoaming: false, hasInsurance: false, showToggle: false }) },
   ]);
   const [phase, setPhase] = useState<ChatPhase>('idle');
 
@@ -180,14 +200,56 @@ export function useRoamingChat(event: CalendarEvent, onInsurancePurchased?: (dat
         );
         const existingRoaming = subscriptions.find((s) => s.calendar_event_id === event.id && s.status === 'active');
 
-        if (existingRoaming) {
+        // CASE 1: Both roaming AND insurance exist
+        if (existingRoaming && existingInsurance) {
+          const roamingName = existingRoaming.roaming_plans?.plan_name ?? 'your roaming plan';
+          const insuranceDetails = existingInsurance.plan_details || {};
+          const insuranceName = insuranceDetails.planName || 'Travel Insurance';
+
+          commitItems([
+            { id: nextId(), createdAt: Date.now(), kind: 'text', role: 'agent', text: '✓ You\'re all set!' },
+            {
+              id: nextId(),
+              createdAt: Date.now(),
+              kind: 'receipt',
+              subscription: existingRoaming,
+              planName: roamingName,
+            },
+            {
+              id: nextId(),
+              createdAt: Date.now(),
+              kind: 'receipt',
+              subscription: {
+                id: existingInsurance.id,
+                status: existingInsurance.status,
+                subscribed_at: existingInsurance.purchased_at,
+              } as any,
+              planName: insuranceName,
+            },
+            {
+              id: nextId(),
+              createdAt: Date.now(),
+              kind: 'text',
+              role: 'agent',
+              text: 'You have both roaming and travel insurance for this trip. You\'re protected!',
+            },
+          ]);
+          setInitialInsuranceExists(true);
+          setPlanState({ hasRoaming: true, hasInsurance: true, showToggle: false });
+          setPhase('complete');
+          return;
+        }
+
+        // CASE 2: Has roaming, no insurance
+        if (existingRoaming && !existingInsurance) {
+          const roamingName = existingRoaming.roaming_plans?.plan_name ?? 'your roaming plan';
           appendItems([
             {
               id: nextId(),
               createdAt: Date.now(),
               kind: 'receipt',
               subscription: existingRoaming,
-              planName: existingRoaming.roaming_plans?.plan_name ?? 'your roaming plan',
+              planName: roamingName,
             },
             {
               id: nextId(),
@@ -196,83 +258,97 @@ export function useRoamingChat(event: CalendarEvent, onInsurancePurchased?: (dat
               role: 'agent',
               text: "Your roaming is covered. Now, let me make sure you're protected with travel insurance too.",
             },
+            {
+              id: nextId(),
+              createdAt: Date.now(),
+              kind: 'status',
+              label: 'Checking travel insurance options…',
+              state: 'active',
+            },
           ]);
 
-          // Check if insurance is already purchased
-          if (existingInsurance) {
-            const planDetails = existingInsurance.plan_details || {};
-            const planName = planDetails.planName || 'Travel Insurance';
-
-            appendItems([
-              {
-                id: nextId(),
-                createdAt: Date.now(),
-                kind: 'receipt',
-                subscription: {
-                  id: existingInsurance.id,
-                  status: existingInsurance.status,
-                  subscribed_at: existingInsurance.purchased_at,
-                } as any,
-                planName: planName,
-              },
-              {
-                id: nextId(),
-                createdAt: Date.now(),
-                kind: 'text',
-                role: 'agent',
-                text: '✓ You already have travel insurance for this trip. You\'re all set!',
-              },
-            ]);
-          } else {
-            // Fetch and show recommended insurance plan
-            appendItems([
-              {
-                id: nextId(),
-                createdAt: Date.now(),
-                kind: 'status',
-                label: 'Checking travel insurance options…',
-                state: 'active',
-              },
-            ]);
-
-            try {
-              const plan = await api.getInsuranceRecommendation(event.id);
-              if (plan) {
-                // Replace the "Checking insurance options..." status with the actual plan
-                commitItems(
-                  itemsRef.current.map((item) =>
-                    item.kind === 'status' && item.label === 'Checking travel insurance options…'
-                      ? {
-                          id: nextId(),
-                          createdAt: Date.now(),
-                          kind: 'travel_insurance',
-                          plan: plan,
-                          calendarEventId: event.id,
-                        }
-                      : item,
-                  ),
-                );
-                appendItems([
-                  {
-                    id: nextId(),
-                    createdAt: Date.now(),
-                    kind: 'text',
-                    role: 'agent',
-                    text: "Here's a plan that covers your trip. You can purchase it anytime before you travel.",
-                  },
-                ]);
-              }
-            } catch (err) {
-              if (__DEV__) console.warn('[useRoamingChat] Failed to fetch insurance recommendation', err);
+          try {
+            const plan = await api.getInsuranceRecommendation(event.id);
+            if (plan) {
+              commitItems(
+                itemsRef.current.map((item) =>
+                  item.kind === 'status' && item.label === 'Checking travel insurance options…'
+                    ? {
+                        id: nextId(),
+                        createdAt: Date.now(),
+                        kind: 'travel_insurance',
+                        plan: plan,
+                        calendarEventId: event.id,
+                      }
+                    : item,
+                ),
+              );
+              setCachedInsurancePlan(plan);
+              appendItems([
+                {
+                  id: nextId(),
+                  createdAt: Date.now(),
+                  kind: 'text',
+                  role: 'agent',
+                  text: "Here's a plan that covers your trip. You can purchase it anytime before you travel.",
+                },
+              ]);
             }
+          } catch (err) {
+            if (__DEV__) console.warn('[useRoamingChat] Failed to fetch insurance recommendation', err);
           }
 
+          setInitialInsuranceExists(false);
+          setPlanState({ hasRoaming: true, hasInsurance: false, showToggle: false });
           setPhase('complete');
           return;
         }
+
+        // CASE 3: Has insurance, no roaming
+        if (!existingRoaming && existingInsurance) {
+          const insuranceDetails = existingInsurance.plan_details || {};
+          const insuranceName = insuranceDetails.planName || 'Travel Insurance';
+
+          appendItems([
+            {
+              id: nextId(),
+              createdAt: Date.now(),
+              kind: 'receipt',
+              subscription: {
+                id: existingInsurance.id,
+                status: existingInsurance.status,
+                subscribed_at: existingInsurance.purchased_at,
+              } as any,
+              planName: insuranceName,
+            },
+            {
+              id: nextId(),
+              createdAt: Date.now(),
+              kind: 'text',
+              role: 'agent',
+              text: "Your travel insurance is ready. Now let's get you connected with roaming for your trip.",
+            },
+          ]);
+
+          setInitialInsuranceExists(true);
+          setPlanState({ hasRoaming: false, hasInsurance: true, showToggle: false });
+          setPhase('streaming');
+          startStream(controller);
+          return;
+        }
+
+        // CASE 4: Has neither - show toggle to let user choose, start with roaming stream
+        if (!existingRoaming && !existingInsurance) {
+          appendItems([
+            { id: nextId(), createdAt: Date.now(), kind: 'text', role: 'agent', text: greetingText(event, { hasRoaming: false, hasInsurance: false, showToggle: true }) },
+          ]);
+          setPlanState({ hasRoaming: false, hasInsurance: false, showToggle: true });
+          setPhase('streaming');
+          setCurrentView('roaming');
+          startStream(controller);
+          return;
+        }
       } catch (err) {
-        // If the duplicate-subscription check itself fails, don't block the
-        // whole chat on it — just proceed to start the stream normally.
         if (__DEV__) console.warn('[useRoamingChat] listSubscriptions check failed', err);
       }
 
@@ -283,14 +359,60 @@ export function useRoamingChat(event: CalendarEvent, onInsurancePurchased?: (dat
     return () => {
       cancelled = true;
       clearWatchdog();
-      // Abort whatever controller is currently active — not necessarily the
-      // one created above. `retry()` swaps `abortControllerRef.current` for a
-      // fresh controller, and unmount must tear down that live one, not this
-      // effect's original (possibly already-superseded) `controller`.
       abortControllerRef.current?.abort();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally mount-once; guarded by startedRef
   }, []);
+
+  const switchView = useCallback(
+    async (view: ViewMode) => {
+      if (view === 'insurance' && !cachedInsurancePlan) {
+        try {
+          appendItems([
+            {
+              id: nextId(),
+              createdAt: Date.now(),
+              kind: 'status',
+              label: 'Checking travel insurance options…',
+              state: 'active',
+            },
+          ]);
+
+          const plan = await api.getInsuranceRecommendation(event.id);
+          if (plan) {
+            setCachedInsurancePlan(plan);
+            commitItems(
+              itemsRef.current.map((item) =>
+                item.kind === 'status' && item.label === 'Checking travel insurance options…'
+                  ? {
+                      id: nextId(),
+                      createdAt: Date.now(),
+                      kind: 'travel_insurance',
+                      plan: plan,
+                      calendarEventId: event.id,
+                    }
+                  : item,
+              ),
+            );
+          }
+        } catch (err) {
+          if (__DEV__) console.warn('[useRoamingChat] Failed to fetch insurance recommendation', err);
+          pushErrorItem('Failed to load insurance options. Please try again.', true);
+        }
+      } else if (view === 'roaming') {
+        const roamingCard = itemsRef.current.find((item) => item.kind === 'card');
+        if (!roamingCard) {
+          // Restart stream if we don't have roaming card yet
+          const controller = new AbortController();
+          abortControllerRef.current = controller;
+          setPhase('streaming');
+          startStream(controller);
+        }
+      }
+      setCurrentView(view);
+    },
+    [cachedInsurancePlan, event.id, appendItems, commitItems, pushErrorItem],
+  );
 
   const confirm = useCallback(
     (actionId: string) => {
@@ -326,57 +448,82 @@ export function useRoamingChat(event: CalendarEvent, onInsurancePurchased?: (dat
               subscription,
               planName: subscription.roaming_plans?.plan_name ?? target.summary,
             },
-            {
-              id: nextId(),
-              createdAt: Date.now(),
-              kind: 'text',
-              role: 'agent',
-              text: "You're all set with roaming. Now, let's make sure you're protected with travel insurance.",
-            },
-            {
-              id: nextId(),
-              createdAt: Date.now(),
-              kind: 'status',
-              label: 'Checking travel insurance options…',
-              state: 'active',
-            },
           ]);
 
-          // Fetch and show recommended insurance plan
-          api
-            .getInsuranceRecommendation(event.id)
-            .then((plan) => {
-              if (plan) {
-                // Replace the "Checking insurance options..." status with the actual plan
-                commitItems(
-                  itemsRef.current.map((item) =>
-                    item.kind === 'status' && item.label === 'Checking travel insurance options…'
-                      ? {
-                          id: nextId(),
-                          createdAt: Date.now(),
-                          kind: 'travel_insurance',
-                          plan: plan,
-                          calendarEventId: event.id,
-                        }
-                      : item,
-                  ),
-                );
-                appendItems([
-                  {
-                    id: nextId(),
-                    createdAt: Date.now(),
-                    kind: 'text',
-                    role: 'agent',
-                    text: "Here's a plan that covers your trip. You can purchase it anytime before you travel.",
-                  },
-                ]);
-              }
-              setPhase('complete');
-            })
-            .catch((err) => {
-              if (__DEV__) console.warn('[useRoamingChat] Failed to fetch insurance recommendation', err);
-              setPhase('complete');
-            });
+          // Hide toggle since roaming is now activated
+          setPlanState((prev) => ({ ...prev, showToggle: false }));
+
+          // Check if user already has insurance
+          if (initialInsuranceExists) {
+            // User already has insurance, just show completion message
+            appendItems([
+              {
+                id: nextId(),
+                createdAt: Date.now(),
+                kind: 'text',
+                role: 'agent',
+                text: '✓ You\'re all set! You have both roaming and travel insurance for this trip.',
+              },
+            ]);
+            setPhase('complete');
+          } else {
+            // User doesn't have insurance yet, fetch and show recommendation
+            appendItems([
+              {
+                id: nextId(),
+                createdAt: Date.now(),
+                kind: 'text',
+                role: 'agent',
+                text: "You're all set with roaming. Now, let's make sure you're protected with travel insurance.",
+              },
+              {
+                id: nextId(),
+                createdAt: Date.now(),
+                kind: 'status',
+                label: 'Checking travel insurance options…',
+                state: 'active',
+              },
+            ]);
+
+            // Fetch and show recommended insurance plan
+            api
+              .getInsuranceRecommendation(event.id)
+              .then((plan) => {
+                if (plan) {
+                  // Replace the "Checking insurance options..." status with the actual plan
+                  commitItems(
+                    itemsRef.current.map((item) =>
+                      item.kind === 'status' && item.label === 'Checking travel insurance options…'
+                        ? {
+                            id: nextId(),
+                            createdAt: Date.now(),
+                            kind: 'travel_insurance',
+                            plan: plan,
+                            calendarEventId: event.id,
+                          }
+                        : item,
+                    ),
+                  );
+                  setCachedInsurancePlan(plan);
+                  appendItems([
+                    {
+                      id: nextId(),
+                      createdAt: Date.now(),
+                      kind: 'text',
+                      role: 'agent',
+                      text: "Here's a plan that covers your trip. You can purchase it anytime before you travel.",
+                    },
+                  ]);
+                  // Auto-switch to insurance view after roaming is activated
+                  setCurrentView('insurance');
+                }
+                setPhase('complete');
+              })
+              .catch((err) => {
+                if (__DEV__) console.warn('[useRoamingChat] Failed to fetch insurance recommendation', err);
+                setPhase('complete');
+              });
+          }
         })
         .catch((err) => {
           updateConfirmationItem(actionId, {
@@ -385,7 +532,7 @@ export function useRoamingChat(event: CalendarEvent, onInsurancePurchased?: (dat
           });
         });
     },
-    [appendItems, updateConfirmationItem],
+    [appendItems, updateConfirmationItem, event.id, initialInsuranceExists, commitItems, setCachedInsurancePlan, setCurrentView, setPhase],
   );
 
   const decline = useCallback(
@@ -414,33 +561,127 @@ export function useRoamingChat(event: CalendarEvent, onInsurancePurchased?: (dat
       if (onInsurancePurchased) {
         onInsurancePurchased(purchaseData);
       }
+        // Show context-aware success message based on roaming status
+      const hasRoamingActive = itemsRef.current.some((item) => item.kind === 'receipt' && 'subscription' in item && item.subscription?.roaming_plans);
 
-      const planDetails = purchaseData.plan_details || {};
-      const planName = planDetails.planName || 'Travel Insurance';
+      const successMessage = hasRoamingActive
+        ? '✓ Your travel insurance is now active. You\'re all set for your trip!'
+        : '✓ Your travel insurance is now active. You still don\'t have roaming plan. Please check the above plan and activate it now to be ready for your trip.';
 
-      // Add insurance receipt to chat
+
+      // Just show success message - full receipt will come from roaming activation flow
       appendItems([
-        {
-          id: nextId(),
-          createdAt: Date.now(),
-          kind: 'receipt',
-          subscription: {
-            id: purchaseData.id,
-            status: purchaseData.status,
-            subscribed_at: purchaseData.purchased_at,
-          } as any,
-          planName: planName,
-        },
         {
           id: nextId(),
           createdAt: Date.now(),
           kind: 'text',
           role: 'agent',
-          text: '✓ Your travel insurance is now active. You\'re all set for your trip!',
+          text: successMessage,
         },
       ]);
+
+      // Mark insurance as now existing (so roaming activation won't ask for insurance again)
+      setInitialInsuranceExists(true);
+
+      // Hide toggle since insurance is now activated
+      setPlanState((prev) => ({ ...prev, showToggle: false }));
+
+      // Check if we have a roaming card or receipt - if not, fetch roaming recommendation
+      const hasRoamingContent = itemsRef.current.some((item) => item.kind === 'card' || (item.kind === 'receipt' && 'subscription' in item && item.subscription?.roaming_plans));
+
+      if (!hasRoamingContent) {
+        appendItems([
+          {
+            id: nextId(),
+            createdAt: Date.now(),
+            kind: 'text',
+            role: 'agent',
+            text: "Now let's get you connected with roaming for your trip.",
+          },
+          {
+            id: nextId(),
+            createdAt: Date.now(),
+            kind: 'status',
+            label: 'Checking roaming options…',
+            state: 'active',
+          },
+        ]);
+
+        // Fetch and show roaming recommendation
+        api
+          .recommendRoaming(event.id)
+          .then((response) => {
+            const roamingPlan = response.candidate_plan;
+            if (roamingPlan) {
+              commitItems(
+                itemsRef.current.map((item) =>
+                  item.kind === 'status' && item.label === 'Checking roaming options…'
+                    ? {
+                        id: nextId(),
+                        createdAt: Date.now(),
+                        kind: 'card',
+                        card: {
+                          kind: 'roaming_plan',
+                          plan: roamingPlan,
+                          reasoning: response.reasoning,
+                          judge_approved: true,
+                          judge_feedback: response.judge_feedback,
+                        },
+                      }
+                    : item,
+                ),
+              );
+
+              // Add confirmation prompt after roaming card
+              appendItems([
+                {
+                  id: nextId(),
+                  createdAt: Date.now(),
+                  kind: 'confirmation',
+                  actionId: `activate-roaming-${roamingPlan.id}`,
+                  state: 'pending' as const,
+                  calendarEventId: event.id,
+                  planId: roamingPlan.id,
+                  summary: roamingPlan.plan_name,
+                  risk: 'commit' as const,
+                },
+              ]);
+            }
+          })
+          .catch((err) => {
+            if (__DEV__) console.warn('[useRoamingChat] Failed to fetch roaming recommendation', err);
+          });
+      } else {
+        // Roaming content already exists - only add confirmation if it doesn't exist yet
+        const existingConfirmation = itemsRef.current.some((item) => item.kind === 'confirmation');
+
+        if (!existingConfirmation) {
+          const existingRoamingCard = itemsRef.current.find((item) => item.kind === 'card');
+          if (existingRoamingCard && existingRoamingCard.kind === 'card') {
+            const roamingPlan = existingRoamingCard.card.kind === 'roaming_plan' ? existingRoamingCard.card.plan : null;
+            if (roamingPlan) {
+              appendItems([
+                {
+                  id: nextId(),
+                  createdAt: Date.now(),
+                  kind: 'confirmation',
+                  actionId: `activate-roaming-${roamingPlan.id}`,
+                  state: 'pending' as const,
+                  calendarEventId: event.id,
+                  planId: roamingPlan.id,
+                  summary: roamingPlan.plan_name,
+                  risk: 'commit' as const,
+                },
+              ]);
+            }
+          }
+        }
+      }
+
+      // Auto-switch back to roaming view after insurance is purchased
+      setCurrentView('roaming');
     },
-    [appendItems, onInsurancePurchased],
+    [appendItems, event.id, commitItems, onInsurancePurchased],
   );
 
   const retry = useCallback(() => {
@@ -477,5 +718,5 @@ export function useRoamingChat(event: CalendarEvent, onInsurancePurchased?: (dat
     [phase, appendItems, startStream],
   );
 
-  return { items, phase, confirm, decline, retry, sendMessage, handleInsurancePurchased };
+  return { items, phase, confirm, decline, retry, sendMessage, handleInsurancePurchased, currentView, switchView, planState };
 }
