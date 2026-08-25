@@ -130,10 +130,15 @@ export default function ConfirmPaymentModal({
           )}
 
           {state === 'success' && (
-            <View style={styles.centerContent}>
-              <Text style={styles.successTitle}>✓ Payment Successful</Text>
-              <Text style={styles.label}>Insurance cover activated</Text>
-            </View>
+            <>
+              <View style={styles.centerContent}>
+                <Text style={styles.successTitle}>✓ Payment Successful</Text>
+                <Text style={styles.label}>Insurance cover activated</Text>
+              </View>
+              <TouchableOpacity style={styles.payButton} onPress={onSuccess}>
+                <Text style={styles.payButtonText}>Done</Text>
+              </TouchableOpacity>
+            </>
           )}
 
           {state === 'error' && (

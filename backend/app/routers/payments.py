@@ -4,7 +4,7 @@ from pydantic import BaseModel
 import stripe
 
 from app.config import get_settings
-from app.deps import get_current_customer
+from app.deps import get_current_customer, update_customer_stripe_id
 from app.integrations.strapi import StrapiClient
 
 router = APIRouter(prefix="/payments", tags=["payments"])
@@ -60,22 +60,30 @@ def create_travel_insurance_intent(
     stripe.api_key = settings.stripe_secret_key
 
     try:
-        # Retrieve the payment method to check if it already has a customer
-        pm = stripe.PaymentMethod.retrieve(body.payment_method_id)
-
-        if pm.customer:
-            customer_id = pm.customer
+        # Check if customer already has a Stripe customer ID
+        if customer.get("stripe_customer_id"):
+            customer_id = customer["stripe_customer_id"]
         else:
-            # Create a new Stripe customer
-            phone = customer.get("phone_number", "unknown")
-            stripe_customer = stripe.Customer.create(
-                description=f"Veda customer: {phone}",
-                metadata={"veda_customer_id": customer["id"]},
-            )
-            customer_id = stripe_customer.id
+            # Retrieve the payment method to check if it already has a customer
+            pm = stripe.PaymentMethod.retrieve(body.payment_method_id)
 
-            # Attach the payment method to this customer
-            stripe.PaymentMethod.attach(body.payment_method_id, customer=customer_id)
+            if pm.customer:
+                customer_id = pm.customer
+            else:
+                # Create a new Stripe customer
+                phone = customer.get("phone_number", "unknown")
+                stripe_customer = stripe.Customer.create(
+                    description=f"Veda customer: {phone}",
+                    metadata={"veda_customer_id": customer["id"]},
+                )
+                customer_id = stripe_customer.id
+
+            # Store the Stripe customer ID in the database for future use
+            update_customer_stripe_id(customer["id"], customer_id)
+
+            # Attach the payment method to this customer if needed
+            if not pm.customer:
+                stripe.PaymentMethod.attach(body.payment_method_id, customer=customer_id)
 
         # Create ephemeral key for mobile SDK
         ephemeral_key = stripe.EphemeralKey.create(
