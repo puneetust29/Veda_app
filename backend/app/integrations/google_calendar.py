@@ -410,9 +410,14 @@ def sync_to_calendar_events(
 
         # Add destination_country for flights
         if row["event_type"] == "flight" and row["destination"]:
-            row["raw_details"]["destination_country"] = get_destination_country(
-                row["destination"], row
-            )
+            try:
+                row["raw_details"]["destination_country"] = get_destination_country(
+                    row["destination"], row
+                )
+            except Exception as e:
+                import sys
+                print(f"[WARN] Error getting destination_country for {row['destination']}: {e}", file=sys.stderr)
+                row["raw_details"]["destination_country"] = "Unknown"
 
         rows.append(row)
 
@@ -427,33 +432,45 @@ def sync_to_calendar_events(
         # - Same-day flights at different times (8am vs 2pm)
         # - Timezone parsing variance
         # - Connecting flights same day
-        flight_time = datetime.fromisoformat(row['start_datetime'].replace('Z', '+00:00'))
-        window_start = (flight_time - timedelta(minutes=30)).isoformat()
-        window_end = (flight_time + timedelta(minutes=30)).isoformat()
+        try:
+            flight_time = datetime.fromisoformat(row['start_datetime'].replace('Z', '+00:00'))
+            window_start = (flight_time - timedelta(minutes=30)).isoformat()
+            window_end = (flight_time + timedelta(minutes=30)).isoformat()
 
-        existing = (
-            supabase.table("calendar_events")
-            .select("id")
-            .eq("customer_id", row["customer_id"])
-            .eq("event_type", "flight")
-            .eq("origin", row.get("origin"))
-            .eq("destination", row.get("destination"))
-            .gte("start_datetime", window_start)
-            .lte("start_datetime", window_end)
-            .limit(1)
-            .execute()
-        )
+            existing = (
+                supabase.table("calendar_events")
+                .select("id")
+                .eq("customer_id", row["customer_id"])
+                .eq("event_type", "flight")
+                .eq("origin", row.get("origin"))
+                .eq("destination", row.get("destination"))
+                .gte("start_datetime", window_start)
+                .lte("start_datetime", window_end)
+                .limit(1)
+                .execute()
+            )
 
-        if existing.data:
-            duplicates += 1
-            continue
+            if existing.data:
+                duplicates += 1
+                continue
 
-        deduped_rows.append(row)
+            deduped_rows.append(row)
+        except Exception as e:
+            import sys
+            print(f"[WARN] Error processing row for dedup: {e}", file=sys.stderr)
+            deduped_rows.append(row)
 
     if deduped_rows:
-        get_supabase().table("calendar_events").upsert(
-            deduped_rows, on_conflict="customer_id,google_event_id"
-        ).execute()
+        try:
+            get_supabase().table("calendar_events").upsert(
+                deduped_rows, on_conflict="customer_id,google_event_id"
+            ).execute()
+        except Exception as e:
+            import sys
+            print(f"[ERROR] Failed to upsert {len(deduped_rows)} calendar events: {e}", file=sys.stderr)
+            import traceback
+            traceback.print_exc(file=sys.stderr)
+            raise
 
     return {
         "fetched": len(events),
