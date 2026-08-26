@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { StyleSheet, TextInput, View } from 'react-native';
+import { Keyboard, StyleSheet, TextInput, View } from 'react-native';
 
 import { colors, radii, spacing } from '../../theme';
 
@@ -24,6 +24,9 @@ export default function OtpInput({ length = 6, value, onChange, disabled }: Prop
 
     if (digit && index < length - 1) {
       inputs.current[index + 1]?.focus();
+    } else if (digit && next.length === length) {
+      inputs.current[index]?.blur();
+      Keyboard.dismiss();
     }
   };
 

@@ -5,7 +5,7 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import type { DropdownMenuItem } from '../components/common/DropdownMenu';
-import AskVintoButton from '../components/dashboard/AskVintoButton';
+import AskVedaButton from '../components/dashboard/AskVedaButton';
 import AttentionCarousel from '../components/dashboard/AttentionCarousel';
 import DashboardHeader from '../components/dashboard/DashboardHeader';
 import GreetingWeather from '../components/dashboard/GreetingWeather';
@@ -175,7 +175,7 @@ export default function DashboardScreen({ navigation }: Props) {
         </ScrollView>
       )}
 
-      <AskVintoButton />
+      <AskVedaButton onPress={() => navigation.navigate('VedaChat')} />
     </View>
   );
 }

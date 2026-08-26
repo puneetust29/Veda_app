@@ -22,8 +22,12 @@ function friendlyErrorMessage(code: string): string {
   switch (code) {
     case 'no_plan_found':
       return "I couldn't find a suitable roaming plan for this trip.";
+    case 'agent_error':
+      return 'An error occurred while processing your request. Please try again.';
+    case 'no_agent_matched':
+      return 'No agent could handle your request. Please try again.';
     default:
-      return 'Something went wrong while working on your request.';
+      return `Something went wrong while working on your request (${code}).`;
   }
 }
 
@@ -91,6 +95,11 @@ export function applyStreamEvent(items: ChatItem[], event: AgentStreamEvent): Ch
     case 'hotel_result': {
       const withDone = markActiveStatusesDone(items);
       return [...withDone, { id: nextId(), createdAt: Date.now(), kind: 'hotel', hotel: event.data }];
+    }
+
+    case 'share_draft': {
+      const withDone = markActiveStatusesDone(items);
+      return [...withDone, { id: nextId(), createdAt: Date.now(), kind: 'whatsapp_share', text: event.data.text }];
     }
 
     case 'confirmation_required': {

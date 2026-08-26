@@ -9,7 +9,7 @@ type Props = {
 };
 
 // Four-segment progress bar shown near the top of each onboarding step,
-// matching the Figma "Vinto Flow" — completed/current segments are solid
+// matching the Figma "Veda Flow" — completed/current segments are solid
 // brand-red, remaining ones are light gray.
 export default function StepProgressBar({ step, totalSteps = 4 }: Props) {
   return (

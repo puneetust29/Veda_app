@@ -130,6 +130,7 @@ export type RootStackParamList = {
   Dashboard: undefined;
   FlightDetail: { event: CalendarEvent };
   Chat: { event: CalendarEvent };
+  VedaChat: undefined;
   Subscriptions: undefined;
   RoamingPlans: undefined;
   // Single merged calendar screen: reads every calendar expo-calendar exposes
@@ -187,6 +188,7 @@ export type AgentStreamEvent =
   | { type: 'text'; data: { role: 'agent' | 'user'; text: string } }
   | { type: 'recommendation_ready'; data: { card: RecommendationCardPayload } }
   | { type: 'hotel_result'; data: HotelDetectionResultPayload }
+  | { type: 'share_draft'; data: { text: string } }
   | {
       type: 'confirmation_required';
       data: { action_id: string; summary: string; risk: 'commit' | 'read'; plan_id: string; calendar_event_id: string };
@@ -204,6 +206,7 @@ export type ChatItem =
   | (ChatItemBase & { kind: 'status'; tool?: string; label: string; state: 'active' | 'done' })
   | (ChatItemBase & { kind: 'card'; card: RecommendationCardPayload })
   | (ChatItemBase & { kind: 'hotel'; hotel: HotelDetectionResultPayload })
+  | (ChatItemBase & { kind: 'whatsapp_share'; text: string })
   | (ChatItemBase & {
       kind: 'confirmation';
       actionId: string;

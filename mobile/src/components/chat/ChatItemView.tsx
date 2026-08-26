@@ -7,11 +7,12 @@ import MessageBubble from './MessageBubble';
 import ReceiptCard from './ReceiptCard';
 import RecommendationCard from './RecommendationCard';
 import StatusLine from './StatusLine';
+import WhatsAppShareCard from './WhatsAppShareCard';
 
 type Props = {
   item: ChatItem;
-  onConfirm: (actionId: string) => void;
-  onDecline: (actionId: string) => void;
+  onConfirm?: (actionId: string) => void;
+  onDecline?: (actionId: string) => void;
 };
 
 function ChatItemViewImpl({ item, onConfirm, onDecline }: Props) {
@@ -30,8 +31,10 @@ function ChatItemViewImpl({ item, onConfirm, onDecline }: Props) {
           recommendations={item.hotel.recommendations}
         />
       );
+    case 'whatsapp_share':
+      return <WhatsAppShareCard text={item.text} />;
     case 'confirmation':
-      return <ConfirmationPrompt item={item} onConfirm={onConfirm} onDecline={onDecline} />;
+      return <ConfirmationPrompt item={item} onConfirm={onConfirm!} onDecline={onDecline!} />;
     case 'receipt':
       return <ReceiptCard subscription={item.subscription} planName={item.planName} />;
     case 'error':

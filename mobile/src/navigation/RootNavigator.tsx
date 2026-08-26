@@ -10,6 +10,7 @@ import FlightDetailScreen from '../screens/FlightDetailScreen';
 import GmailScreen from '../screens/GmailScreen';
 import RoamingPlansScreen from '../screens/RoamingPlansScreen';
 import SubscriptionsScreen from '../screens/SubscriptionsScreen';
+import VedaChatScreen from '../screens/VedaChatScreen';
 import OnboardingNavigator from './OnboardingNavigator';
 import type { RootStackParamList } from '../types';
 
@@ -48,6 +49,14 @@ export default function RootNavigator() {
                 headerShown: true,
                 title: route.params.event.destination ?? '',
               })}
+            />
+            <Stack.Screen
+              name="VedaChat"
+              component={VedaChatScreen}
+              options={{
+                headerShown: true,
+                title: 'Ask Veda',
+              }}
             />
             <Stack.Screen
               name="FlightDetail"

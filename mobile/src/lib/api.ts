@@ -1,5 +1,5 @@
 import { loadToken } from './authToken';
-import { mockStreamRoamingConversation } from './mockStream';
+import { mockStreamRoamingConversation, mockStreamVedaConversation } from './mockStream';
 import { streamSse } from './sse';
 import type {
   AgentStreamEvent,
@@ -171,6 +171,51 @@ export const api = {
       body.prior_reasoning = params.priorReasoning;
       body.prior_judge_feedback = params.priorJudgeFeedback;
     }
+
+    return streamSse({
+      url: `${API_BASE_URL}/chat/stream`,
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        Accept: 'text/event-stream',
+      },
+      body: JSON.stringify(body),
+      signal: params.signal,
+      onFrame: (frame) => {
+        try {
+          params.onEvent(JSON.parse(frame.data));
+        } catch {
+          if (__DEV__) console.warn('bad frame', frame);
+        }
+      },
+      onError: params.onError,
+      onClose: params.onClose,
+    });
+  },
+
+  streamVedaConversation: async (params: {
+    message: string;
+    history?: Array<{ role: 'user' | 'agent'; text: string }>;
+    signal: AbortSignal;
+    onEvent: (event: AgentStreamEvent) => void;
+    onError: (err: unknown) => void;
+    onClose: () => void;
+  }): Promise<void> => {
+    if (process.env.EXPO_PUBLIC_CHAT_MOCK === '1') {
+      return mockStreamVedaConversation(params);
+    }
+
+    const token = await loadToken();
+    if (!token) {
+      throw new Error('Not authenticated');
+    }
+
+    const body = {
+      capability: 'general_assistant',
+      message: params.message,
+      history: params.history || [],
+    };
 
     return streamSse({
       url: `${API_BASE_URL}/chat/stream`,
