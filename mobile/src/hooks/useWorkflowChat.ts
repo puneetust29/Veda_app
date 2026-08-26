@@ -415,17 +415,70 @@ export function useWorkflowChat(event: CalendarEvent) {
       if (!target || target.state !== 'pending') return;
 
       updateConfirmationItem(actionId, { state: 'declined' });
-      appendItems([
-        {
-          id: nextId(),
-          createdAt: Date.now(),
-          kind: 'text',
-          role: 'agent',
-          text: 'No problem — let me know if you change your mind.',
-        },
-      ]);
+
+      // Check if this is a roaming plan decline - if so, advance to insurance
+      const isRoamingDecline = actionId.startsWith('activate-roaming-');
+
+      if (isRoamingDecline && workflowState.currentStep === 'roaming') {
+        // Skip roaming, move to insurance
+        appendItems([
+          {
+            id: nextId(),
+            createdAt: Date.now(),
+            kind: 'text',
+            role: 'agent',
+            text: 'No problem. Let\'s make sure you\'re covered with travel insurance for your trip.',
+          },
+        ]);
+
+        // Update workflow state to insurance
+        setWorkflowState((prev) => ({
+          currentStep: 'insurance',
+          completedSteps: prev.completedSteps, // Don't add 'roaming' - it was skipped, not completed
+        }));
+
+        // Fetch and show insurance recommendation
+        api
+          .getInsuranceRecommendation(event.id)
+          .then((plan) => {
+            if (plan) {
+              appendItems([
+                {
+                  id: nextId(),
+                  createdAt: Date.now(),
+                  kind: 'travel_insurance',
+                  plan: plan,
+                  calendarEventId: event.id,
+                },
+                {
+                  id: nextId(),
+                  createdAt: Date.now(),
+                  kind: 'text',
+                  role: 'agent',
+                  text: 'You can always come back to add roaming if you change your mind.',
+                },
+              ]);
+            }
+            setPhase('complete');
+          })
+          .catch((err) => {
+            if (__DEV__) console.warn('[useWorkflowChat] Failed to fetch insurance after skipping roaming', err);
+            setPhase('complete');
+          });
+      } else {
+        // Generic decline message for non-roaming items
+        appendItems([
+          {
+            id: nextId(),
+            createdAt: Date.now(),
+            kind: 'text',
+            role: 'agent',
+            text: 'No problem — let me know if you change your mind.',
+          },
+        ]);
+      }
     },
-    [appendItems, updateConfirmationItem],
+    [appendItems, updateConfirmationItem, workflowState.currentStep, event.id],
   );
 
   const handleInsurancePurchased = useCallback(
