@@ -409,17 +409,23 @@ export function useWorkflowChat(event: CalendarEvent) {
 
   const decline = useCallback(
     (actionId: string) => {
+      console.log('[useWorkflowChat] decline called with actionId:', actionId);
       const target = itemsRef.current.find(
         (item): item is ConfirmationItem => item.kind === 'confirmation' && item.actionId === actionId,
       );
-      if (!target || target.state !== 'pending') return;
+      if (!target || target.state !== 'pending') {
+        console.log('[useWorkflowChat] target not found or not pending:', { target, actionId });
+        return;
+      }
 
       updateConfirmationItem(actionId, { state: 'declined' });
 
       // Check if this is a roaming plan decline - if so, advance to insurance
       const isRoamingDecline = actionId.startsWith('activate-roaming-');
+      console.log('[useWorkflowChat] isRoamingDecline:', isRoamingDecline, 'currentStep:', workflowState.currentStep);
 
       if (isRoamingDecline && workflowState.currentStep === 'roaming') {
+        console.log('[useWorkflowChat] Advancing to insurance...');
         // Skip roaming, move to insurance
         appendItems([
           {
@@ -438,9 +444,11 @@ export function useWorkflowChat(event: CalendarEvent) {
         }));
 
         // Fetch and show insurance recommendation
+        console.log('[useWorkflowChat] Fetching insurance for event:', event.id);
         api
           .getInsuranceRecommendation(event.id)
           .then((plan) => {
+            console.log('[useWorkflowChat] Insurance plan fetched:', plan);
             if (plan) {
               appendItems([
                 {
