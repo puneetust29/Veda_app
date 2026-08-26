@@ -17,6 +17,29 @@ function extractPrice(summary: string): string | null {
   return match ? match[1] : null;
 }
 
+// Parse reasoning into bullet points - split by sentences or key phrases
+function parseReasoningPoints(reasoning: string): string[] {
+  // First check if it's already split by newlines
+  const lines = reasoning.split('\n').filter((line) => line.trim());
+  if (lines.length > 1) {
+    return lines;
+  }
+
+  // If it's a single paragraph, try to split by sentences
+  // Look for periods followed by space or end of string, but keep short phrases together
+  const sentences = reasoning
+    .split(/(?<=[.!?])\s+(?=[A-Z])|\.(?=\s[A-Z])|;/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0 && s.length < 200); // Filter out too short or too long fragments
+
+  if (sentences.length > 1) {
+    return sentences;
+  }
+
+  // If no good split found, just return the original reasoning as single point
+  return [reasoning.trim()];
+}
+
 export default function RecommendationCard({ card, confirmation, onConfirm, onDecline }: Props) {
   switch (card.kind) {
     case 'roaming_plan': {
@@ -41,10 +64,10 @@ export default function RecommendationCard({ card, confirmation, onConfirm, onDe
           {/* Why This One Section */}
           <Text style={styles.sectionHeader}>Why this one</Text>
           <View style={styles.reasoningList}>
-            {card.reasoning.split('\n').filter((line) => line.trim()).map((line, idx) => (
+            {parseReasoningPoints(card.reasoning).map((line, idx) => (
               <View key={idx} style={styles.reasoningItem}>
                 <Text style={styles.checkmark}>✓</Text>
-                <Text style={styles.reasoningText}>{line.trim()}</Text>
+                <Text style={styles.reasoningText}>{line}</Text>
               </View>
             ))}
           </View>
@@ -79,13 +102,13 @@ export default function RecommendationCard({ card, confirmation, onConfirm, onDe
                     style={styles.secondaryButton}
                     onPress={() => onDecline?.(confirmation.actionId)}
                   >
-                    <Text style={styles.secondaryButtonText}>Modify</Text>
+                    <Text style={styles.secondaryButtonText} numberOfLines={1}>Not now</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.primaryButton}
                     onPress={() => onConfirm?.(confirmation.actionId)}
                   >
-                    <Text style={styles.primaryButtonText}>Approve roaming</Text>
+                    <Text style={styles.primaryButtonText} numberOfLines={1}>Approve roaming</Text>
                   </TouchableOpacity>
                 </View>
               )}
@@ -221,6 +244,7 @@ const styles = StyleSheet.create({
   actions: {
     flexDirection: 'row',
     gap: 12,
+    alignItems: 'center',
   },
   primaryButton: {
     flex: 1,
@@ -228,6 +252,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     padding: 16,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   primaryButtonText: {
     color: '#FFFFFF',
@@ -235,10 +260,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   secondaryButton: {
-    flex: 1,
+    paddingHorizontal: 24,
+    paddingVertical: 16,
     borderRadius: 24,
-    padding: 16,
     alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 2,
     borderColor: '#D32F2F',
   },

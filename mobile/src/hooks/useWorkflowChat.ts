@@ -30,10 +30,33 @@ type CardItem = Extract<ChatItem, { kind: 'card' }>;
 
 const WATCHDOG_MS = 90_000;
 
-function greetingText(event: CalendarEvent): string {
-  const date = new Date(event.start_datetime).toLocaleDateString();
+function greetingText(
+  event: CalendarEvent,
+  hasRoamingActive: boolean,
+  hasInsuranceActive: boolean
+): string {
+  const startDate = new Date(event.start_datetime);
+  const month = startDate.toLocaleDateString('en-US', { month: 'long' });
   const destination = event.destination ?? 'your destination';
-  return `Let me help you get ready for your trip to ${destination} on ${date}.`;
+  const prefix = `I see you're travelling to ${destination} in ${month}.`;
+
+  // If both roaming and insurance are already active
+  if (hasRoamingActive && hasInsuranceActive) {
+    return `${prefix}\n\nYou are all set for your trip! You have both roaming and travel insurance.`;
+  }
+
+  // If only roaming is active, insurance is pending
+  if (hasRoamingActive && !hasInsuranceActive) {
+    return `${prefix}\n\nYou have roaming! Let me help you get travel insurance to complete your trip.`;
+  }
+
+  // If only insurance is active, roaming is pending
+  if (!hasRoamingActive && hasInsuranceActive) {
+    return `${prefix}\n\nYou have travel insurance! Let me help you get roaming to complete your trip.`;
+  }
+
+  // If both are pending
+  return `${prefix}\n\nYou've halfway there, and I've two recommendations to make you travel ready.`;
 }
 
 export function useWorkflowChat(event: CalendarEvent) {
@@ -202,15 +225,30 @@ export function useWorkflowChat(event: CalendarEvent) {
           (p) => p.calendar_event_id === event.id && p.status === 'active'
         );
 
-        // Show trip preparation card first
+        // Check for hotel booking in raw event details
+        const hasHotelBooking = !!(
+          event.raw_details &&
+          typeof event.raw_details === 'object' &&
+          'hotel_name' in event.raw_details &&
+          event.raw_details.hotel_name
+        );
+
+        // Show greeting message and trip preparation card
         commitItems([
+          {
+            id: nextId(),
+            createdAt: Date.now(),
+            kind: 'text',
+            role: 'agent',
+            text: greetingText(event, !!existingRoaming, !!existingInsurance),
+          },
           {
             id: nextId(),
             createdAt: Date.now(),
             kind: 'trip_preparation',
             event,
             hasFlightBooking: true, // Always assume flight is booked
-            hasHotelBooking: false, // TODO: detect from calendar
+            hasHotelBooking,
             hasRoamingActive: !!existingRoaming,
             hasInsuranceActive: !!existingInsurance,
           },
@@ -266,6 +304,13 @@ export function useWorkflowChat(event: CalendarEvent) {
           console.log('[useWorkflowChat] confirm - hasInsuranceReceipt:', hasInsuranceReceipt);
 
           appendItems([
+            {
+              id: nextId(),
+              createdAt: Date.now(),
+              kind: 'confirmation_success',
+              planType: 'roaming' as const,
+              planId: subscription.roaming_plan_id,
+            },
             {
               id: nextId(),
               createdAt: Date.now(),
@@ -466,11 +511,18 @@ export function useWorkflowChat(event: CalendarEvent) {
       );
 
       const successMessage = hasRoamingActive
-        ? '✓ Your travel insurance is now active. You\'re all set for your trip!'
-        : '✓ Your travel insurance is now active. You still don\'t have roaming plan. Please check the above plan and activate it now to be ready for your trip.';
+        ? '✓ You are all set for your trip! You have both roaming and travel insurance.'
+        : '✓ Your travel insurance is now active. You can add roaming anytime if you need it.';
 
       // Create receipt for insurance purchase to track completion
       const newItems: ChatItem[] = [
+        {
+          id: nextId(),
+          createdAt: Date.now(),
+          kind: 'confirmation_success',
+          planType: 'insurance' as const,
+          planId: purchaseData.id || 'insurance-' + Date.now(),
+        },
         {
           id: nextId(),
           createdAt: Date.now(),
@@ -498,6 +550,8 @@ export function useWorkflowChat(event: CalendarEvent) {
         currentStep: 'complete',
         completedSteps: Array.from(new Set([...prev.completedSteps, 'insurance'])),
       }));
+
+      setPhase('complete');
     },
     [appendItems],
   );
@@ -515,10 +569,12 @@ export function useWorkflowChat(event: CalendarEvent) {
 
       appendItems([{ id: nextId(), createdAt: Date.now(), kind: 'text', role: 'user', text }]);
 
-      // Check if user is asking about insurance while on roaming step
+      // Check if user is asking about insurance or roaming
       const insuranceKeywords = ['insurance', 'coverage', 'protect', 'travel insurance', 'claim', 'medical'];
+      const roamingKeywords = ['roaming', 'data', 'mobile data', 'internet', 'connection', 'mobile plan', 'connectivity', 'call'];
       const messageText = text.toLowerCase();
       const mentionsInsurance = insuranceKeywords.some((keyword) => messageText.includes(keyword));
+      const mentionsRoaming = roamingKeywords.some((keyword) => messageText.includes(keyword));
 
       // If user asks about insurance while on roaming step, skip to insurance
       if (mentionsInsurance && workflowState.currentStep === 'roaming') {
@@ -595,6 +651,73 @@ export function useWorkflowChat(event: CalendarEvent) {
           .catch((err) => {
             if (__DEV__) console.warn('[useWorkflowChat] Failed to fetch insurance', err);
             setPhase('complete');
+          });
+        return;
+      }
+
+      // Check if user is asking about roaming while on insurance step or beyond
+      const hasRoamingReceipt = itemsRef.current.some((item) => {
+        if (item.kind !== 'receipt' || !('subscription' in item)) return false;
+        return item.subscription?.roaming_plans !== undefined;
+      });
+
+      if (mentionsRoaming && workflowState.currentStep !== 'roaming' && !hasRoamingReceipt) {
+        console.log('[useWorkflowChat] User asking about roaming, showing roaming step');
+
+        // Check if roaming already active (shouldn't happen if we got here, but double check)
+        if (hasRoamingReceipt) {
+          appendItems([
+            {
+              id: nextId(),
+              createdAt: Date.now(),
+              kind: 'text',
+              role: 'agent',
+              text: '✓ You already have roaming for this trip.',
+            },
+          ]);
+          return;
+        }
+
+        // Show transition message
+        appendItems([
+          {
+            id: nextId(),
+            createdAt: Date.now(),
+            kind: 'text',
+            role: 'agent',
+            text: 'Great question! Let me show you our roaming options.',
+          },
+        ]);
+
+        // Update workflow state to roaming
+        setWorkflowState((prev) => ({
+          currentStep: 'roaming',
+          completedSteps: prev.completedSteps.filter((step) => step !== 'roaming'), // Remove roaming from completed if present
+        }));
+
+        // Fetch and show roaming recommendation by calling the roaming stream fresh
+        // This restarts the roaming agent as if we're going back to the roaming step
+        abortControllerRef.current?.abort();
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
+
+        setPhase('streaming');
+        api
+          .streamRoamingConversation({
+            calendarEventId: event.id,
+            signal: controller.signal,
+            onEvent: handleStreamEvent,
+            onError: (err) => {
+              if (controller.signal.aborted) return;
+              handleStreamError(err);
+            },
+            onClose: () => {
+              // Don't clear watchdog - let normal flow handle it
+            },
+          })
+          .catch((err) => {
+            if (controller.signal.aborted) return;
+            handleStreamError(err);
           });
         return;
       }

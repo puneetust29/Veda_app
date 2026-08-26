@@ -240,4 +240,9 @@ export type ChatItem =
       hasRoamingActive: boolean;
       hasInsuranceActive: boolean;
     })
+  | (ChatItemBase & {
+      kind: 'confirmation_success';
+      planType: 'roaming' | 'insurance';
+      planId: string;
+    })
   | (ChatItemBase & { kind: 'error'; message: string; retryable: boolean });

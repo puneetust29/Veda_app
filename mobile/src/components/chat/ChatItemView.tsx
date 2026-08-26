@@ -2,6 +2,7 @@ import { memo } from 'react';
 
 import type { ChatItem } from '../../types';
 import ConfirmationPrompt from './ConfirmationPrompt';
+import ConfirmationSuccessCard from './ConfirmationSuccessCard';
 import HotelBookingCard from '../common/HotelBookingCard';
 import MessageBubble from './MessageBubble';
 import ReceiptCard from './ReceiptCard';
@@ -59,6 +60,8 @@ function ChatItemViewImpl({ item, onConfirm, onDecline, onInsurancePurchased, on
       return <ConfirmationPrompt item={item} onConfirm={onConfirm} onDecline={onDecline} />;
     case 'receipt':
       return <ReceiptCard subscription={item.subscription} planName={item.planName} />;
+    case 'confirmation_success':
+      return <ConfirmationSuccessCard planType={item.planType} />;
     case 'error':
       return <MessageBubble text={item.message} tone="error" />;
     default: {

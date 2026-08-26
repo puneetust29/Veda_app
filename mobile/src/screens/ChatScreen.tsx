@@ -35,6 +35,11 @@ export default function ChatScreen({ route, navigation }: Props) {
         onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
       >
         {items.map((item, idx) => {
+          // Skip hotel booking component
+          if (item.kind === 'hotel') {
+            return null;
+          }
+
           // Skip rendering confirmation items for roaming plans - they're combined with the card
           if (item.kind === 'confirmation' && item.risk === 'commit') {
             const prevItem = idx > 0 ? items[idx - 1] : null;
@@ -121,7 +126,7 @@ const styles = StyleSheet.create({
   subtitle: { color: '#666666', marginTop: 6, fontSize: 15 },
   date: { color: '#999999', marginTop: 4, fontSize: 13 },
   thread: { flex: 1 },
-  threadContent: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 16, gap: 0 },
+  threadContent: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 16, gap: 8 },
   footer: {
     padding: 16,
     borderTopWidth: 1,

@@ -27,6 +27,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF3E0',
     alignSelf: 'flex-start',
     borderWidth: 0,
+    borderColor: '#FFE0B2',
   },
   userBubble: {
     backgroundColor: '#D32F2F',

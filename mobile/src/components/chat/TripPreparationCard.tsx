@@ -29,7 +29,7 @@ export default function TripPreparationCard({
 
   const statusItems = [
     { label: 'Flight bookings', active: hasFlightBooking },
-    { label: 'Hotel bookings', active: hasHotelBooking },
+    ...(hasHotelBooking ? [{ label: 'Hotel bookings', active: hasHotelBooking }] : []),
     { label: 'Roaming', active: hasRoamingActive },
     { label: 'Travel insurance', active: hasInsuranceActive },
   ];
@@ -127,10 +127,10 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   section: {
-    marginBottom: 12,
+    marginBottom: 4,
   },
   sectionLabel: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
     color: '#999999',
     marginBottom: 6,
@@ -138,14 +138,14 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   travellerCount: {
-    fontSize: 16,
+    fontSize: 12,
     fontWeight: '600',
     color: '#1F1F1F',
   },
   divider: {
     height: 1,
     backgroundColor: '#E8E8E8',
-    marginVertical: 16,
+    marginVertical: 8,
   },
   statusList: {
     gap: 12,
@@ -162,19 +162,19 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   checkmark: {
-    fontSize: 16,
+    fontSize: 12,
     fontWeight: '700',
     color: '#D32F2F',
   },
   emptyCircle: {
-    width: 20,
-    height: 20,
+    width: 12,
+    height: 12,
     borderRadius: 10,
     borderWidth: 2,
     borderColor: '#CCCCCC',
   },
   statusLabel: {
-    fontSize: 16,
+    fontSize: 12,
     fontWeight: '500',
     color: '#1F1F1F',
     flex: 1,
@@ -184,7 +184,7 @@ const styles = StyleSheet.create({
     color: '#666666',
   },
   readyToReview: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#999999',
     fontWeight: '500',
   },
