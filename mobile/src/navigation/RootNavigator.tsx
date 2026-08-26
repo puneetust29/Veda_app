@@ -8,6 +8,8 @@ import DashboardScreen from '../screens/DashboardScreen';
 import DeviceCalendarScreen from '../screens/DeviceCalendarScreen';
 import FlightDetailScreen from '../screens/FlightDetailScreen';
 import GmailScreen from '../screens/GmailScreen';
+import IntegrationDetailScreen from '../screens/IntegrationDetailScreen';
+import IntegrationsCatalogScreen from '../screens/IntegrationsCatalogScreen';
 import RoamingPlansScreen from '../screens/RoamingPlansScreen';
 import SubscriptionsScreen from '../screens/SubscriptionsScreen';
 import VedaChatScreen from '../screens/VedaChatScreen';
@@ -82,6 +84,16 @@ export default function RootNavigator() {
               name="Gmail"
               component={GmailScreen}
               options={{ headerShown: true, title: 'Gmail' }}
+            />
+            <Stack.Screen
+              name="IntegrationsCatalog"
+              component={IntegrationsCatalogScreen}
+              options={{ headerShown: true, title: 'Integrations (Dev)' }}
+            />
+            <Stack.Screen
+              name="IntegrationDetail"
+              component={IntegrationDetailScreen}
+              options={{ headerShown: true, title: '' }}
             />
           </>
         )}

@@ -11,6 +11,7 @@ import DashboardHeader from '../components/dashboard/DashboardHeader';
 import GreetingWeather from '../components/dashboard/GreetingWeather';
 import SuggestionGrid, { type Suggestion } from '../components/dashboard/SuggestionGrid';
 import { useAuth } from '../context/AuthContext';
+import { DEV_CATALOG_ENABLED } from '../config/devFlags';
 import { api } from '../lib/api';
 import { readDeviceCalendarEvents } from '../lib/deviceCalendar';
 import { FALLBACK_WEATHER, getDeviceWeatherSummary } from '../lib/weather';
@@ -141,6 +142,16 @@ export default function DashboardScreen({ navigation }: Props) {
       label: 'Gmail',
       onPress: () => navigation.navigate('Gmail'),
     },
+    ...(DEV_CATALOG_ENABLED
+      ? [
+          {
+            id: 'dev-integrations',
+            icon: 'flask-outline' as const,
+            label: 'Integrations (Dev)',
+            onPress: () => navigation.navigate('IntegrationsCatalog'),
+          },
+        ]
+      : []),
     { id: 'sign-out', icon: 'log-out-outline', label: 'Sign out', onPress: signOut, destructive: true },
   ];
 
