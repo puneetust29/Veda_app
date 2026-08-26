@@ -42,10 +42,9 @@ export function useWorkflowChat(event: CalendarEvent) {
     completedSteps: [],
   });
 
-  const [items, setItems] = useState<ChatItem[]>(() => [
-    { id: nextId(), createdAt: Date.now(), kind: 'text', role: 'agent', text: greetingText(event) },
-  ]);
+  const [items, setItems] = useState<ChatItem[]>(() => []);
   const [phase, setPhase] = useState<ChatPhase>('idle');
+  const [showTripPrep, setShowTripPrep] = useState(true);
 
   // Mirrors `items` synchronously so callbacks always read latest state
   const itemsRef = useRef(items);
@@ -181,7 +180,7 @@ export function useWorkflowChat(event: CalendarEvent) {
     [clearWatchdog, event.id, handleStreamError, handleStreamEvent, resetWatchdog],
   );
 
-  // Initialize: check for existing subscriptions
+  // Initialize: check for existing subscriptions and show trip prep
   useEffect(() => {
     if (startedRef.current) return;
     startedRef.current = true;
@@ -198,130 +197,26 @@ export function useWorkflowChat(event: CalendarEvent) {
         ]);
         if (cancelled) return;
 
-        // Check for existing receipts in chat items (from same session)
-        const hasRoamingReceipt = itemsRef.current.some(
-          (item) => item.kind === 'receipt' && 'subscription' in item && item.subscription?.roaming_plans,
-        );
-        const hasInsuranceReceipt = itemsRef.current.some(
-          (item) => item.kind === 'receipt' && 'planName' in item && item.planName?.toLowerCase().includes('insurance'),
-        );
-        console.log('[useWorkflowChat] Existing receipts - roaming:', hasRoamingReceipt, 'insurance:', hasInsuranceReceipt);
-
         const existingRoaming = subscriptions.find((s) => s.calendar_event_id === event.id && s.status === 'active');
         const existingInsurance = insuranceStatus.purchases.find(
           (p) => p.calendar_event_id === event.id && p.status === 'active'
         );
 
-        // Both exist: show completion state
-        if (existingRoaming && existingInsurance) {
-          commitItems([
-            { id: nextId(), createdAt: Date.now(), kind: 'text', role: 'agent', text: '✓ You\'re all set!' },
-            {
-              id: nextId(),
-              createdAt: Date.now(),
-              kind: 'receipt',
-              subscription: existingRoaming,
-              planName: existingRoaming.roaming_plans?.plan_name ?? 'your roaming plan',
-            },
-            {
-              id: nextId(),
-              createdAt: Date.now(),
-              kind: 'receipt',
-              subscription: {
-                id: existingInsurance.id,
-                status: existingInsurance.status,
-                subscribed_at: existingInsurance.purchased_at,
-              } as any,
-              planName: existingInsurance.plan_details?.planName || 'Travel Insurance',
-            },
-            {
-              id: nextId(),
-              createdAt: Date.now(),
-              kind: 'text',
-              role: 'agent',
-              text: 'You have both roaming and travel insurance for this trip.',
-            },
-          ]);
-          setWorkflowState({ currentStep: 'complete', completedSteps: ['roaming', 'insurance'] });
-          setPhase('complete');
-          return;
-        }
-
-        // Only roaming exists: show roaming receipt, then fetch insurance
-        if (existingRoaming && !existingInsurance) {
-          appendItems([
-            {
-              id: nextId(),
-              createdAt: Date.now(),
-              kind: 'receipt',
-              subscription: existingRoaming,
-              planName: existingRoaming.roaming_plans?.plan_name ?? 'your roaming plan',
-            },
-            {
-              id: nextId(),
-              createdAt: Date.now(),
-              kind: 'text',
-              role: 'agent',
-              text: '✓ Roaming is set up. Now let\'s get you travel insurance.',
-            },
-          ]);
-          setWorkflowState({ currentStep: 'insurance', completedSteps: ['roaming'] });
-
-          // Fetch and show insurance recommendation
-          try {
-            const plan = await api.getInsuranceRecommendation(event.id);
-            if (plan) {
-              appendItems([
-                {
-                  id: nextId(),
-                  createdAt: Date.now(),
-                  kind: 'travel_insurance',
-                  plan: plan,
-                  calendarEventId: event.id,
-                },
-              ]);
-            }
-          } catch (err) {
-            if (__DEV__) console.warn('[useWorkflowChat] Failed to fetch insurance', err);
-          }
-          setPhase('complete');
-          return;
-        }
-
-        // Only insurance exists: show insurance receipt, then fetch roaming
-        if (!existingRoaming && existingInsurance) {
-          appendItems([
-            {
-              id: nextId(),
-              createdAt: Date.now(),
-              kind: 'receipt',
-              subscription: {
-                id: existingInsurance.id,
-                status: existingInsurance.status,
-                subscribed_at: existingInsurance.purchased_at,
-              } as any,
-              planName: existingInsurance.plan_details?.planName || 'Travel Insurance',
-            },
-            {
-              id: nextId(),
-              createdAt: Date.now(),
-              kind: 'text',
-              role: 'agent',
-              text: '✓ Travel insurance is ready. Now let\'s get you roaming.',
-            },
-          ]);
-          setWorkflowState({ currentStep: 'roaming', completedSteps: ['insurance'] });
-          setPhase('streaming');
-          startStream(controller);
-          return;
-        }
-
-        // Neither exist: start roaming stream
-        if (!existingRoaming && !existingInsurance) {
-          setPhase('streaming');
-          startStream(controller);
-          return;
-        }
+        // Show trip preparation card first
+        commitItems([
+          {
+            id: nextId(),
+            createdAt: Date.now(),
+            kind: 'trip_preparation',
+            event,
+            hasFlightBooking: true, // Always assume flight is booked
+            hasHotelBooking: false, // TODO: detect from calendar
+            hasRoamingActive: !!existingRoaming,
+            hasInsuranceActive: !!existingInsurance,
+          },
+        ]);
+        setPhase('awaiting_confirmation');
+        return;
       } catch (err) {
         if (__DEV__) console.warn('[useWorkflowChat] initialization check failed', err);
       }
@@ -723,5 +618,87 @@ export function useWorkflowChat(event: CalendarEvent) {
     [phase, appendItems, startStream, workflowState.currentStep, event.id],
   );
 
-  return { items, phase, confirm, decline, retry, sendMessage, handleInsurancePurchased, workflowState };
+  const continueWorkflow = useCallback(() => {
+    // Keep trip preparation card and start workflow
+    const tripPrepCard = itemsRef.current.find((item) => item.kind === 'trip_preparation');
+    if (tripPrepCard?.kind !== 'trip_preparation') {
+      console.warn('[useWorkflowChat] No trip prep card found');
+      return;
+    }
+
+    const { hasRoamingActive, hasInsuranceActive } = tripPrepCard;
+
+    if (hasRoamingActive && hasInsuranceActive) {
+      // Both active - go to complete
+      appendItems([
+        { id: nextId(), createdAt: Date.now(), kind: 'text', role: 'agent', text: '✓ You\'re all set!' },
+      ]);
+      setWorkflowState({ currentStep: 'complete', completedSteps: ['roaming', 'insurance'] });
+      setPhase('complete');
+    } else if (hasRoamingActive && !hasInsuranceActive) {
+      // Only roaming active - go to insurance
+      appendItems([
+        {
+          id: nextId(),
+          createdAt: Date.now(),
+          kind: 'text',
+          role: 'agent',
+          text: '✓ Roaming is set up. Now let\'s get you travel insurance.',
+        },
+      ]);
+      setWorkflowState({ currentStep: 'insurance', completedSteps: ['roaming'] });
+      setPhase('streaming');
+
+      // Fetch and show insurance
+      api
+        .getInsuranceRecommendation(event.id)
+        .then((plan) => {
+          if (plan) {
+            appendItems([
+              {
+                id: nextId(),
+                createdAt: Date.now(),
+                kind: 'travel_insurance',
+                plan: plan,
+                calendarEventId: event.id,
+              },
+            ]);
+          }
+          setPhase('complete');
+        })
+        .catch((err) => {
+          if (__DEV__) console.warn('[useWorkflowChat] Failed to fetch insurance', err);
+          setPhase('complete');
+        });
+    } else if (!hasRoamingActive && hasInsuranceActive) {
+      // Only insurance active - go to roaming
+      appendItems([
+        {
+          id: nextId(),
+          createdAt: Date.now(),
+          kind: 'text',
+          role: 'agent',
+          text: '✓ Travel insurance is ready. Now let\'s get you roaming.',
+        },
+      ]);
+      setWorkflowState({ currentStep: 'roaming', completedSteps: ['insurance'] });
+      setPhase('streaming');
+
+      abortControllerRef.current?.abort();
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+      startStream(controller);
+    } else {
+      // Neither active - start with roaming
+      setWorkflowState({ currentStep: 'roaming', completedSteps: [] });
+      setPhase('streaming');
+
+      abortControllerRef.current?.abort();
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+      startStream(controller);
+    }
+  }, [appendItems, event.id, startStream]);
+
+  return { items, phase, confirm, decline, retry, sendMessage, handleInsurancePurchased, workflowState, continueWorkflow };
 }

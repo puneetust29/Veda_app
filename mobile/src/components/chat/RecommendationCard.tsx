@@ -1,39 +1,100 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-import type { RecommendationCardPayload } from '../../types';
+import type { RecommendationCardPayload, ChatItem } from '../../types';
+
+type ConfirmationItem = Extract<ChatItem, { kind: 'confirmation' }>;
 
 type Props = {
   card: RecommendationCardPayload;
+  confirmation?: ConfirmationItem;
+  onConfirm?: (actionId: string) => void;
+  onDecline?: (actionId: string) => void;
 };
 
-// Plan-card JSX/styles lifted near-verbatim from FlightDetailScreen.tsx's
-// `recommendation.candidate_plan` block. Switches on `card.kind` so a future
-// card variant (a second agent's recommendation shape) is an added branch,
-// not a rewrite.
-export default function RecommendationCard({ card }: Props) {
+// Extract price from summary text (e.g., "Activate Asia Explorer India 7 — 22.0 EUR")
+function extractPrice(summary: string): string | null {
+  const match = summary.match(/—\s*([\d.]+\s*[A-Z]{3})/);
+  return match ? match[1] : null;
+}
+
+export default function RecommendationCard({ card, confirmation, onConfirm, onDecline }: Props) {
   switch (card.kind) {
-    case 'roaming_plan':
+    case 'roaming_plan': {
+      const price = confirmation ? extractPrice(confirmation.summary) : null;
+
       return (
         <View style={styles.planCard}>
+          {/* Provider Section */}
+          <View style={styles.providerSection}>
+            <View style={styles.providerBadge}>
+              <Text style={styles.providerBadgeText}>🌍</Text>
+            </View>
+            <Text style={styles.providerName}>{card.plan.country_name}</Text>
+          </View>
+
+          {/* Plan Name */}
           <Text style={styles.planName}>{card.plan.plan_name}</Text>
-          <Text style={styles.planMeta}>
-            {card.plan.data_gb}GB · {card.plan.duration_days} days · {card.plan.price} {card.plan.currency}
-          </Text>
-          <Text style={styles.planDescription}>{card.plan.description}</Text>
 
-          <Text style={styles.sectionLabel}>Why the AI picked this</Text>
-          <Text style={styles.reasoning}>{card.reasoning}</Text>
+          {/* Divider */}
+          <View style={styles.divider} />
 
-          <Text style={styles.sectionLabel}>AI reviewer: {card.judge_approved ? 'Approved ✅' : 'Flagged ⚠️'}</Text>
-          <Text style={styles.reasoning}>{card.judge_feedback}</Text>
+          {/* Why This One Section */}
+          <Text style={styles.sectionHeader}>Why this one</Text>
+          <View style={styles.reasoningList}>
+            {card.reasoning.split('\n').filter((line) => line.trim()).map((line, idx) => (
+              <View key={idx} style={styles.reasoningItem}>
+                <Text style={styles.checkmark}>✓</Text>
+                <Text style={styles.reasoningText}>{line.trim()}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* Family Setup Section - Placeholder */}
+          <View style={styles.divider} />
+          <Text style={styles.sectionHeader}>Family setup</Text>
+          <View style={styles.familySetup}>
+            <View style={styles.familyMember}>
+              <View style={styles.avatarBadge}>
+                <Text style={styles.avatarText}>👤</Text>
+              </View>
+              <View style={styles.memberInfo}>
+                <Text style={styles.memberName}>All travellers</Text>
+                <Text style={styles.memberPlan}>Data plan included</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Total & Buttons Section */}
+          {confirmation && price && (
+            <>
+              <View style={styles.divider} />
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>Total</Text>
+                <Text style={styles.totalPrice}>{price}</Text>
+              </View>
+
+              {confirmation.state === 'pending' && confirmation.risk === 'commit' && (
+                <View style={styles.actions}>
+                  <TouchableOpacity
+                    style={styles.secondaryButton}
+                    onPress={() => onDecline?.(confirmation.actionId)}
+                  >
+                    <Text style={styles.secondaryButtonText}>Modify</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.primaryButton}
+                    onPress={() => onConfirm?.(confirmation.actionId)}
+                  >
+                    <Text style={styles.primaryButtonText}>Approve roaming</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </>
+          )}
         </View>
       );
+    }
     default:
-      // `RecommendationCardPayload` only has one member today (`roaming_plan`).
-      // Unlike `ChatItemView`'s switch (a true multi-member union), TS can't
-      // narrow a single-member union to `never` here, so this branch is a
-      // plain fallback rather than a `never`-checked exhaustiveness guard —
-      // it becomes live again the moment a second card kind is added above.
       return null;
   }
 }
@@ -41,15 +102,149 @@ export default function RecommendationCard({ card }: Props) {
 const styles = StyleSheet.create({
   planCard: {
     borderWidth: 1,
-    borderColor: '#eee',
+    borderColor: '#E0E0E0',
     borderRadius: 12,
     padding: 16,
-    backgroundColor: '#fafafa',
-    marginBottom: 10,
+    backgroundColor: '#FFFFFF',
+    marginBottom: 12,
   },
-  planName: { fontSize: 18, fontWeight: '700' },
-  planMeta: { color: '#444', marginTop: 4 },
-  planDescription: { color: '#666', marginTop: 8 },
-  sectionLabel: { fontWeight: '600', marginTop: 16, marginBottom: 4 },
-  reasoning: { color: '#444', lineHeight: 20 },
+  providerSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  providerBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    backgroundColor: '#FFE0E0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  providerBadgeText: {
+    fontSize: 22,
+  },
+  providerName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1F1F1F',
+  },
+  planName: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1F1F1F',
+    marginBottom: 16,
+    lineHeight: 28,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#E8E8E8',
+    marginVertical: 14,
+  },
+  sectionHeader: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F1F1F',
+    marginBottom: 12,
+  },
+  reasoningList: {
+    gap: 12,
+  },
+  reasoningItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  checkmark: {
+    fontSize: 16,
+    color: '#D32F2F',
+    fontWeight: '700',
+    marginRight: 10,
+    marginTop: 0,
+  },
+  reasoningText: {
+    fontSize: 15,
+    color: '#1F1F1F',
+    flex: 1,
+    lineHeight: 22,
+  },
+  familySetup: {
+    gap: 10,
+  },
+  familyMember: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  avatarBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FFE0E0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  avatarText: {
+    fontSize: 18,
+  },
+  memberInfo: {
+    flex: 1,
+    paddingTop: 2,
+  },
+  memberName: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#1F1F1F',
+    marginBottom: 2,
+  },
+  memberPlan: {
+    fontSize: 13,
+    color: '#999999',
+  },
+  totalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  totalLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F1F1F',
+  },
+  totalPrice: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F1F1F',
+    textAlign: 'right',
+  },
+  actions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  primaryButton: {
+    flex: 1,
+    backgroundColor: '#D32F2F',
+    borderRadius: 24,
+    padding: 16,
+    alignItems: 'center',
+  },
+  primaryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  secondaryButton: {
+    flex: 1,
+    borderRadius: 24,
+    padding: 16,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#D32F2F',
+  },
+  secondaryButtonText: {
+    color: '#D32F2F',
+    fontSize: 16,
+    fontWeight: '600',
+  },
 });
