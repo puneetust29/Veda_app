@@ -20,3 +20,6 @@ _MANIFEST_PATH = pathlib.Path(__file__).parent / "manifest.yaml"
 class WorkflowAgent(BaseAgent):
     def __init__(self) -> None:
         self.manifest = load_manifest(_MANIFEST_PATH)
+
+
+AGENT = WorkflowAgent()
