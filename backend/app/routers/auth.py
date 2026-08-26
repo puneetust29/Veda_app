@@ -5,6 +5,7 @@ from jose import jwt
 from pydantic import BaseModel
 
 from app.config import get_settings
+from app.db.client import get_supabase
 from app.deps import get_current_customer, get_or_create_customer
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -24,6 +25,7 @@ def read_profile(customer: dict = Depends(get_current_customer)) -> dict:
 
 class DevLoginRequest(BaseModel):
     phone_number: str
+    otp: str | None = None
 
 
 class DevLoginResponse(BaseModel):
@@ -34,7 +36,7 @@ class DevLoginResponse(BaseModel):
 @router.post("/dev-login", response_model=DevLoginResponse)
 def dev_login(body: DevLoginRequest) -> DevLoginResponse:
     """
-    POC-only stand-in for Supabase phone/OTP sign-in: skips OTP verification entirely and
+    POC-only stand-in for Supabase phone/OTP sign-in: validates OTP from database and
     mints a token signed with the same Supabase JWT secret, so it passes the exact same
     verification path (app.deps.get_current_phone_number) as a real Supabase-issued token.
     Disabled outside development so it can never become a real auth bypass in production.
@@ -42,6 +44,19 @@ def dev_login(body: DevLoginRequest) -> DevLoginResponse:
     settings = get_settings()
     if settings.environment == "production":
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+
+    supabase = get_supabase()
+    customer_data = (
+        supabase.table("customers")
+        .select("otp")
+        .eq("phone_number", body.phone_number)
+        .limit(1)
+        .execute()
+    )
+
+    if customer_data.data and customer_data.data[0].get("otp"):
+        if not body.otp or body.otp != customer_data.data[0]["otp"]:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid OTP")
 
     customer = get_or_create_customer(body.phone_number)
 

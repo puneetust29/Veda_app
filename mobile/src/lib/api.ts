@@ -13,6 +13,7 @@ import type {
   RecommendResponse,
   RoamingPlan,
   Subscription,
+  TravelInsurancePlan,
 } from '../types';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
@@ -55,11 +56,10 @@ async function authedFetch<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  // POC-only: mints a token without a real OTP round-trip (see backend/app/routers/auth.py::dev_login).
-  devLogin: (phoneNumber: string) =>
+  devLogin: (phoneNumber: string, otp?: string) =>
     rawFetch<{ access_token: string; customer: Customer }>('/auth/dev-login', {
       method: 'POST',
-      body: JSON.stringify({ phone_number: phoneNumber }),
+      body: JSON.stringify({ phone_number: phoneNumber, otp }),
     }),
   getMe: () => authedFetch<Customer>('/me'),
   listCalendarEvents: () => authedFetch<CalendarEvent[]>('/calendar/events'),
@@ -238,4 +238,66 @@ export const api = {
       onClose: params.onClose,
     });
   },
+
+  // --- Travel Insurance ---
+  getInsurancePlan: (planId: number) =>
+    authedFetch<TravelInsurancePlan>(`/insurance/plans/${planId}`, {
+      method: 'GET',
+    }),
+
+  getInsurancePlans: () =>
+    authedFetch<TravelInsurancePlan[]>('/insurance/plans', {
+      method: 'GET',
+    }),
+
+  getInsuranceRecommendation: (calendarEventId: string) =>
+    authedFetch<TravelInsurancePlan | null>(
+      `/insurance/plans/recommend?calendar_event_id=${encodeURIComponent(calendarEventId)}`,
+      {
+        method: 'GET',
+      },
+    ),
+
+  createInsurancePaymentIntent: (planId: number, paymentMethodId: string) =>
+    authedFetch<{
+      client_secret: string;
+      ephemeral_key_secret: string;
+      customer_id: string;
+      publishable_key: string;
+    }>('/payments/insurance/intent', {
+      method: 'POST',
+      body: JSON.stringify({
+        plan_id: planId,
+        payment_method_id: paymentMethodId,
+      }),
+    }),
+
+  confirmInsurancePurchase: (planId: number, paymentIntentId: string, calendarEventId?: string) =>
+    authedFetch<{
+      id: string;
+      status: string;
+      plan_id: number;
+      purchased_at: string;
+      plan_details: any;
+    }>('/payments/insurance/confirm', {
+      method: 'POST',
+      body: JSON.stringify({
+        plan_id: planId,
+        payment_intent_id: paymentIntentId,
+        calendar_event_id: calendarEventId,
+      }),
+    }),
+
+  getActiveInsurance: () =>
+    authedFetch<{
+      purchases: Array<{
+        id: string;
+        calendar_event_id: string;
+        status: string;
+        purchased_at: string;
+        plan_details: any;
+      }>;
+    }>('/payments/insurance/active', {
+      method: 'GET',
+    }),
 };

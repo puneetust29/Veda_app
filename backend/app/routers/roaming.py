@@ -74,6 +74,17 @@ def recommend(body: RecommendRequest, customer: dict = Depends(get_current_custo
 
     final_state = result.raw
 
+    if final_state.get("is_home_country"):
+        return RecommendResponse(
+            calendar_event_id=event["id"],
+            destination_country=final_state["destination_country"],
+            trip_duration_days=final_state["trip_duration_days"],
+            candidate_plan=None,
+            reasoning=result.summary,
+            judge_approved=False,
+            judge_feedback="",
+        )
+
     if not final_state.get("candidate_plan"):
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=NO_PLAN_DETAIL)
 

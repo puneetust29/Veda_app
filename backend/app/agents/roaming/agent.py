@@ -92,6 +92,18 @@ class RoamingAgent(BaseAgent):
                 raw=final_state,
             )
 
+        if final_state.get("is_home_country"):
+            destination = final_state.get("destination_country", "your destination")
+            summary = f"{destination} is your home country, so no roaming plan is needed for this trip."
+            ctx.emit(build_done("ok_no_action"))
+            return AgentResult(
+                agent=self.manifest.name,
+                version=self.manifest.version,
+                status="ok",
+                summary=summary,
+                raw=final_state,
+            )
+
         candidate_plan = final_state.get("candidate_plan")
         judge_approved = bool(final_state.get("judge_approved"))
         reasoning = final_state.get("reasoning", "")
