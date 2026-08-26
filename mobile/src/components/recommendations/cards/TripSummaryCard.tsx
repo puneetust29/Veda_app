@@ -1,10 +1,18 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography } from '../../../theme';
 
+type ChecklistItem = {
+  label: string;
+  status?: string;
+  completed?: boolean;
+};
+
 type Props = {
   event: any;
+  travelers?: number;
+  checklist?: ChecklistItem[];
   completedItems?: {
     flightBookings: boolean;
     hotelBookings: boolean;
@@ -15,7 +23,14 @@ type Props = {
   onContinue?: () => void;
 };
 
-export default function TripSummaryCard({ event, completedItems, onToggleItem, onContinue }: Props) {
+export default function TripSummaryCard({
+  event,
+  travelers = 3,
+  checklist,
+  completedItems,
+  onToggleItem,
+  onContinue,
+}: Props) {
   const startDate = event?.start_datetime ? new Date(event.start_datetime) : null;
   const endDate = event?.end_datetime ? new Date(event.end_datetime) : null;
 
@@ -27,85 +42,55 @@ export default function TripSummaryCard({ event, completedItems, onToggleItem, o
     ? `${formatDate(startDate)}-${formatDate(endDate)}, ${event?.destination || 'Australia'}`
     : `12-20 August, ${event?.destination || 'Australia'}`;
 
+  const defaultChecklist: ChecklistItem[] = [
+    { label: 'Flight bookings', completed: completedItems?.flightBookings },
+    { label: 'Hotel bookings', completed: completedItems?.hotelBookings },
+    { label: 'Roaming', status: 'Ready to review', completed: completedItems?.roaming },
+    { label: 'Travel insurance', status: 'Ready to review', completed: completedItems?.travelInsurance },
+  ];
+
+  const items = checklist || defaultChecklist;
+
   return (
     <>
       <View style={styles.card}>
-        {/* Trip Details */}
         <View style={styles.tripDetails}>
           <Ionicons name="calendar-outline" size={24} color={colors.brand} />
           <Text style={styles.dateText}>{dateRangeText}</Text>
         </View>
 
-        {/* Travellers Section */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>Travellers</Text>
-          <Text style={styles.sectionValue}>3 people</Text>
+          <Text style={styles.sectionValue}>{travelers} people</Text>
         </View>
 
-        {/* Preparation Section */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>Preparation</Text>
-
-          <ChecklistItem
-            label="Flight bookings"
-            completed={completedItems?.flightBookings}
-            onToggle={() => onToggleItem?.('flightBookings')}
-          />
-          <ChecklistItem
-            label="Hotel bookings"
-            completed={completedItems?.hotelBookings}
-            onToggle={() => onToggleItem?.('hotelBookings')}
-          />
-          <ChecklistItem
-            label="Roaming"
-            status="Ready to review"
-            completed={completedItems?.roaming}
-            onToggle={() => onToggleItem?.('roaming')}
-          />
-          <ChecklistItem
-            label="Travel insurance"
-            status="Ready to review"
-            completed={completedItems?.travelInsurance}
-            onToggle={() => onToggleItem?.('travelInsurance')}
-          />
+          {items.map((item, index) => (
+            <ChecklistItemRow key={index} item={item} />
+          ))}
         </View>
 
-        {/* Continue Button - INSIDE CARD */}
         <TouchableOpacity style={styles.continueButton} onPress={onContinue}>
           <Text style={styles.continueButtonText}>Continue</Text>
         </TouchableOpacity>
       </View>
-
-      {/* AI Disclaimer - OUTSIDE CARD, NOT ITALIC */}
-      <Text style={styles.disclaimer}>Veda AI may make mistakes. Please review.</Text>
     </>
   );
 }
 
-function ChecklistItem({
-  label,
-  completed,
-  status,
-  onToggle,
-}: {
-  label: string;
-  completed?: boolean;
-  status?: string;
-  onToggle?: () => void;
-}) {
+function ChecklistItemRow({ item }: { item: ChecklistItem }) {
   return (
     <View style={styles.checklistItem}>
-      {completed ? (
+      {item.completed ? (
         <Ionicons name="checkmark" size={20} color={colors.brand} />
       ) : (
-        <View style={styles.spinner}>
-          <Ionicons name="ellipse-outline" size={18} color={colors.textSecondary} />
-        </View>
+        <Ionicons name="ellipse-outline" size={18} color={colors.textSecondary} />
       )}
-      <Text style={styles.checklistLabel}>
-        {label}
-      </Text>
-      {status && <Text style={styles.checklistStatus}>{status}</Text>}
+      <View style={styles.checklistContent}>
+        <Text style={styles.checklistLabel}>{item.label}</Text>
+        {item.status && <Text style={styles.checklistStatus}>{item.status}</Text>}
+      </View>
     </View>
   );
 }
@@ -152,18 +137,14 @@ const styles = StyleSheet.create({
   },
   checklistItem: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: spacing.md,
     marginBottom: spacing.lg,
   },
-  spinner: {
-    width: 20,
-    height: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
+  checklistContent: {
+    flex: 1,
   },
   checklistLabel: {
-    flex: 1,
     fontSize: 16,
     fontWeight: '500',
     color: colors.textPrimary,
@@ -171,6 +152,7 @@ const styles = StyleSheet.create({
   checklistStatus: {
     fontSize: 12,
     color: colors.textSecondary,
+    marginTop: spacing.xs,
   },
   continueButton: {
     backgroundColor: colors.brand,
@@ -183,12 +165,5 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: '700',
-  },
-  disclaimer: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    textAlign: 'left',
-    marginBottom: spacing.lg,
-    fontStyle: 'normal',
   },
 });

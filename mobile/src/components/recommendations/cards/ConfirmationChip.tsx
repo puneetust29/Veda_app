@@ -5,13 +5,19 @@ import { colors, spacing, typography } from '../../../theme';
 
 type Props = {
   label: string;
+  backgroundColor?: string;
+  textColor?: string;
 };
 
-export default function ConfirmationChip({ label }: Props) {
+export default function ConfirmationChip({
+  label,
+  backgroundColor = '#F5DEDE',
+  textColor = colors.brand,
+}: Props) {
   return (
-    <View style={styles.chip}>
-      <Ionicons name="checkmark-circle" size={20} color={colors.brand} />
-      <Text style={styles.text}>✓ {label} confirmed.</Text>
+    <View style={[styles.chip, { backgroundColor }]}>
+      <Ionicons name="checkmark-circle" size={20} color={textColor} />
+      <Text style={[styles.text, { color: textColor }]}>✓ {label} confirmed.</Text>
     </View>
   );
 }
@@ -21,7 +27,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    backgroundColor: '#F5DEDE',
     borderRadius: 20,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
@@ -30,7 +35,6 @@ const styles = StyleSheet.create({
   },
   text: {
     ...typography.body,
-    color: colors.brand,
     fontWeight: '600',
   },
 });

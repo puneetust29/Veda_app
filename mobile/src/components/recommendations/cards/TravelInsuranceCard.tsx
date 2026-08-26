@@ -4,132 +4,145 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography } from '../../../theme';
 
 type Props = {
+  provider?: string;
+  planName?: string;
+  planType?: string;
+  whyThisOne?: string[];
+  coverage?: { label: string; value: string }[];
+  premium?: number;
+  currency?: string;
+  expandedDetails?: { title: string; points: string[] }[];
   onViewDetails?: () => void;
 };
 
-export default function TravelInsuranceCard({ onViewDetails }: Props) {
+export default function TravelInsuranceCard({
+  provider = 'Allianz Assistance',
+  planName = 'Family Travel Insurance',
+  planType = 'Single Trip | Silver',
+  whyThisOne = [
+    'Covers all three of you under one policy.',
+    'Silver includes medical cover suited to your trip without paying for extras.',
+    "Single trip's enough, no need for annual cover.",
+  ],
+  coverage = [
+    { label: 'Coverage duration', value: '12th August to 20th August' },
+    { label: 'Benefits', value: 'Covers delayed departures, lost baggage + 12 coverages' },
+  ],
+  premium = 59,
+  currency = '£',
+  expandedDetails = [
+    {
+      title: 'Medical Coverage',
+      points: [
+        'Emergency medical expenses up to £100,000',
+        'Dental treatment up to £500',
+        'Prescription medications',
+        'Hospital stay and surgical procedures',
+      ],
+    },
+    {
+      title: 'Travel Protection',
+      points: [
+        'Delayed departure (4+ hours): £100',
+        'Lost baggage: up to £2,500',
+        'Flight cancellation: full coverage',
+        'Travel documents loss: £500',
+      ],
+    },
+    {
+      title: 'Personal Liability',
+      points: [
+        'Covers accidental injury to third parties: £1,000,000',
+        'Property damage liability: £500,000',
+      ],
+    },
+    {
+      title: 'Emergency Services',
+      points: [
+        '24/7 emergency helpline',
+        'Emergency evacuation covered',
+        'Emergency dental treatment',
+      ],
+    },
+  ],
+  onViewDetails,
+}: Props) {
   const [showDetails, setShowDetails] = useState(false);
+
   return (
     <View style={styles.card}>
-      {/* Header */}
       <View style={styles.header}>
         <View style={styles.providerLogo}>
           <Ionicons name="shield-checkmark" size={24} color={colors.brand} />
         </View>
         <View style={styles.headerText}>
-          <Text style={styles.provider}>Allianz Assistance</Text>
-          <Text style={styles.planName}>Family Travel Insurance</Text>
+          <Text style={styles.provider}>{provider}</Text>
+          <Text style={styles.planName}>{planName}</Text>
         </View>
       </View>
 
-      {/* Plan Type */}
       <View style={styles.section}>
-        <Text style={styles.planType}>Single Trip | Silver</Text>
+        <Text style={styles.planType}>{planType}</Text>
       </View>
 
-      {/* Why This One */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Why this one</Text>
-        <ChecklistItem text="Covers all three of you under one policy." />
-        <ChecklistItem text="Silver includes medical cover suited to your trip without paying for extras." />
-        <ChecklistItem text="Single trip's enough, no need for annual cover." />
+        {whyThisOne.map((text, index) => (
+          <View key={index} style={styles.checklistItem}>
+            <Ionicons name="checkmark-circle" size={20} color={colors.brand} />
+            <Text style={styles.checklistText}>{text}</Text>
+          </View>
+        ))}
       </View>
 
-      {/* Coverage Details */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Coverage includes</Text>
-
-        <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Coverage duration</Text>
-          <Text style={styles.detailValue}>12th August to 20th August</Text>
-        </View>
-
-        <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Benefits</Text>
-          <Text style={styles.detailValue}>
-            Covers delayed departures, lost baggage + 12 coverages
-          </Text>
-        </View>
+        {coverage.map((item, index) => (
+          <View key={index} style={styles.detailRow}>
+            <Text style={styles.detailLabel}>{item.label}</Text>
+            <Text style={styles.detailValue}>{item.value}</Text>
+          </View>
+        ))}
       </View>
 
-      {/* Premium */}
       <View style={styles.premiumRow}>
         <Text style={styles.premiumLabel}>Premium</Text>
-        <Text style={styles.premiumPrice}>£59</Text>
+        <Text style={styles.premiumPrice}>
+          {currency}{premium}
+        </Text>
       </View>
 
-      {/* Action Button */}
       <TouchableOpacity
         style={styles.viewDetailsButton}
-        onPress={() => setShowDetails(!showDetails)}
+        onPress={() => {
+          setShowDetails(!showDetails);
+          onViewDetails?.();
+        }}
       >
         <Text style={styles.viewDetailsText}>
           {showDetails ? 'Hide details' : 'View details'}
         </Text>
       </TouchableOpacity>
 
-      {/* Expanded Details */}
       {showDetails && (
         <View style={styles.expandedSection}>
           <Text style={styles.detailsTitle}>Full Coverage Details</Text>
-
-          <DetailSection title="Medical Coverage">
-            <DetailPoint text="Emergency medical expenses up to £100,000" />
-            <DetailPoint text="Dental treatment up to £500" />
-            <DetailPoint text="Prescription medications" />
-            <DetailPoint text="Hospital stay and surgical procedures" />
-          </DetailSection>
-
-          <DetailSection title="Travel Protection">
-            <DetailPoint text="Delayed departure (4+ hours): £100" />
-            <DetailPoint text="Lost baggage: up to £2,500" />
-            <DetailPoint text="Flight cancellation: full coverage" />
-            <DetailPoint text="Travel documents loss: £500" />
-          </DetailSection>
-
-          <DetailSection title="Personal Liability">
-            <DetailPoint text="Covers accidental injury to third parties: £1,000,000" />
-            <DetailPoint text="Property damage liability: £500,000" />
-          </DetailSection>
-
-          <DetailSection title="Emergency Services">
-            <DetailPoint text="24/7 emergency helpline" />
-            <DetailPoint text="Emergency evacuation covered" />
-            <DetailPoint text="Emergency dental treatment" />
-          </DetailSection>
-
+          {expandedDetails.map((section, idx) => (
+            <View key={idx} style={styles.detailSection}>
+              <Text style={styles.detailSectionTitle}>{section.title}</Text>
+              {section.points.map((point, pidx) => (
+                <View key={pidx} style={styles.detailPoint}>
+                  <Ionicons name="checkmark-circle" size={16} color={colors.brand} />
+                  <Text style={styles.detailPointText}>{point}</Text>
+                </View>
+              ))}
+            </View>
+          ))}
           <Text style={styles.termsText}>
             Terms and conditions apply. Full policy details will be sent to your email after purchase.
           </Text>
         </View>
       )}
-    </View>
-  );
-}
-
-function DetailSection({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <View style={styles.detailSection}>
-      <Text style={styles.detailSectionTitle}>{title}</Text>
-      {children}
-    </View>
-  );
-}
-
-function DetailPoint({ text }: { text: string }) {
-  return (
-    <View style={styles.detailPoint}>
-      <Ionicons name="checkmark-circle" size={16} color={colors.brand} />
-      <Text style={styles.detailPointText}>{text}</Text>
-    </View>
-  );
-}
-
-function ChecklistItem({ text }: { text: string }) {
-  return (
-    <View style={styles.checklistItem}>
-      <Ionicons name="checkmark-circle" size={20} color={colors.brand} />
-      <Text style={styles.checklistText}>{text}</Text>
     </View>
   );
 }

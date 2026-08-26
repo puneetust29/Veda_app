@@ -3,56 +3,88 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography } from '../../../theme';
 
+type Traveler = {
+  name: string;
+  initials: string;
+  details: string;
+  price?: string;
+};
+
 type Props = {
+  provider?: string;
+  planName?: string;
+  whyThisOne?: string[];
+  travelers?: Traveler[];
+  total?: string;
   isExpanded: boolean;
   onToggleExpand: () => void;
-  children: React.ReactNode;
+  children?: React.ReactNode;
 };
 
 export default function RoamingRecommendationCard({
+  provider = 'Vodafone',
+  planName = '8-day Around the World Extra',
+  whyThisOne = [
+    'Matches your typical data usage.',
+    '8 days, exactly matches your trip.',
+    'Works for all 3 travellers.',
+  ],
+  travelers = [
+    { name: 'Emily', initials: 'E', details: '2 GB | 100 mins and 100 texts', price: '£18' },
+    { name: 'Sophia', initials: 'S', details: '2 GB', price: '£12.75' },
+    { name: 'Oliver', initials: 'O', details: 'No plan needed', price: '' },
+  ],
+  total = '£30.75',
   isExpanded,
   onToggleExpand,
   children,
 }: Props) {
   return (
     <View style={styles.card}>
-      {/* Header */}
       <View style={styles.header}>
         <View style={styles.providerLogo}>
-          <Text style={styles.logoText}>V</Text>
+          <Text style={styles.logoText}>{provider.charAt(0)}</Text>
         </View>
         <View style={styles.headerText}>
-          <Text style={styles.provider}>Vodafone</Text>
-          <Text style={styles.planName}>8-day Around the World Extra</Text>
+          <Text style={styles.provider}>{provider}</Text>
+          <Text style={styles.planName}>{planName}</Text>
         </View>
       </View>
 
-      {/* Why This One */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Why this one</Text>
-        <ChecklistItem text="Matches your typical data usage." />
-        <ChecklistItem text="8 days, exactly matches your trip." />
-        <ChecklistItem text="Works for all 3 travellers." />
+        {whyThisOne.map((text, index) => (
+          <View key={index} style={styles.checklistItem}>
+            <Ionicons name="checkmark-circle" size={20} color={colors.brand} />
+            <Text style={styles.checklistText}>{text}</Text>
+          </View>
+        ))}
       </View>
 
-      {/* Family Setup */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Family setup</Text>
 
-        <TravelerInfo name="Emily" initials="E" details="2 GB | 100 mins and 100 texts" price="£18" />
-        <TravelerInfo name="Sophia" initials="S" details="2 GB" price="£12.75" />
-        <TravelerInfo name="Oliver" initials="O" details="No plan needed" price="" />
+        {travelers.map((traveler, index) => (
+          <View key={index} style={styles.travelerRow}>
+            <View style={styles.travelerInitial}>
+              <Text style={styles.travelerInitialText}>{traveler.initials}</Text>
+            </View>
+            <View style={styles.travelerInfo}>
+              <Text style={styles.travelerName}>{traveler.name}</Text>
+              <Text style={styles.travelerDetails}>{traveler.details}</Text>
+            </View>
+            {traveler.price && <Text style={styles.travelerPrice}>{traveler.price}</Text>}
+          </View>
+        ))}
 
         <View style={styles.totalRow}>
           <Text style={styles.totalLabel}>Total</Text>
-          <Text style={styles.totalPrice}>£30.75</Text>
+          <Text style={styles.totalPrice}>{total}</Text>
         </View>
       </View>
 
-      {/* Expand/Collapse Children */}
       {children}
 
-      {/* Action Buttons */}
       <View style={styles.buttonRow}>
         <TouchableOpacity
           style={[styles.button, styles.buttonOutline]}
@@ -63,40 +95,6 @@ export default function RoamingRecommendationCard({
           </Text>
         </TouchableOpacity>
       </View>
-    </View>
-  );
-}
-
-function ChecklistItem({ text }: { text: string }) {
-  return (
-    <View style={styles.checklistItem}>
-      <Ionicons name="checkmark-circle" size={20} color={colors.brand} />
-      <Text style={styles.checklistText}>{text}</Text>
-    </View>
-  );
-}
-
-function TravelerInfo({
-  name,
-  initials,
-  details,
-  price,
-}: {
-  name: string;
-  initials: string;
-  details: string;
-  price: string;
-}) {
-  return (
-    <View style={styles.travelerRow}>
-      <View style={styles.travelerInitial}>
-        <Text style={styles.travelerInitialText}>{initials}</Text>
-      </View>
-      <View style={styles.travelerInfo}>
-        <Text style={styles.travelerName}>{name}</Text>
-        <Text style={styles.travelerDetails}>{details}</Text>
-      </View>
-      {price && <Text style={styles.travelerPrice}>{price}</Text>}
     </View>
   );
 }
