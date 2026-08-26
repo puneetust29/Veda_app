@@ -338,9 +338,19 @@ def sync_google_events(
     """
     _require_google_configured()
     try:
-        return google_calendar.sync_to_calendar_events(
+        result = google_calendar.sync_to_calendar_events(
             customer["id"], max_results=max_results, flights_only=flights_only
         )
+        # Update last_synced_at timestamp
+        try:
+            from datetime import timezone
+            update_result = get_supabase().table("customers").update({
+                "last_synced_at": datetime.now(timezone.utc).isoformat()
+            }).eq("id", customer["id"]).execute()
+            logger.info(f"[google_sync] Updated last_synced_at for customer {customer['id']}")
+        except Exception as e:
+            logger.error(f"[google_sync] Failed to update last_synced_at: {e}")
+        return result
     except google_calendar.GoogleCalendarNotConnected as exc:
         raise _not_connected() from exc
     except (google_calendar.GoogleCalendarError, google_oauth.GoogleOAuthError) as exc:
@@ -460,6 +470,16 @@ def sync_device_events(
             raise
     else:
         logger.info(f"[device_sync] No new events to upsert (all duplicates or empty)")
+
+    # Update last_synced_at timestamp
+    try:
+        from datetime import timezone
+        get_supabase().table("customers").update({
+            "last_synced_at": datetime.now(timezone.utc).isoformat()
+        }).eq("id", customer["id"]).execute()
+        logger.info(f"[device_sync] Updated last_synced_at for customer {customer['id']}")
+    except Exception as e:
+        logger.error(f"[device_sync] Failed to update last_synced_at: {e}")
 
     return {
         "fetched": len(payload.events),
