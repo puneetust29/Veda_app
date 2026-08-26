@@ -4,14 +4,14 @@ import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import ChatItemView from '../components/chat/ChatItemView';
-import { useRoamingChat } from '../hooks/useRoamingChat';
+import { useWorkflowChat } from '../hooks/useWorkflowChat';
 import type { RootStackParamList } from '../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Chat'>;
 
 export default function ChatScreen({ route, navigation }: Props) {
   const { event } = route.params;
-  const { items, phase, confirm, decline, retry, sendMessage, handleInsurancePurchased, currentView, switchView, planState } = useRoamingChat(event);
+  const { items, phase, confirm, decline, retry, sendMessage, handleInsurancePurchased, workflowState } = useWorkflowChat(event);
   const scrollViewRef = useRef<ScrollView>(null);
   const [draft, setDraft] = useState('');
 
@@ -35,7 +35,7 @@ export default function ChatScreen({ route, navigation }: Props) {
         onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
       >
         {items.map((item) => (
-          <ChatItemView key={item.id} item={item} onConfirm={confirm} onDecline={decline} onInsurancePurchased={handleInsurancePurchased} currentView={currentView} onSwitchView={switchView} planState={planState} />
+          <ChatItemView key={item.id} item={item} onConfirm={confirm} onDecline={decline} onInsurancePurchased={handleInsurancePurchased} />
         ))}
       </ScrollView>
 
@@ -57,27 +57,6 @@ export default function ChatScreen({ route, navigation }: Props) {
             onPress={() => navigation.replace('FlightDetail', { event })}
           >
             <Text style={styles.secondaryButtonText}>Continue without chat</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {planState.showToggle && (
-        <View style={styles.toggleSection}>
-          <TouchableOpacity
-            style={[styles.toggleTabButton, currentView === 'roaming' && styles.toggleTabButtonActive]}
-            onPress={() => switchView('roaming')}
-          >
-            <Text style={[styles.toggleTabButtonText, currentView === 'roaming' && styles.toggleTabButtonTextActive]}>
-              Roaming
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.toggleTabButton, currentView === 'insurance' && styles.toggleTabButtonActive]}
-            onPress={() => switchView('insurance')}
-          >
-            <Text style={[styles.toggleTabButtonText, currentView === 'insurance' && styles.toggleTabButtonTextActive]}>
-              Insurance
-            </Text>
           </TouchableOpacity>
         </View>
       )}
@@ -170,35 +149,4 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   sendButtonText: { color: '#fff', fontSize: 14, fontWeight: '600' },
-  toggleSection: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
-    gap: 8,
-  },
-  toggleTabButton: {
-    flex: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    backgroundColor: '#f5f5f5',
-  },
-  toggleTabButtonActive: {
-    backgroundColor: '#0a7a3f',
-    borderColor: '#0a7a3f',
-  },
-  toggleTabButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#666',
-  },
-  toggleTabButtonTextActive: {
-    color: '#fff',
-  },
 });
