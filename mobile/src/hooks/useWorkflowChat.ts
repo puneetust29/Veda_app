@@ -420,13 +420,10 @@ export function useWorkflowChat(event: CalendarEvent) {
 
       updateConfirmationItem(actionId, { state: 'declined' });
 
-      // Check if this is a roaming plan decline - if so, advance to insurance
-      console.log('[useWorkflowChat] target item:', target);
-
-      // Check if this is a roaming confirmation by looking at the planId or summary
-      const isRoamingDecline = target?.summary?.toLowerCase().includes('roaming') ||
-                               target?.actionId?.includes('roaming');
-      console.log('[useWorkflowChat] isRoamingDecline:', isRoamingDecline, 'currentStep:', workflowState.currentStep);
+      // Check if this is a roaming plan decline by looking at the most recent card
+      const lastCard = [...itemsRef.current].reverse().find((item): item is CardItem => item.kind === 'card');
+      const isRoamingDecline = lastCard?.card.kind === 'roaming_plan';
+      console.log('[useWorkflowChat] lastCard:', lastCard, 'isRoamingDecline:', isRoamingDecline, 'currentStep:', workflowState.currentStep);
 
       if (isRoamingDecline && workflowState.currentStep === 'roaming') {
         console.log('[useWorkflowChat] Advancing to insurance...');
