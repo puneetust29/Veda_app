@@ -73,6 +73,10 @@ export function useWorkflowChat(event: CalendarEvent) {
   const itemsRef = useRef(items);
   itemsRef.current = items;
 
+  // Mirrors `workflowState` synchronously so callbacks always read latest state
+  const workflowStateRef = useRef(workflowState);
+  workflowStateRef.current = workflowState;
+
   const abortControllerRef = useRef<AbortController | null>(null);
   const watchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const startedRef = useRef(false);
@@ -505,10 +509,16 @@ export function useWorkflowChat(event: CalendarEvent) {
 
   const handleInsurancePurchased = useCallback(
     (purchaseData: any) => {
-      // Check if roaming is already active
-      const hasRoamingActive = itemsRef.current.some(
+      // Check if roaming is already active (from receipt or completedSteps)
+      const hasRoamingReceipt = itemsRef.current.some(
         (item) => item.kind === 'receipt' && 'subscription' in item && item.subscription?.roaming_plans
       );
+
+      // Also check if we're tracking it in workflow state
+      const hasRoamingCompleted = workflowStateRef.current.completedSteps.includes('roaming');
+      const hasRoamingActive = hasRoamingReceipt || hasRoamingCompleted;
+
+      console.log('[useWorkflowChat] handleInsurancePurchased - hasRoamingReceipt:', hasRoamingReceipt, 'hasRoamingCompleted:', hasRoamingCompleted);
 
       const successMessage = hasRoamingActive
         ? '✓ You are all set for your trip! You have both roaming and travel insurance.'
@@ -545,11 +555,16 @@ export function useWorkflowChat(event: CalendarEvent) {
 
       appendItems(newItems);
 
+      // Determine completedSteps - if both roaming and insurance are done, mark as complete
+      const finalCompletedSteps: WorkflowStep[] = hasRoamingActive
+        ? ['roaming', 'insurance']
+        : Array.from(new Set([...workflowStateRef.current.completedSteps, 'insurance'])) as WorkflowStep[];
+
       // Move to complete step
-      setWorkflowState((prev) => ({
+      setWorkflowState({
         currentStep: 'complete',
-        completedSteps: Array.from(new Set([...prev.completedSteps, 'insurance'])),
-      }));
+        completedSteps: finalCompletedSteps,
+      });
 
       setPhase('complete');
     },
