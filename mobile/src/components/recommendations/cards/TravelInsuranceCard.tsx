@@ -17,6 +17,7 @@ type Props = {
 
 export default function TravelInsuranceCard({ plan, onViewDetails, onProceed }: Props) {
   const [showDetails, setShowDetails] = useState(false);
+
   return (
     <View style={styles.card}>
       {/* Header */}
@@ -93,11 +94,9 @@ export default function TravelInsuranceCard({ plan, onViewDetails, onProceed }: 
       <View style={styles.buttonContainer}>
         <TouchableOpacity
           style={styles.viewDetailsButton}
-          onPress={() => setShowDetails(!showDetails)}
+          onPress={onViewDetails ? onViewDetails : () => setShowDetails(!showDetails)}
         >
-          <Text style={styles.viewDetailsText}>
-            {showDetails ? 'Hide details' : 'View details'}
-          </Text>
+          <Text style={styles.viewDetailsText}>View details</Text>
         </TouchableOpacity>
 
         {onProceed && (
@@ -106,43 +105,6 @@ export default function TravelInsuranceCard({ plan, onViewDetails, onProceed }: 
           </TouchableOpacity>
         )}
       </View>
-
-      {/* Expanded Details */}
-      {showDetails && (
-        <View style={styles.expandedSection}>
-          <Text style={styles.detailsTitle}>Full Coverage Details</Text>
-
-          {Object.entries(plan.fullCoverageDetails).map(([title, items]) => (
-            <DetailSection key={title} title={title}>
-              {items.map((detail, i) => (
-                <DetailPoint key={i} text={detail} />
-              ))}
-            </DetailSection>
-          ))}
-
-          <Text style={styles.termsText}>
-            Terms and conditions apply. Full policy details will be sent to your email after purchase.
-          </Text>
-        </View>
-      )}
-    </View>
-  );
-}
-
-function DetailSection({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <View style={styles.detailSection}>
-      <Text style={styles.detailSectionTitle}>{title}</Text>
-      {children}
-    </View>
-  );
-}
-
-function DetailPoint({ text }: { text: string }) {
-  return (
-    <View style={styles.detailPoint}>
-      <Ionicons name="checkmark-circle" size={16} color={colors.brand} />
-      <Text style={styles.detailPointText}>{text}</Text>
     </View>
   );
 }
@@ -332,43 +294,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: 'white',
-  },
-  expandedSection: {
-    marginTop: spacing.lg,
-    paddingTop: spacing.lg,
-    borderTopWidth: 1,
-    borderTopColor: '#E8E8E8',
-  },
-  detailsTitle: {
-    ...typography.sectionTitle,
-    color: colors.textPrimary,
-    marginBottom: spacing.lg,
-  },
-  detailSection: {
-    marginBottom: spacing.lg,
-  },
-  detailSectionTitle: {
-    ...typography.body,
-    fontWeight: '600',
-    color: colors.textPrimary,
-    marginBottom: spacing.md,
-  },
-  detailPoint: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.md,
-    marginBottom: spacing.sm,
-  },
-  detailPointText: {
-    flex: 1,
-    ...typography.small,
-    color: colors.textPrimary,
-    lineHeight: 18,
-  },
-  termsText: {
-    ...typography.small,
-    color: colors.textSecondary,
-    marginTop: spacing.lg,
-    fontStyle: 'italic',
   },
 });

@@ -1,49 +1,63 @@
 import { StyleSheet, Text, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+
+import CheckmarkIcon from '../icons/CheckmarkIcon';
+import { colors, fonts, spacing } from '../../theme';
 
 type Props = {
   planType: 'roaming' | 'insurance';
 };
 
 export default function ConfirmationSuccessCard({ planType }: Props) {
-  const displayText = planType === 'roaming' ? 'Roaming confirmed' : 'Travel insurance confirmed';
+  const displayText = planType === 'roaming' ? 'Roaming plan confirmed' : 'Travel insurance confirmed';
 
   return (
     <View style={styles.container}>
-      <View style={styles.badge}>
-        <Text style={styles.badgeText}>✓</Text>
-      </View>
-      <Text style={styles.text}>{displayText}</Text>
+      <LinearGradient
+        colors={['#FFFDFD', '#FFE4E4']}
+        start={{ x: 0, y: 1 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.content}
+      >
+        <View style={styles.iconContainer}>
+          <CheckmarkIcon size={32} />
+        </View>
+        <Text style={styles.text}>{displayText}</Text>
+      </LinearGradient>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    marginBottom: spacing.md,
+    marginHorizontal: spacing.xxxl,
+  },
+  content: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFE0E0',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    marginHorizontal: 32,
-    gap: 12,
+    backgroundColor: colors.white,
+    borderRadius: 24,
+    padding: spacing.lg,
+    gap: spacing.sm,
+    // iOS shadow
+    shadowColor: '#FF0000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    // Android elevation
+    elevation: 4,
   },
-  badge: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#D32F2F',
+  iconContainer: {
+    width: 32,
+    height: 32,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  badgeText: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#FFFFFF',
   },
   text: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1F1F1F',
+    fontFamily: fonts.semiBold,
+    color: colors.textPrimary,
   },
 });

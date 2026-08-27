@@ -55,11 +55,17 @@ function ChatItemViewImpl({ item, onConfirm, onDecline, onInsurancePurchased, on
         />
       );
     case 'travel_insurance':
-      return <TravelInsuranceCardChat plan={item.plan} calendarEventId={item.calendarEventId} onInsurancePurchased={onInsurancePurchased} />;
+      return (
+        <TravelInsuranceCardChat
+          plan={item.plan}
+          calendarEventId={item.calendarEventId}
+          onInsurancePurchased={onInsurancePurchased}
+        />
+      );
     case 'confirmation':
       return <ConfirmationPrompt item={item} onConfirm={onConfirm} onDecline={onDecline} />;
     case 'receipt':
-      return <ReceiptCard subscription={item.subscription} planName={item.planName} />;
+      return null; // Don't show receipt cards in chat
     case 'confirmation_success':
       return <ConfirmationSuccessCard planType={item.planType} />;
     case 'error':
