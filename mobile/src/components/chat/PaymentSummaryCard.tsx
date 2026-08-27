@@ -111,9 +111,6 @@ export default function PaymentSummaryCard({
           <Text style={styles.successTitle}>✓ Payment Successful</Text>
           <Text style={styles.label}>Insurance cover activated</Text>
         </View>
-        <TouchableOpacity style={styles.payButton} onPress={() => onSuccess(null)}>
-          <Text style={styles.payButtonText}>Done</Text>
-        </TouchableOpacity>
       </View>
     );
   }
@@ -232,7 +229,7 @@ export default function PaymentSummaryCard({
           onPress={handlePayment}
         >
           <Text style={styles.payButtonText}>
-            Pay with {paymentMethodBrand ? paymentMethodBrand.charAt(0).toUpperCase() + paymentMethodBrand.slice(1) : ''} card
+            Pay with {paymentMethodBrand ? paymentMethodBrand.charAt(0).toUpperCase() + paymentMethodBrand.slice(1) : ''}
           </Text>
         </TouchableOpacity>
       </View>
@@ -366,12 +363,14 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   secondaryButton: {
-    flex: 1,
-    borderWidth: 2,
-    borderColor: colors.brand,
-    paddingVertical: spacing.md,
-    borderRadius: 50,
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderRadius: 24,
     alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: 'rgba(230, 0, 0, 0.07)',
+    backgroundColor: '#FFFFFF',
   },
   secondaryButtonText: {
     ...typography.body,
@@ -380,10 +379,12 @@ const styles = StyleSheet.create({
   },
   payButton: {
     flex: 1,
-    backgroundColor: colors.brand,
-    paddingVertical: spacing.md,
-    borderRadius: 50,
+    backgroundColor: '#F00405',
+    borderRadius: 24,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   payButtonText: {
     ...typography.body,

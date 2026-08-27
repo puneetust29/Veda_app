@@ -72,6 +72,9 @@ class Orchestrator:
                 result = entry.agent.execute(agent_ctx, request.mode)
             except Exception as exc:  # one agent's failure never aborts the run
                 agent_crashed = True
+                import traceback
+                print(f"[AGENT ERROR] {entry.manifest.name}: {exc}")
+                print(traceback.format_exc())
                 result = AgentResult(
                     agent=entry.manifest.name,
                     version=entry.manifest.version,

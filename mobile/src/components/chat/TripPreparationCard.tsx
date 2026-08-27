@@ -222,7 +222,7 @@ const styles = StyleSheet.create({
   },
   continueButton: {
     backgroundColor: '#f00405',
-    borderRadius: 16,
+    borderRadius: 24,
     marginHorizontal: 16,
     marginTop: 16,
     marginBottom: 16,
