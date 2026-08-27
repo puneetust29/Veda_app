@@ -1,6 +1,8 @@
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SvgXml } from 'react-native-svg';
 
 import type { RecommendationCardPayload, ChatItem } from '../../types';
+import { vodafoneIcon } from '../dashboard/figmaSvgs';
 
 type ConfirmationItem = Extract<ChatItem, { kind: 'confirmation' }>;
 
@@ -46,19 +48,22 @@ export default function RecommendationCard({ card, confirmation, onConfirm, onDe
       const price = confirmation ? extractPrice(confirmation.summary) : null;
 
       return (
-        <View style={styles.planCard}>
+        <View style={styles.cardShadow}>
+          <View style={styles.planCard}>
           {/* Background Pattern */}
           <View style={styles.backgroundPattern} />
           {/* Provider Section */}
           <View style={styles.providerSection}>
             <View style={styles.providerBadge}>
-              <Text style={styles.providerBadgeText}>🌍</Text>
+              <SvgXml xml={vodafoneIcon} width={21} height={21} />
             </View>
             <View style={styles.providerInfo}>
-              <Text style={styles.providerName}>{card.plan.plan_name}</Text>
+              <Text style={styles.providerName}>vodafone</Text>
             </View>
           </View>
-
+          <View style={styles.providerSection}>
+            <Text style={styles.providerName}>{card.plan.plan_name}</Text>
+          </View>
           {/* Plan Name */}
           <Text style={styles.planName}>{card.plan.description}</Text>
 
@@ -103,6 +108,7 @@ export default function RecommendationCard({ card, confirmation, onConfirm, onDe
               )}
             </>
           )}
+          </View>
         </View>
       );
     }
@@ -112,18 +118,20 @@ export default function RecommendationCard({ card, confirmation, onConfirm, onDe
 }
 
 const styles = StyleSheet.create({
-  planCard: {
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: 24,
-    padding: 16,
-    backgroundColor: '#FFFFFF',
+    cardShadow: {
     marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
-    shadowRadius: 8,
+    shadowRadius: 16,
     elevation: 4,
+    borderRadius: 24,
+  },
+  planCard: {
+    borderRadius: 24,
+    padding: 16,
+    backgroundColor: '#FFFFFF',
+    marginBottom: 12,
     overflow: 'hidden',
   },
   backgroundPattern: {
@@ -148,6 +156,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 4,
+  },
+  providerIcon: {
+    width: 21,
+    height: 21,
+    resizeMode: 'contain',
   },
   providerBadgeText: {
     fontSize: 17,

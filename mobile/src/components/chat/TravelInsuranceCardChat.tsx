@@ -53,7 +53,8 @@ export default function TravelInsuranceCardChat({
           setPaymentMethodBrand(response.brand ?? undefined);
           setPaymentMethodLast4(response.last4 ?? undefined);
         } catch (err) {
-          console.error('Failed to fetch payment method:', err);
+          // Silently handle payment method fetch failure (e.g., 404 when no saved methods)
+          if (__DEV__) console.debug('Payment method not found:', err);
         } finally {
           setPaymentMethodLoading(false);
         }
