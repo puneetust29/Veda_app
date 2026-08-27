@@ -51,6 +51,63 @@ class ActiveInsuranceResponse(BaseModel):
     purchases: list[InsurancePurchaseDetail]
 
 
+class PaymentMethodResponse(BaseModel):
+    brand: str | None = None
+    last4: str | None = None
+    id: str | None = None
+
+
+@router.get("/customer-payment-methods", response_model=PaymentMethodResponse)
+def get_customer_payment_methods(
+    customer: dict = Depends(get_current_customer),
+):
+    """Get the customer's default payment method details.
+
+    Returns the brand and last 4 digits of the customer's default card.
+    """
+    settings = get_settings()
+
+    if not settings.stripe_configured:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Stripe is not configured",
+        )
+
+    stripe.api_key = settings.stripe_secret_key
+
+    try:
+        stripe_customer_id = customer.get("stripe_customer_id")
+        if not stripe_customer_id:
+            return PaymentMethodResponse()
+
+        payment_methods = stripe.PaymentMethod.list(
+            customer=stripe_customer_id,
+            type="card",
+            limit=1,
+        )
+
+        if payment_methods.data:
+            pm = payment_methods.data[0]
+            return PaymentMethodResponse(
+                brand=pm.card.brand if pm.card else None,
+                last4=pm.card.last4 if pm.card else None,
+                id=pm.id,
+            )
+        else:
+            return PaymentMethodResponse()
+
+    except stripe.error.StripeError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Failed to fetch payment methods: {str(e)}",
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch payment methods: {str(e)}",
+        )
+
+
 @router.post("/insurance/intent", response_model=TravelInsuranceIntentResponse)
 def create_travel_insurance_intent(
     body: TravelInsuranceIntentRequest,

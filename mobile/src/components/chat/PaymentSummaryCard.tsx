@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { useStripe } from '@stripe/stripe-react-native';
 import { colors, spacing, typography } from '../../theme';
@@ -10,8 +10,6 @@ type State = 'idle' | 'processing' | 'success' | 'error';
 type Props = {
   roamingPlan?: RoamingPlan | null;
   insurancePlan: TravelInsurancePlan;
-  paymentMethodBrand?: string;
-  paymentMethodLast4?: string;
   savedPaymentMethodId: string;
   calendarEventId?: string;
   onViewOptions?: () => void;
@@ -21,8 +19,6 @@ type Props = {
 export default function PaymentSummaryCard({
   roamingPlan,
   insurancePlan,
-  paymentMethodBrand,
-  paymentMethodLast4,
   savedPaymentMethodId,
   calendarEventId,
   onViewOptions,
@@ -30,7 +26,23 @@ export default function PaymentSummaryCard({
 }: Props) {
   const [state, setState] = useState<State>('idle');
   const [errorMessage, setErrorMessage] = useState('');
+  const [paymentMethodBrand, setPaymentMethodBrand] = useState<string | undefined>();
+  const [paymentMethodLast4, setPaymentMethodLast4] = useState<string | undefined>();
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
+
+  useEffect(() => {
+    const fetchPaymentMethod = async () => {
+      try {
+        const response = await api.getCustomerPaymentMethods();
+        setPaymentMethodBrand(response.brand ?? undefined);
+        setPaymentMethodLast4(response.last4 ?? undefined);
+      } catch (err) {
+        console.error('Failed to fetch payment method:', err);
+      }
+    };
+
+    fetchPaymentMethod();
+  }, []);
 
   const handlePayment = async () => {
     try {
@@ -179,7 +191,7 @@ export default function PaymentSummaryCard({
       {(paymentMethodBrand || paymentMethodLast4) && (
         <View style={styles.paymentMethodSection}>
           <Text style={styles.paymentLabel}>
-            {paymentMethodBrand || 'Payment Method'} {paymentMethodLast4 ? `•••• ${paymentMethodLast4}` : ''}
+            Paying with {paymentMethodBrand ? paymentMethodBrand.charAt(0).toUpperCase() + paymentMethodBrand.slice(1) : 'Payment Method'} {paymentMethodLast4 ? `•••• ${paymentMethodLast4}` : ''}
           </Text>
         </View>
       )}
@@ -227,7 +239,7 @@ export default function PaymentSummaryCard({
           onPress={handlePayment}
         >
           <Text style={styles.payButtonText}>
-            Pay with {paymentMethodBrand || 'card'}
+            Pay with {paymentMethodBrand ? paymentMethodBrand.charAt(0).toUpperCase() + paymentMethodBrand.slice(1) : ''} card
           </Text>
         </TouchableOpacity>
       </View>

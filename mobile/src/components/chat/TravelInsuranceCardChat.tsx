@@ -12,8 +12,6 @@ type Props = {
   plan: TravelInsurancePlan;
   roamingPlan?: RoamingPlan | null;
   calendarEventId: string;
-  paymentMethodBrand?: string;
-  paymentMethodLast4?: string;
   onInsurancePurchased?: (data: any) => void;
 };
 
@@ -21,15 +19,11 @@ export default function TravelInsuranceCardChat({
   plan,
   roamingPlan,
   calendarEventId,
-  paymentMethodBrand: propBrand,
-  paymentMethodLast4: propLast4,
   onInsurancePurchased,
 }: Props) {
   const [showPaymentSummary, setShowPaymentSummary] = useState(false);
   const [showCoverageDetails, setShowCoverageDetails] = useState(false);
   const [customer, setCustomer] = useState<Customer | null>(null);
-  const [paymentBrand, setPaymentBrand] = useState(propBrand || 'Card');
-  const [paymentLast4, setPaymentLast4] = useState(propLast4);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -37,14 +31,6 @@ export default function TravelInsuranceCardChat({
       try {
         const customerData = await api.getMe();
         setCustomer(customerData);
-
-        // If payment method details weren't provided as props, set defaults
-        if (!propBrand) {
-          setPaymentBrand('Card');
-        }
-        if (!propLast4) {
-          setPaymentLast4(undefined);
-        }
       } catch (err) {
         console.warn('Failed to fetch customer data', err);
       } finally {
@@ -52,7 +38,7 @@ export default function TravelInsuranceCardChat({
       }
     };
     fetchCustomer();
-  }, [propBrand, propLast4]);
+  }, []);
 
   const handleProceed = () => {
     setShowPaymentSummary(true);
@@ -78,8 +64,6 @@ export default function TravelInsuranceCardChat({
         <PaymentSummaryCard
           roamingPlan={roamingPlan}
           insurancePlan={plan}
-          paymentMethodBrand={paymentBrand}
-          paymentMethodLast4={paymentLast4}
           savedPaymentMethodId={paymentMethodId}
           calendarEventId={calendarEventId}
           onViewOptions={() => setShowPaymentSummary(false)}
