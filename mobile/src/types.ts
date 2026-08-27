@@ -28,6 +28,7 @@ export type CalendarEvent = {
   source: 'google' | 'device' | 'gmail' | 'mock';
   raw_details: Record<string, unknown>;
   created_at: string;
+  is_domestic?: boolean;
 };
 
 export type WeatherSummary = {

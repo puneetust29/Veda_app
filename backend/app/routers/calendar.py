@@ -11,7 +11,7 @@ from app.config import get_settings
 from app.db.client import get_supabase
 from app.deps import get_current_customer
 from app.integrations import flight_classifier, google_calendar, google_oauth
-from app.utils.airport_mapper import get_destination_country
+from app.utils.airport_mapper import get_destination_country, is_domestic_flight
 from app.services.trip_service import get_round_trips
 
 router = APIRouter(prefix="/calendar", tags=["calendar"])
@@ -62,6 +62,13 @@ def list_events(customer: dict = Depends(get_current_customer)) -> list[dict]:
         .order("start_datetime")
         .execute()
     )
+    # Add is_domestic flag for each flight based on customer's home country
+    customer_country = customer.get("country")
+    for event in result.data:
+        if event.get("event_type") == "flight":
+            event["is_domestic"] = is_domestic_flight(event.get("destination"), customer_country)
+        else:
+            event["is_domestic"] = False
     return result.data
 
 
