@@ -337,7 +337,8 @@ export default function AppPermissionsScreen({ navigation }: Props) {
   };
 
   // --------------------------------------------------
-  // Cosmetic app toggle handlers
+  // Cosmetic app toggle handlers, 
+  // keeping this code as commented so that in future can be enabled for all apps per config.
   // --------------------------------------------------
 
   // const toggleApp = (id: string) => {

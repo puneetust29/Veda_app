@@ -1,3 +1,10 @@
+export type CurrentPlanCard = {
+  id: string;
+  title: string;
+  subtitle: string;
+  bullet: string;
+};
+
 export type Customer = {
   id: string;
   phone_number: string;
@@ -6,6 +13,7 @@ export type Customer = {
   telecom_plan: string;
   account_number: string;
   created_at: string;
+  current_plans: CurrentPlanCard[];
 };
 
 export type CalendarEvent = {

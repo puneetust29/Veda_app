@@ -1,5 +1,4 @@
 import { StyleSheet, View, Image } from 'react-native';
-// import { SvgUri } from 'react-native-svg';
 import HeroBanner from '../../../assets/onboarding-banner-swoosh.svg'
 
 import { colors } from '../../theme';
@@ -10,15 +9,7 @@ export default function OnboardingBanner() {
   return (
     <View style={styles.container}>
       <View style={styles.swooshContainer}>
-        {/* <SvgUri
-          width={200}
-          height={280}
-          uri={require('../../../assets/onboarding-banner-swoosh.svg')}
-          style={styles.swoosh}
-        /> */}
         <HeroBanner width={200} height={280} style={styles.swoosh} />
-        {/* <Image
-        source={require('../../../assets/onboarding-banner.png')} resizeMode={'contain'} width={200} height={180}/> */}
       </View>
     </View>
   );

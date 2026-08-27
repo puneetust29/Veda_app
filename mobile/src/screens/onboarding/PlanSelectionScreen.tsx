@@ -672,11 +672,11 @@ const styles = StyleSheet.create({
     paddingLeft: BODY_SIDE_PADDING,
     paddingRight: BODY_SIDE_PADDING,
     gap: CARD_GAP,
-    marginTop: 22, // progress bar to card top in the reference
+    marginTop: 22,
   },
 
   accessCard: {
-    minHeight: 334, // reference card height at 375pt
+    minHeight: 334,
     borderRadius: radii.xl,
     borderWidth: 1,
     borderColor: PINK_BORDER,

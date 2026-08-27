@@ -3,10 +3,9 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View, Image } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 
-import GoogleLogo from '../../../assets/google-logo.svg';
 import StepHeader from '../../components/onboarding/StepHeader';
 import StepProgressBar from '../../components/onboarding/StepProgressBar';
 import { useAuth } from '../../context/AuthContext';
@@ -26,6 +25,7 @@ export default function AccountSelectionScreen({ navigation }: Props) {
   const [status, setStatus] = useState<GoogleCalendarStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const appGoogle = require('../../../assets/dashboard/app-google.png');
 
   const load = useCallback(async () => {
     setStatus(await api.googleAuthStatus());
@@ -118,7 +118,7 @@ export default function AccountSelectionScreen({ navigation }: Props) {
         ) : (
           <View style={styles.groupCard}>
             <View style={styles.groupHeader}>
-              <GoogleLogo width={18} height={18} />
+              <Image source={appGoogle} style={{width: 18, height: 18}} />
               <Text style={styles.groupTitle}>Google Account</Text>
               <View style={styles.groupPill}>
                 <Text style={styles.groupPillText}>Calendar + Gmail</Text>

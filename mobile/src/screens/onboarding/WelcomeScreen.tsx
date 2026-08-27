@@ -6,9 +6,10 @@ import type { FC, SVGProps } from 'react';
 
 import StepHeader from '../../components/onboarding/StepHeader';
 import StepProgressBar from '../../components/onboarding/StepProgressBar';
+import { useAuth } from '../../context/AuthContext';
 import { useOnboarding } from '../../context/OnboardingContext';
 import { colors, radii, spacing, typography } from '../../theme';
-import type { OnboardingStackParamList } from '../../types';
+import type { CurrentPlanCard, OnboardingStackParamList } from '../../types';
 import Cmf2Pro from '../../../assets/CMF-2-pro.svg';
 import bigValueBundle from '../../../assets/big-value-bundle.svg';
 import connectedLines from '../../../assets/connected-lines.svg';
@@ -17,19 +18,21 @@ import payAsYouGo from '../../../assets/pay-as-you-go.svg';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'Welcome'>;
 
-type RecCard = {
-  id: string;
-  icon: FC<SVGProps<SVGSVGElement>>;
-  title: string;
-  subtitle: string;
-  bullet: string;
+// The backend only knows card ids/copy (see customers.current_plans); icons
+// stay a frontend concern mapped by id.
+const CARD_ICONS: Record<string, FC<SVGProps<SVGSVGElement>>> = {
+  'pay-as-you-go': payAsYouGo,
+  bundle: bigValueBundle,
+  phone: Cmf2Pro,
+  lines: connectedLines,
 };
 
-const CARDS: RecCard[] = [
-  { id: 'pay-as-you-go', icon: payAsYouGo, title: 'Pay as you go', subtitle: 'Your Vodafone plan', bullet: 'Recommendations will match your plan.' },
-  { id: 'bundle', icon: bigValueBundle, title: '30-day Bundle', subtitle: 'Big Value', bullet: 'Included benefits will be surfaced automatically.' },
-  { id: 'phone', icon: Cmf2Pro, title: 'CMF Phone 2 Pro', subtitle: 'Primary device', bullet: 'Suggestions will adapt to your device.' },
-  { id: 'lines', icon: connectedLines, title: '3 connected lines', subtitle: 'Your household', bullet: 'Ready to help everyone stay connected.' },
+// Fallback used before the customer profile loads or if current_plans is empty.
+const FALLBACK_CARDS: CurrentPlanCard[] = [
+  { id: 'pay-as-you-go', title: 'Pay as you go', subtitle: 'Your Vodafone plan', bullet: 'Recommendations will match your plan.' },
+  { id: 'bundle', title: '30-day Bundle', subtitle: 'Big Value', bullet: 'Included benefits will be surfaced automatically.' },
+  { id: 'phone', title: 'CMF Phone 2 Pro', subtitle: 'Primary device', bullet: 'Suggestions will adapt to your device.' },
+  { id: 'lines', title: '3 connected lines', subtitle: 'Your household', bullet: 'Ready to help everyone stay connected.' },
 ];
 
 // Recommendation cards auto-cycle with a crossfade, with the next two cards
@@ -37,9 +40,11 @@ const CARDS: RecCard[] = [
 // cards swap on their own while the user reads the greeting.
 export default function WelcomeScreen({ navigation }: Props) {
   const { firstName } = useOnboarding();
+  const { customer } = useAuth();
   const [index, setIndex] = useState(0);
   const fade = useRef(new Animated.Value(1)).current;
-  
+
+  const cards = customer?.current_plans?.length ? customer.current_plans : FALLBACK_CARDS;
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -47,12 +52,13 @@ export default function WelcomeScreen({ navigation }: Props) {
         Animated.timing(fade, { toValue: 0, duration: 250, useNativeDriver: true }),
         Animated.timing(fade, { toValue: 1, duration: 250, useNativeDriver: true }),
       ]).start();
-      setTimeout(() => setIndex((prev) => (prev + 1) % CARDS.length), 250);
+      setTimeout(() => setIndex((prev) => (prev + 1) % cards.length), 250);
     }, 2200);
     return () => clearInterval(interval);
-  }, [fade]);
+  }, [fade, cards.length]);
 
-  const card = CARDS[index];
+  const card = cards[index % cards.length];
+  const CardIcon = CARD_ICONS[card.id];
 
   return (
     <View style={styles.container}>
@@ -67,7 +73,7 @@ export default function WelcomeScreen({ navigation }: Props) {
           
           <Animated.View style={[styles.imageCard, { opacity: fade }]}>
             <View>
-              {card.icon && <card.icon />}
+              {CardIcon && <CardIcon />}
             </View>
           </Animated.View>
 
@@ -85,8 +91,8 @@ export default function WelcomeScreen({ navigation }: Props) {
           {/* Bottom Section - Dots and CTA */}
           <View style={styles.bottomSection}>
             <View style={styles.dots}>
-              {CARDS.map((c, i) => (
-                <View key={c.id} style={[styles.dot, i === index && styles.dotActive]} />
+              {cards.map((c, i) => (
+                <View key={c.id} style={[styles.dot, i === index % cards.length && styles.dotActive]} />
               ))}
             </View>
 

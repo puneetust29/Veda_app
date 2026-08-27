@@ -34,17 +34,17 @@
   },
   "scripts": {
     "start": "expo start",
-    "start:local": "cp .env.local .env && expo start",
-    "start:dev": "cp .env.dev .env && expo start",
+    "start:local": "xcopy .env.local .env && expo start",
+    "start:dev": "copy .env.dev .env && expo start",
     "android": "expo start --android",
-    "android:local": "cp .env.local .env && expo start --localhost --android",
-    "android:dev": "cp .env.dev .env && expo start --android",
+    "android:local": "copy .env.local .env && expo start --localhost --android",
+    "android:dev": "copy .env.dev .env && expo start --android",
     "ios": "expo start --ios",
-    "ios:local": "cp .env.local .env && expo start --ios",
-    "ios:dev": "cp .env.dev .env && expo start --ios",
+    "ios:local": "copy .env.local .env && expo start --ios",
+    "ios:dev": "copy .env.dev .env && expo start --ios",
     "web": "expo start --web",
-    "web:local": "cp .env.local .env && expo start --web",
-    "web:dev": "cp .env.dev .env && expo start --web"
+    "web:local": "copy .env.local .env && expo start --web",
+    "web:dev": "copy .env.dev .env && expo start --web"
   },
   "private": true
 }

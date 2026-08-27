@@ -70,7 +70,6 @@ export default function PhoneEntryScreen({ navigation }: Props) {
           >
             <Text style={styles.flag}>{selectedCountry.flag}</Text>
             <Text style={styles.countryCode}>{selectedCountry.code}</Text>
-            {/* <Ionicons name="chevron-down" size={16} color={colors.textSecondary} /> */}
           </TouchableOpacity>
           <TextInput
             style={styles.input}

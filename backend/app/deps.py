@@ -7,6 +7,35 @@ from app.db.client import get_supabase
 
 bearer_scheme = HTTPBearer()
 
+# Mocked "recommendation card" data for the onboarding Welcome screen. Keyed by
+# id so the mobile app can map each entry to a local icon asset.
+DEFAULT_CURRENT_PLANS = [
+    {
+        "id": "pay-as-you-go",
+        "title": "Pay as you go",
+        "subtitle": "Your Vodafone plan",
+        "bullet": "Recommendations will match your plan.",
+    },
+    {
+        "id": "bundle",
+        "title": "30-day Bundle",
+        "subtitle": "Big Value",
+        "bullet": "Included benefits will be surfaced automatically.",
+    },
+    {
+        "id": "phone",
+        "title": "CMF Phone 2 Pro",
+        "subtitle": "Primary device",
+        "bullet": "Suggestions will adapt to your device.",
+    },
+    {
+        "id": "lines",
+        "title": "3 connected lines",
+        "subtitle": "Your household",
+        "bullet": "Ready to help everyone stay connected.",
+    },
+]
+
 
 def get_current_phone_number(
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
@@ -57,6 +86,7 @@ def get_or_create_customer(phone_number: str) -> dict:
                 "address": "Unknown",
                 "telecom_plan": "Standard Mobile",
                 "account_number": phone_number,
+                "current_plans": DEFAULT_CURRENT_PLANS,
             }
         )
         .execute()
