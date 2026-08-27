@@ -1,8 +1,13 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography } from '../../../theme';
 import type { TravelInsurancePlan } from '../../../types';
+
+const PROVIDER_LOGO_COLORS: Record<string, string> = {
+  Allianz: '#1E3A8A',
+  default: '#1E40AF',
+};
 
 type Props = {
   plan: TravelInsurancePlan;
@@ -16,8 +21,8 @@ export default function TravelInsuranceCard({ plan, onViewDetails, onProceed }: 
     <View style={styles.card}>
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.providerLogo}>
-          <Ionicons name="shield-checkmark" size={24} color={colors.brand} />
+        <View style={[styles.providerLogo, { backgroundColor: PROVIDER_LOGO_COLORS[plan.provider] || PROVIDER_LOGO_COLORS.default }]}>
+          <Ionicons name="shield-checkmark" size={24} color="#FFFFFF" />
         </View>
         <View style={styles.headerText}>
           <Text style={styles.provider}>{plan.provider}</Text>
@@ -42,42 +47,65 @@ export default function TravelInsuranceCard({ plan, onViewDetails, onProceed }: 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Coverage includes</Text>
 
-        <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Coverage duration</Text>
-          <Text style={styles.detailValue}>
-            {plan.coverageStart} to {plan.coverageEnd}
-          </Text>
+        <View style={styles.coverageItem}>
+          <View style={styles.coverageIconBadge}>
+            <Text style={styles.coverageIcon}>📅</Text>
+          </View>
+          <View style={styles.coverageContent}>
+            <Text style={styles.coverageItemLabel}>Coverage duration</Text>
+            <Text style={styles.coverageItemValue}>
+              {plan.coverageStart} to {plan.coverageEnd}
+            </Text>
+          </View>
         </View>
 
-        <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Benefits</Text>
-          <Text style={styles.detailValue}>{plan.benefitsSummary}</Text>
+        <View style={styles.coverageItem}>
+          <View style={styles.coverageIconBadge}>
+            <Text style={styles.coverageIcon}>🛡️</Text>
+          </View>
+          <View style={[styles.coverageContent, { flex: 1 }]}>
+            <View style={styles.benefitsHeader}>
+              <Text style={styles.coverageItemLabel}>Benefits</Text>
+              <Pressable onPress={() => console.log('info pressed')}>
+                <Ionicons name="information-circle" size={18} color="#D32F2F" />
+              </Pressable>
+            </View>
+            <Text style={styles.coverageItemValue}>{plan.benefitsSummary}</Text>
+          </View>
         </View>
       </View>
+
+      {/* Divider before premium */}
+      <View style={styles.divider} />
 
       {/* Premium */}
       <View style={styles.premiumRow}>
         <Text style={styles.premiumLabel}>Premium</Text>
         <Text style={styles.premiumPrice}>
-          {plan.currency} {plan.premiumAmount.toFixed(2)}
+          {plan.currency}{plan.premiumAmount.toFixed(2)}
         </Text>
       </View>
 
-      {/* Action Buttons */}
-      <TouchableOpacity
-        style={styles.viewDetailsButton}
-        onPress={() => setShowDetails(!showDetails)}
-      >
-        <Text style={styles.viewDetailsText}>
-          {showDetails ? 'Hide details' : 'View details'}
-        </Text>
-      </TouchableOpacity>
+      {/* Divider before buttons */}
+      <View style={styles.divider} />
 
-      {onProceed && (
-        <TouchableOpacity style={styles.proceedButton} onPress={onProceed}>
-          <Text style={styles.proceedButtonText}>Continue to Payment</Text>
+      {/* Action Buttons */}
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity
+          style={styles.viewDetailsButton}
+          onPress={() => setShowDetails(!showDetails)}
+        >
+          <Text style={styles.viewDetailsText}>
+            {showDetails ? 'Hide details' : 'View details'}
+          </Text>
         </TouchableOpacity>
-      )}
+
+        {onProceed && (
+          <TouchableOpacity style={styles.proceedButton} onPress={onProceed}>
+            <Text style={styles.proceedButtonText}>Continue</Text>
+          </TouchableOpacity>
+        )}
+      </View>
 
       {/* Expanded Details */}
       {showDetails && (
@@ -122,7 +150,7 @@ function DetailPoint({ text }: { text: string }) {
 function ChecklistItem({ text }: { text: string }) {
   return (
     <View style={styles.checklistItem}>
-      <Ionicons name="checkmark-circle" size={20} color={colors.brand} />
+      <Text style={styles.checkmarkIcon}>✓</Text>
       <Text style={styles.checklistText}>{text}</Text>
     </View>
   );
@@ -147,8 +175,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
     paddingBottom: spacing.lg,
     borderBottomWidth: 1,
-    borderBottomColor: colors.textSecondary,
-    borderBottomOpacity: 0.1,
+    borderBottomColor: '#E8E8E8',
   },
   providerLogo: {
     width: 40,
@@ -187,14 +214,21 @@ const styles = StyleSheet.create({
   },
   checklistItem: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: spacing.md,
     marginBottom: spacing.sm,
+  },
+  checkmarkIcon: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#D32F2F',
+    marginTop: 2,
   },
   checklistText: {
     ...typography.body,
     color: colors.textPrimary,
     flex: 1,
+    lineHeight: 22,
   },
   detailRow: {
     marginBottom: spacing.md,
@@ -209,46 +243,93 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.textPrimary,
   },
+  coverageItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.md,
+    marginBottom: spacing.md,
+  },
+  coverageIconBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    backgroundColor: '#FFE0E0',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  coverageIcon: {
+    fontSize: 20,
+  },
+  coverageContent: {
+    flex: 1,
+  },
+  coverageItemLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#666666',
+    marginBottom: spacing.xs,
+  },
+  coverageItemValue: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: colors.textPrimary,
+    lineHeight: 22,
+  },
+  benefitsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.xs,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#E8E8E8',
+    marginVertical: spacing.md,
+  },
   premiumRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: spacing.md,
-    marginBottom: spacing.lg,
-    borderTopWidth: 2,
-    borderTopColor: colors.textSecondary,
-    borderTopOpacity: 0.1,
-    borderBottomWidth: 2,
-    borderBottomColor: colors.textSecondary,
-    borderBottomOpacity: 0.1,
   },
   premiumLabel: {
-    ...typography.body,
+    fontSize: 16,
     fontWeight: '600',
     color: colors.textPrimary,
   },
   premiumPrice: {
-    ...typography.sectionTitle,
-    color: colors.brand,
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    alignItems: 'center',
   },
   viewDetailsButton: {
+    flex: 1,
+    borderRadius: 24,
     paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
     alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#D32F2F',
   },
   viewDetailsText: {
-    ...typography.body,
+    fontSize: 16,
     fontWeight: '600',
-    color: colors.brand,
+    color: '#D32F2F',
   },
   proceedButton: {
-    backgroundColor: colors.brand,
-    borderRadius: 12,
+    flex: 1,
+    backgroundColor: '#D32F2F',
+    borderRadius: 24,
     paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
     alignItems: 'center',
-    marginTop: spacing.sm,
   },
   proceedButtonText: {
-    ...typography.body,
+    fontSize: 16,
     fontWeight: '600',
     color: 'white',
   },
@@ -256,8 +337,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
     paddingTop: spacing.lg,
     borderTopWidth: 1,
-    borderTopColor: colors.textSecondary,
-    borderTopOpacity: 0.1,
+    borderTopColor: '#E8E8E8',
   },
   detailsTitle: {
     ...typography.sectionTitle,

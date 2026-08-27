@@ -239,4 +239,17 @@ export type ChatItem =
       error?: string;
     })
   | (ChatItemBase & { kind: 'receipt'; subscription: Subscription; planName: string })
+  | (ChatItemBase & {
+      kind: 'trip_preparation';
+      event: CalendarEvent;
+      hasFlightBooking: boolean;
+      hasHotelBooking: boolean;
+      hasRoamingActive: boolean;
+      hasInsuranceActive: boolean;
+    })
+  | (ChatItemBase & {
+      kind: 'confirmation_success';
+      planType: 'roaming' | 'insurance';
+      planId: string;
+    })
   | (ChatItemBase & { kind: 'error'; message: string; retryable: boolean });

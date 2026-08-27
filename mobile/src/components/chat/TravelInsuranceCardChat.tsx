@@ -63,6 +63,6 @@ export default function TravelInsuranceCardChat({ plan, calendarEventId, onInsur
 const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 0,
-    marginBottom: 10,
+    marginBottom: 12,
   },
 });

@@ -286,9 +286,10 @@ def sync_gmail_messages(
                     file=sys.stderr,
                 )
 
-        # Update last_gmail_synced_at timestamp for next incremental sync
+        # Update both last_gmail_synced_at (for incremental sync) and last_synced_at (general sync time)
         get_supabase().table("customers").update({
-            "last_gmail_synced_at": datetime.now(timezone.utc).isoformat()
+            "last_gmail_synced_at": datetime.now(timezone.utc).isoformat(),
+            "last_synced_at": datetime.now(timezone.utc).isoformat()
         }).eq("id", customer["id"]).execute()
 
         return {

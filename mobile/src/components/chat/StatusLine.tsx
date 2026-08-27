@@ -9,7 +9,7 @@ export default function StatusLine({ label, state }: Props) {
   return (
     <View style={styles.row}>
       {state === 'active' ? (
-        <ActivityIndicator size="small" color="#888" style={styles.icon} />
+        <ActivityIndicator size="small" color="#D32F2F" style={styles.icon} />
       ) : (
         <Text style={styles.checkmark}>✓</Text>
       )}
@@ -22,10 +22,10 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
-    paddingVertical: 2,
+    marginBottom: 12,
+    paddingVertical: 4,
   },
-  icon: { marginRight: 8, width: 16 },
-  checkmark: { color: '#0a7a3f', fontWeight: '700', marginRight: 8, width: 16, textAlign: 'center' },
-  label: { color: '#666', fontSize: 13, flexShrink: 1 },
+  icon: { marginRight: 10, width: 18 },
+  checkmark: { color: '#4CAF50', fontWeight: '700', marginRight: 10, width: 18, textAlign: 'center', fontSize: 14 },
+  label: { color: '#1F1F1F', fontSize: 14, flexShrink: 1, fontWeight: '500' },
 });

@@ -1,7 +1,7 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Calendar from 'expo-calendar';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import type { DropdownMenuItem } from '../components/common/DropdownMenu';
@@ -63,13 +63,15 @@ export default function DashboardScreen({ navigation }: Props) {
   const [activeInsuranceEventIds, setActiveInsuranceEventIds] = useState<Set<string>>(new Set());
   const [weather, setWeather] = useState<WeatherSummary>(PLACEHOLDER_WEATHER);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const autoSyncIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const loadEvents = useCallback(async () => {
     const [calendarEvents, subscriptions, insuranceStatus] = await Promise.all([
       api.listCalendarEvents(),
       api.listSubscriptions(),
-      api.getActiveInsurance().catch(() => ({ event_ids_with_insurance: [] })),
+      api.getActiveInsurance().catch(() => ({ purchases: [] })),
     ]);
     setEvents(calendarEvents);
     setActiveRoamingEventIds(
@@ -110,9 +112,30 @@ export default function DashboardScreen({ navigation }: Props) {
 
   useFocusEffect(
     useCallback(() => {
-      setLoading(true);
-      syncAndLoadEvents().finally(() => setLoading(false));
-    }, [syncAndLoadEvents]),
+      if (events.length === 0) {
+        setLoading(true);
+        syncAndLoadEvents().finally(() => setLoading(false));
+      } else {
+        setSyncing(true);
+        syncAndLoadEvents().finally(() => setSyncing(false));
+      }
+
+      // Set up 5-minute auto-sync timer
+      if (autoSyncIntervalRef.current) {
+        clearInterval(autoSyncIntervalRef.current);
+      }
+      autoSyncIntervalRef.current = setInterval(() => {
+        setSyncing(true);
+        syncAndLoadEvents().finally(() => setSyncing(false));
+      }, 5 * 60 * 1000); // 5 minutes
+
+      return () => {
+        if (autoSyncIntervalRef.current) {
+          clearInterval(autoSyncIntervalRef.current);
+          autoSyncIntervalRef.current = null;
+        }
+      };
+    }, [syncAndLoadEvents, events.length]),
   );
 
   const handleRefresh = async () => {
@@ -175,7 +198,7 @@ export default function DashboardScreen({ navigation }: Props) {
     <View style={styles.container}>
       <DashboardHeader avatarInitial={firstName.charAt(0).toUpperCase()} menuItems={menuItems} />
 
-      {loading ? (
+      {loading && events.length === 0 ? (
         <ActivityIndicator style={styles.loading} />
       ) : (
         <ScrollView

@@ -1,9 +1,8 @@
 import { memo } from 'react';
-import { View } from 'react-native';
 
 import type { ChatItem } from '../../types';
-import type { ViewMode, PlanState } from '../../hooks/useRoamingChat';
 import ConfirmationPrompt from './ConfirmationPrompt';
+import ConfirmationSuccessCard from './ConfirmationSuccessCard';
 import HotelBookingCard from '../common/HotelBookingCard';
 import MessageBubble from './MessageBubble';
 import ReceiptCard from './ReceiptCard';
@@ -11,27 +10,43 @@ import RecommendationCard from './RecommendationCard';
 import StatusLine from './StatusLine';
 import WhatsAppShareCard from './WhatsAppShareCard';
 import TravelInsuranceCardChat from './TravelInsuranceCardChat';
+import TripPreparationCard from './TripPreparationCard';
 
 type Props = {
   item: ChatItem;
   onConfirm?: (actionId: string) => void;
   onDecline?: (actionId: string) => void;
   onInsurancePurchased?: (data: any) => void;
-  currentView?: ViewMode;
-  onSwitchView?: (view: ViewMode) => void;
-  planState?: PlanState;
+  onContinuePrep?: () => void;
+  nextItem?: ChatItem;
 };
 
-function ChatItemViewImpl({ item, onConfirm, onDecline, onInsurancePurchased, currentView = 'roaming' }: Props) {
+function ChatItemViewImpl({ item, onConfirm, onDecline, onInsurancePurchased, onContinuePrep, nextItem }: Props) {
   switch (item.kind) {
     case 'text':
       return <MessageBubble text={item.text} tone={item.role} />;
     case 'status':
       return <StatusLine label={item.label} state={item.state} />;
+    case 'trip_preparation':
+      return (
+        <TripPreparationCard
+          event={item.event}
+          hasFlightBooking={item.hasFlightBooking}
+          hasHotelBooking={item.hasHotelBooking}
+          hasRoamingActive={item.hasRoamingActive}
+          hasInsuranceActive={item.hasInsuranceActive}
+          onContinue={() => onContinuePrep?.()}
+        />
+      );
     case 'card':
-      // Hide if currentView is not roaming (whether toggle visible or not)
-      if (currentView !== 'roaming') return <View />;
-      return <RecommendationCard card={item.card} />;
+      return (
+        <RecommendationCard
+          card={item.card}
+          confirmation={nextItem?.kind === 'confirmation' ? nextItem : undefined}
+          onConfirm={onConfirm}
+          onDecline={onDecline}
+        />
+      );
     case 'hotel':
       return (
         <HotelBookingCard
@@ -43,13 +58,13 @@ function ChatItemViewImpl({ item, onConfirm, onDecline, onInsurancePurchased, cu
     case 'whatsapp_share':
       return <WhatsAppShareCard text={item.text} />;
     case 'travel_insurance':
-      // Hide if currentView is not insurance (whether toggle visible or not)
-      if (currentView !== 'insurance') return <View />;
       return <TravelInsuranceCardChat plan={item.plan} calendarEventId={item.calendarEventId} onInsurancePurchased={onInsurancePurchased} />;
     case 'confirmation':
       return <ConfirmationPrompt item={item} onConfirm={onConfirm!} onDecline={onDecline!} />;
     case 'receipt':
       return <ReceiptCard subscription={item.subscription} planName={item.planName} />;
+    case 'confirmation_success':
+      return <ConfirmationSuccessCard planType={item.planType} />;
     case 'error':
       return <MessageBubble text={item.message} tone="error" />;
     default: {
