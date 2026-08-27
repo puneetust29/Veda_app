@@ -40,7 +40,7 @@ export default function DashboardHeader({ avatarInitial, onPressHistory, menuIte
       end={{ x: 0, y: 1 }}
       style={[styles.header, { paddingTop: insets.top - 10 + spacing.sm + 2 }]}
     >
-      <View pointerEvents="none" style={[styles.rings, { top: insets.top - 10 - RINGS_HEIGHT / 2 }]}>
+      <View pointerEvents="none" style={styles.ringsContainer}>
         <SvgXml xml={headerRings} width={RINGS_WIDTH} height={RINGS_HEIGHT} />
       </View>
 
@@ -77,9 +77,14 @@ const styles = StyleSheet.create({
     paddingBottom: 36,
     overflow: 'hidden',
   },
-  rings: {
+  ringsContainer: {
     position: 'absolute',
-    left: SCREEN_WIDTH / 2 - 3.22 - RINGS_WIDTH / 2,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   iconButton: {
     width: 56,
