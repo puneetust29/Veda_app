@@ -373,6 +373,40 @@ Do not include any explanation or additional text."""
         return None
 
 
+def is_domestic_flight(destination: Optional[str], customer_country: Optional[str]) -> bool:
+    """
+    Determine if a flight is domestic (destination in customer's home country).
+
+    Args:
+        destination: Airport code or city name of destination
+        customer_country: Customer's home country (ISO code like "US" or full name like "United States")
+
+    Returns: True if flight is within home country, False if international or unknown
+    """
+    if not destination or not customer_country:
+        return False
+
+    try:
+        dest_country = get_destination_country(destination)
+
+        # Convert ISO code to full country name if needed
+        customer_country_full = normalize_country_name(customer_country)
+
+        # Normalize both for comparison
+        dest_normalized = dest_country.strip().lower() if dest_country else ""
+        customer_normalized = customer_country_full.strip().lower() if customer_country_full else ""
+
+        # Domestic if destination is in home country and not "Unknown"
+        return (
+            dest_normalized != "unknown" and
+            customer_normalized != "unknown" and
+            dest_normalized == customer_normalized
+        )
+    except Exception:
+        # On any error, assume international (show badges to be safe)
+        return False
+
+
 def get_destination_country(airport_code: str, event_dict: Optional[dict] = None) -> str:
     """
     Intelligently identify destination country from airport code or event.
