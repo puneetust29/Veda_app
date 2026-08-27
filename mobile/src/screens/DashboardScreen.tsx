@@ -2,9 +2,10 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Calendar from 'expo-calendar';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import type { DropdownMenuItem } from '../components/common/DropdownMenu';
+import DashboardLoadingSkeleton from '../components/common/ShimmerLoader';
 import AskVintoButton from '../components/dashboard/AskVintoButton';
 import AttentionCarousel from '../components/dashboard/AttentionCarousel';
 import DashboardHeader from '../components/dashboard/DashboardHeader';
@@ -216,7 +217,9 @@ export default function DashboardScreen({ navigation }: Props) {
 
       <View style={styles.sheet}>
         {loading && events.length === 0 ? (
-          <ActivityIndicator style={styles.loading} />
+          <ScrollView contentContainerStyle={styles.scrollContent}>
+            <DashboardLoadingSkeleton />
+          </ScrollView>
         ) : (
           <ScrollView
             contentContainerStyle={styles.scrollContent}
@@ -262,7 +265,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     overflow: 'hidden',
   },
-  loading: { marginTop: spacing.xxxl },
   scrollContent: { paddingBottom: 96 },
   attentionHeader: {
     flexDirection: 'row',
