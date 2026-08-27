@@ -72,21 +72,6 @@ export default function RecommendationCard({ card, confirmation, onConfirm, onDe
             ))}
           </View>
 
-          {/* Family Setup Section - Placeholder */}
-          <View style={styles.divider} />
-          <Text style={styles.sectionHeader}>Family setup</Text>
-          <View style={styles.familySetup}>
-            <View style={styles.familyMember}>
-              <View style={styles.avatarBadge}>
-                <Text style={styles.avatarText}>👤</Text>
-              </View>
-              <View style={styles.memberInfo}>
-                <Text style={styles.memberName}>All travellers</Text>
-                <Text style={styles.memberPlan}>Data plan included</Text>
-              </View>
-            </View>
-          </View>
-
           {/* Total & Buttons Section */}
           {confirmation && price && (
             <>
@@ -190,39 +175,6 @@ const styles = StyleSheet.create({
     color: '#1F1F1F',
     flex: 1,
     lineHeight: 22,
-  },
-  familySetup: {
-    gap: 10,
-  },
-  familyMember: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-  avatarBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#FFE0E0',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  avatarText: {
-    fontSize: 18,
-  },
-  memberInfo: {
-    flex: 1,
-    paddingTop: 2,
-  },
-  memberName: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#1F1F1F',
-    marginBottom: 2,
-  },
-  memberPlan: {
-    fontSize: 13,
-    color: '#999999',
   },
   totalRow: {
     flexDirection: 'row',

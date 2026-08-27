@@ -47,7 +47,7 @@ export default function TravelInsuranceCardChat({ plan, calendarEventId, onInsur
 
   return (
     <View style={styles.container}>
-      <TravelInsuranceCard plan={plan} onProceed={handleProceed} />
+      <TravelInsuranceCard plan={plan} onProceed={onInsurancePurchased ? handleProceed : undefined} />
       <ConfirmPaymentModal
         visible={showPaymentModal}
         plan={plan}
