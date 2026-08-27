@@ -1,29 +1,31 @@
 import { StyleSheet, Text, TouchableOpacity } from 'react-native';
 
-import { colors, radii, spacing, typography } from '../../theme';
+import { colors, fonts, spacing } from '../../theme';
 
 type Props = {
   onPress?: () => void;
 };
 
 // Fixed-position CTA pinned to the bottom of the Dashboard, matching the
-// Figma "Tap to ask Vinto" button.
+// Figma "Tap to ask Vinto" button (node 1:35575): 56px tall, 24px radius,
+// bright red fill with a bold Urbanist label.
 export default function AskVintoButton({ onPress }: Props) {
   return (
     <TouchableOpacity style={styles.button} onPress={onPress} activeOpacity={0.85}>
-      <Text style={styles.label}>Tap to ask Vinto</Text>
+      <Text style={styles.label}>Tap to ask Veda</Text>
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
   button: {
-    backgroundColor: colors.brand,
-    borderRadius: radii.pill,
-    paddingVertical: spacing.lg,
+    height: 56,
+    backgroundColor: colors.accentCta,
+    borderRadius: 24,
     alignItems: 'center',
-    marginHorizontal: spacing.xl,
+    justifyContent: 'center',
+    marginHorizontal: spacing.xxl,
     marginBottom: spacing.lg,
   },
-  label: { color: colors.white, ...typography.bodyBold, fontSize: 16 },
+  label: { color: colors.white, fontFamily: fonts.bold, fontSize: 16 },
 });

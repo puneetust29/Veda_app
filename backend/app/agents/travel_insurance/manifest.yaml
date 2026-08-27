@@ -1,0 +1,15 @@
+name: travel_insurance_agent
+version: 0.1.0
+description: Recommends a travel insurance plan matched to an upcoming trip's destination and duration.
+enabled: true
+priority: 20
+capabilities: [travel_insurance]
+triggers:
+  rules:
+    - key: trigger_travel_insurance
+      op: eq
+      value: true
+required_context: [customer, calendar_event, trigger_travel_insurance]
+tools: [insurance.get_plans]
+actions: []
+output_schema: app.agents.travel_insurance.schemas:TravelInsuranceRecommendationCard

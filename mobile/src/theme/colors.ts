@@ -50,4 +50,21 @@ export const colors = {
   gradientBannerEnd: '#970000',
   gradientCardStart: '#D5201F',
   gradientCardEnd: '#C81F1D',
+
+  // Dashboard tokens pulled 1:1 from Figma node 1:35332 ("5 - Stability
+  // Index Screen"). The design uses several distinct reds — keep them
+  // separate rather than collapsing into `brand`.
+  // Figma specifies #d5201f -> #c81f1d, which is imperceptible on device;
+  // the end stop is deepened so the gradient actually reads.
+  headerGradientStart: '#d5201f',
+  headerGradientEnd: '#a81412',
+  accentButton: '#e60000',
+  accentCta: '#f00405',
+  chipTint: '#fff4f4',
+  badgeTint: '#fef1f1',
+  cardFooter: '#f5f6fa',
+  tileBorder: '#dedede',
+  sourceBadgeBorder: '#7891ae',
+  textConnect: '#6b7280',
+  dotInactive: '#d9d9d9',
 };

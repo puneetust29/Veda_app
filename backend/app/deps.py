@@ -66,3 +66,15 @@ def get_or_create_customer(phone_number: str) -> dict:
 
 def get_current_customer(phone_number: str = Depends(get_current_phone_number)) -> dict:
     return get_or_create_customer(phone_number)
+
+
+def update_customer_stripe_id(customer_id: str, stripe_customer_id: str) -> dict:
+    """Update the Stripe customer ID for a customer."""
+    supabase = get_supabase()
+    result = (
+        supabase.table("customers")
+        .update({"stripe_customer_id": stripe_customer_id})
+        .eq("id", customer_id)
+        .execute()
+    )
+    return result.data[0] if result.data else None

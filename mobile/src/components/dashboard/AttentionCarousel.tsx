@@ -4,6 +4,7 @@ import {
   Animated,
   Dimensions,
   Image,
+  ImageSourcePropType,
   NativeScrollEvent,
   NativeSyntheticEvent,
   StyleSheet,
@@ -11,54 +12,49 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SvgXml } from 'react-native-svg';
 
 import CheckableTag from '../common/CheckableTag';
-import IconCircle from '../common/IconCircle';
-import { colors, radii, spacing, typography } from '../../theme';
+import { colors, fonts, spacing } from '../../theme';
 import type { CalendarEvent } from '../../types';
+import { arrowWhite, chipDevices, chipMap } from './figmaSvgs';
 
 type Props = {
   flights: CalendarEvent[];
   activeRoamingEventIds: Set<string>;
+  activeInsuranceEventIds: Set<string>;
   onPressFlight: (flight: CalendarEvent) => void;
 };
 
 type TagKey = 'roaming' | 'insurance';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CARD_WIDTH = SCREEN_WIDTH - 64;
-const CARD_SPACING = spacing.md;
+// Figma: 345px card on a 414px frame → 69px of horizontal chrome.
+const CARD_WIDTH = SCREEN_WIDTH - 69;
+const CARD_SPACING = spacing.lg;
 const SNAP_INTERVAL = CARD_WIDTH + CARD_SPACING;
 
-// Map event source to its icon and color
-function getSourceIcon(source: 'google' | 'device' | 'gmail' | 'mock'): keyof typeof Ionicons.glyphMap {
-  switch (source) {
-    case 'google':
-      return 'calendar-outline';
-    case 'device':
-      return 'phone-portrait-outline';
-    case 'gmail':
-      return 'mail-outline';
-    case 'mock':
-      return 'alert-circle-outline';
-    default:
-      return 'help-circle-outline';
-  }
-}
+// Design-style source badge (node 1:35402): white circle with a slate
+// border and the source app's logo inside.
+const SOURCE_LOGOS: Record<'google' | 'gmail', ImageSourcePropType> = {
+  google: require('../../../assets/dashboard/app-gcal.png'),
+  gmail: require('../../../assets/dashboard/app-gmail.png'),
+};
 
-function getSourceIconColor(source: 'google' | 'device' | 'gmail' | 'mock'): string {
-  switch (source) {
-    case 'google':
-      return '#4285F4';  // Google blue
-    case 'device':
-      return '#34C759';  // Apple green
-    case 'gmail':
-      return '#EA4335';  // Gmail red
-    case 'mock':
-      return '#FBBC04';  // Yellow
-    default:
-      return colors.brand;
-  }
+function SourceBadge({ source }: { source: CalendarEvent['source'] }) {
+  return (
+    <View style={styles.sourceBadge}>
+      {source === 'google' || source === 'gmail' ? (
+        <Image source={SOURCE_LOGOS[source]} style={styles.sourceLogo} resizeMode="contain" />
+      ) : (
+        <Ionicons
+          name={source === 'device' ? 'phone-portrait-outline' : 'alert-circle-outline'}
+          size={15}
+          color={colors.sourceBadgeBorder}
+        />
+      )}
+    </View>
+  );
 }
 
 function cityFromLocation(location: string | null): string {
@@ -67,23 +63,18 @@ function cityFromLocation(location: string | null): string {
   return location.split(' ')[0];
 }
 
-function formatDateRange(start: string, end: string) {
-  const startDate = new Date(start);
-  const endDate = new Date(end);
-  const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
-  return `${startDate.toLocaleDateString(undefined, opts)} – ${endDate.toLocaleDateString(undefined, opts)}`;
-}
-
 // Horizontal, snap-paged carousel of "needs your attention" flight cards —
-// image banner with source badges, title/subtitle, tag chips (tap to
-// confirm), CTA row, pagination dots below. Built on RN's built-in Animated
-// API rather than reanimated, which isn't a dependency yet.
-export default function AttentionCarousel({ flights, activeRoamingEventIds, onPressFlight }: Props) {
+// styled 1:1 against Figma node 1:35370: white 24px-radius card with a soft
+// drop shadow, inset 20px-radius image banner, source badge, Urbanist
+// title + Inter body copy, chips, and a grey footer action bar with a red
+// square arrow button. Built on RN's built-in Animated API rather than
+// reanimated, which isn't a dependency yet.
+export default function AttentionCarousel({ flights, activeRoamingEventIds, activeInsuranceEventIds, onPressFlight }: Props) {
   const [activeIndex, setActiveIndex] = useState(0);
   const scrollX = useRef(new Animated.Value(0)).current;
-  // Per-flight, per-tag confirmation state for chips with no backend-tracked status
-  // (currently just "insurance"). Tapping toggles it into the confirmed (green) state.
-  const [confirmed, setConfirmed] = useState<Record<string, Set<TagKey>>>({});
+  // Per-flight, per-tag confirmation state for chips with no backend-tracked status.
+  // Insurance status now comes from backend, so only track local confirmations if needed.
+  const [confirmed, setConfirmed] = useState<Record<string, Set<TagKey>>>({}); // TODO: Consider removing if not needed
 
   const toggleTag = (flightId: string, tag: TagKey) => {
     setConfirmed((prev) => {
@@ -127,6 +118,7 @@ export default function AttentionCarousel({ flights, activeRoamingEventIds, onPr
             index={index}
             scrollX={scrollX}
             roamingActive={activeRoamingEventIds.has(flight.id)}
+            insuranceActive={activeInsuranceEventIds.has(flight.id)}
             confirmedTags={confirmed[flight.id] ?? new Set<TagKey>()}
             onToggleTag={(tag) => toggleTag(flight.id, tag)}
             onPress={() => onPressFlight(flight)}
@@ -150,6 +142,7 @@ function AttentionCard({
   index,
   scrollX,
   roamingActive,
+  insuranceActive,
   confirmedTags,
   onToggleTag,
   onPress,
@@ -158,6 +151,7 @@ function AttentionCard({
   index: number;
   scrollX: Animated.Value;
   roamingActive: boolean;
+  insuranceActive: boolean;
   confirmedTags: Set<TagKey>;
   onToggleTag: (tag: TagKey) => void;
   onPress: () => void;
@@ -184,105 +178,129 @@ function AttentionCard({
           resizeMode="cover"
         />
         <View style={styles.badgeRow}>
-          <IconCircle
-            icon={getSourceIcon(flight.source)}
-            size={26}
-            iconSize={14}
-            iconColor={colors.white}
-            backgroundColor={getSourceIconColor(flight.source)}
+          <SourceBadge source={flight.source} />
+        </View>
+      </View>
+
+      <View style={styles.content}>
+        <Text style={styles.cardTitle} numberOfLines={2}>
+          Get your {destinationCity} trip ready
+        </Text>
+        <Text style={styles.cardSubtitle} numberOfLines={2}>
+          I&apos;ve found two things you&apos;ll want to complete before you travel.
+        </Text>
+
+        <View style={styles.tagRow}>
+          <CheckableTag
+            iconXml={chipMap}
+            label="Travel Insurance"
+            confirmed={insuranceActive || confirmedTags.has('insurance')}
+            onPress={() => onToggleTag('insurance')}
+          />
+          <CheckableTag
+            iconXml={chipDevices}
+            label="Roaming"
+            confirmed={roamingActive || confirmedTags.has('roaming')}
+            onPress={() => onToggleTag('roaming')}
           />
         </View>
       </View>
 
-      <Text style={styles.cardTitle} numberOfLines={2}>
-        Get your {destinationCity} trip ready
-      </Text>
-      <Text style={styles.cardSubtitle} numberOfLines={2}>
-        I&apos;ve found two things you&apos;ll want to complete before you travel.
-      </Text>
-      <Text style={styles.cardDate}>
-        {flight.title} · {formatDateRange(flight.start_datetime, flight.end_datetime)}
-      </Text>
-
-      <View style={styles.tagRow}>
-        <CheckableTag
-          icon="cellular-outline"
-          label="Roaming"
-          confirmed={roamingActive || confirmedTags.has('roaming')}
-          onPress={() => onToggleTag('roaming')}
-        />
-        <CheckableTag
-          icon="map-outline"
-          label="Travel Insurance"
-          confirmed={confirmedTags.has('insurance')}
-          onPress={() => onToggleTag('insurance')}
-        />
-      </View>
-
-      <TouchableOpacity style={styles.ctaRow} onPress={onPress}>
+      <TouchableOpacity style={styles.ctaRow} onPress={onPress} activeOpacity={0.8}>
         <Text style={styles.ctaText}>Review recommendation</Text>
-        <IconCircle icon="arrow-forward" size={28} iconSize={14} iconColor={colors.white} backgroundColor={colors.brand} />
+        <View style={styles.ctaButton}>
+          <SvgXml xml={arrowWhite} width={14} height={14} />
+        </View>
       </TouchableOpacity>
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  scrollContent: { paddingHorizontal: spacing.xl },
+  scrollContent: { paddingHorizontal: spacing.xxl, paddingBottom: spacing.xxl },
   empty: { color: colors.textMuted, textAlign: 'center', marginTop: spacing.xxl },
   card: {
     width: CARD_WIDTH,
+    minHeight: 385,
     marginRight: CARD_SPACING,
-    borderRadius: radii.lg,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    overflow: 'hidden',
-    paddingBottom: spacing.lg,
+    borderRadius: 24,
+    backgroundColor: colors.white,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 14 },
+    shadowRadius: 12,
+    shadowOpacity: 0.07,
+    elevation: 6,
   },
   banner: {
-    height: 140,
-    backgroundColor: colors.brand,
+    height: 188,
+    margin: 8,
+    borderRadius: 20,
+    overflow: 'hidden',
+    backgroundColor: colors.surface,
   },
   badgeRow: {
     position: 'absolute',
-    top: spacing.md,
-    right: spacing.md,
+    top: spacing.lg,
+    right: spacing.lg,
     flexDirection: 'row',
   },
-  badgeOverlap: { marginLeft: -8 },
+  sourceBadge: {
+    width: 33,
+    height: 33,
+    borderRadius: 33,
+    backgroundColor: colors.white,
+    borderWidth: 1.2,
+    borderColor: colors.sourceBadgeBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sourceLogo: { width: 15, height: 15 },
+  content: {
+    flex: 1,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+  },
   cardTitle: {
-    ...typography.bodyBold,
-    fontSize: 17,
+    fontFamily: fonts.semiBold,
+    fontSize: 20,
+    lineHeight: 24,
     color: colors.textPrimary,
-    marginTop: spacing.md,
-    marginHorizontal: spacing.lg,
   },
   cardSubtitle: {
-    ...typography.body,
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
-    marginHorizontal: spacing.lg,
+    fontFamily: fonts.bodyLight,
+    fontSize: 12,
+    lineHeight: 18,
+    color: colors.textPrimary,
+    marginTop: spacing.sm,
+    maxWidth: 242,
   },
-  cardDate: {
-    ...typography.caption,
-    color: colors.textMuted,
-    marginTop: spacing.xs,
-    marginHorizontal: spacing.lg,
-  },
-  tagRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md, marginHorizontal: spacing.lg },
+  tagRow: { flexDirection: 'row', gap: spacing.xs, marginTop: spacing.md },
   ctaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    backgroundColor: colors.cardFooter,
+    borderBottomLeftRadius: 23,
+    borderBottomRightRadius: 23,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
     marginTop: spacing.lg,
-    marginHorizontal: spacing.lg,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingTop: spacing.md,
   },
-  ctaText: { ...typography.bodyBold, fontSize: 14, color: colors.textPrimary },
-  dots: { flexDirection: 'row', justifyContent: 'center', gap: 6, marginTop: spacing.md },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.border },
-  dotActive: { backgroundColor: colors.brand, width: 16 },
+  ctaText: {
+    fontFamily: fonts.semiBold,
+    fontSize: 16,
+    lineHeight: 16,
+    color: colors.textPrimary,
+  },
+  ctaButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 12,
+    backgroundColor: colors.accentButton,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dots: { flexDirection: 'row', justifyContent: 'center', gap: 4 },
+  dot: { width: 5, height: 5, borderRadius: 100, backgroundColor: colors.dotInactive },
+  dotActive: { backgroundColor: colors.accentCta, width: 24, height: 5 },
 });

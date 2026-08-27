@@ -4,20 +4,20 @@ import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import ChatItemView from '../components/chat/ChatItemView';
-import { useRoamingChat } from '../hooks/useRoamingChat';
+import { useWorkflowChat } from '../hooks/useWorkflowChat';
 import type { RootStackParamList } from '../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Chat'>;
 
 export default function ChatScreen({ route, navigation }: Props) {
   const { event } = route.params;
-  const { items, phase, confirm, decline, retry, sendMessage } = useRoamingChat(event);
+  const { items, phase, confirm, decline, retry, sendMessage, handleInsurancePurchased, workflowState, continueWorkflow } = useWorkflowChat(event);
   const scrollViewRef = useRef<ScrollView>(null);
   const [draft, setDraft] = useState('');
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
-      <View style={styles.tripHeader}>
+      {/* <View style={styles.tripHeader}>
         <Text style={styles.title}>{event.title}</Text>
         <Text style={styles.subtitle}>
           {event.origin} → {event.destination}
@@ -26,7 +26,7 @@ export default function ChatScreen({ route, navigation }: Props) {
           {new Date(event.start_datetime).toLocaleDateString()} –{' '}
           {new Date(event.end_datetime).toLocaleDateString()}
         </Text>
-      </View>
+      </View> */}
 
       <ScrollView
         ref={scrollViewRef}
@@ -34,9 +34,37 @@ export default function ChatScreen({ route, navigation }: Props) {
         contentContainerStyle={styles.threadContent}
         onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
       >
-        {items.map((item) => (
-          <ChatItemView key={item.id} item={item} onConfirm={confirm} onDecline={decline} />
-        ))}
+        {items.map((item, idx) => {
+          // Skip hotel booking component
+          if (item.kind === 'hotel') {
+            return null;
+          }
+
+          // Skip rendering confirmation items for roaming plans - they're combined with the card
+          if (item.kind === 'confirmation' && item.risk === 'commit') {
+            const prevItem = idx > 0 ? items[idx - 1] : null;
+            if (prevItem?.kind === 'card' && prevItem.card.kind === 'roaming_plan') {
+              return null; // Skip - already rendered with the card
+            }
+          }
+
+          return (
+            <ChatItemView
+              key={item.id}
+              item={item}
+              onConfirm={confirm}
+              onDecline={decline}
+              onInsurancePurchased={handleInsurancePurchased}
+              onContinuePrep={continueWorkflow}
+              // Pass the next item if it's a confirmation for a roaming card
+              nextItem={
+                item.kind === 'card' && item.card.kind === 'roaming_plan' && items[idx + 1]?.kind === 'confirmation'
+                  ? items[idx + 1]
+                  : undefined
+              }
+            />
+          );
+        })}
       </ScrollView>
 
       {phase === 'complete' && (
@@ -86,67 +114,68 @@ export default function ChatScreen({ route, navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  container: { flex: 1, backgroundColor: '#FFFFFF' },
   tripHeader: {
     paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 12,
+    paddingTop: 16,
+    paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: '#E8E8E8',
   },
-  title: { fontSize: 20, fontWeight: '700' },
-  subtitle: { color: '#444', marginTop: 4, fontSize: 15 },
-  date: { color: '#888', marginTop: 2, fontSize: 13 },
+  title: { fontSize: 20, fontWeight: '700', color: '#1F1F1F' },
+  subtitle: { color: '#666666', marginTop: 6, fontSize: 15 },
+  date: { color: '#999999', marginTop: 4, fontSize: 13 },
   thread: { flex: 1 },
-  threadContent: { padding: 20, paddingBottom: 12 },
+  threadContent: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 16, gap: 8 },
   footer: {
     padding: 16,
     borderTopWidth: 1,
-    borderTopColor: '#eee',
-    gap: 10,
+    borderTopColor: '#E8E8E8',
+    gap: 12,
   },
   primaryButton: {
-    backgroundColor: '#111',
-    borderRadius: 10,
+    backgroundColor: '#D32F2F',
+    borderRadius: 12,
     padding: 16,
     alignItems: 'center',
   },
-  primaryButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  primaryButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
   secondaryButton: {
-    borderRadius: 10,
+    borderRadius: 12,
     padding: 16,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#111',
+    borderColor: '#D32F2F',
   },
-  secondaryButtonText: { color: '#111', fontSize: 16, fontWeight: '600' },
+  secondaryButtonText: { color: '#D32F2F', fontSize: 16, fontWeight: '600' },
   inputContainer: {
     flexDirection: 'row',
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderTopWidth: 1,
-    borderTopColor: '#eee',
+    borderTopColor: '#E8E8E8',
     gap: 8,
   },
   input: {
     flex: 1,
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    borderColor: '#E0E0E0',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     fontSize: 14,
-    backgroundColor: '#f9f9f9',
+    backgroundColor: '#F9F9F9',
+    color: '#1F1F1F',
   },
   sendButton: {
-    backgroundColor: '#111',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    backgroundColor: '#D32F2F',
+    borderRadius: 10,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
     justifyContent: 'center',
   },
   sendButtonDisabled: {
-    opacity: 0.5,
+    opacity: 0.6,
   },
-  sendButtonText: { color: '#fff', fontSize: 14, fontWeight: '600' },
+  sendButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '600' },
 });

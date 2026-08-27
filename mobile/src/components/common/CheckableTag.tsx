@@ -1,33 +1,39 @@
 import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet, Text, TouchableOpacity } from 'react-native';
+import { SvgXml } from 'react-native-svg';
 
-import { colors, radii, spacing, typography } from '../../theme';
+import { colors, fonts } from '../../theme';
+import { dotPending } from '../dashboard/figmaSvgs';
 
 type Props = {
-  icon: keyof typeof Ionicons.glyphMap;
+  /** SVG markup for the leading icon (see dashboard/figmaSvgs). */
+  iconXml: string;
   label: string;
   confirmed: boolean;
   onPress: () => void;
+  disabled?: boolean;
 };
 
-// Reusable pill chip with a leading icon and a trailing checkmark that fills
-// in green once confirmed. Originally built inline for the dashboard's
-// flight-attention cards (Roaming / Travel Insurance); pulled out to
-// `common/` so any other confirmable-item list can reuse it.
-export default function CheckableTag({ icon, label, confirmed, onPress }: Props) {
+// Pill chip matching the Figma card chips (node 1:35385): soft red tint
+// background, 16px leading icon, 11px Urbanist label, and a trailing status
+// mark — the design's amber "pending" dot until confirmed, then a green
+// checkmark. Originally built inline for the dashboard's flight-attention
+// cards (Roaming / Travel Insurance); lives in `common/` so any other
+// confirmable-item list can reuse it.
+export default function CheckableTag({ iconXml, label, confirmed, onPress, disabled }: Props) {
   return (
     <TouchableOpacity
-      style={[styles.tag, confirmed && styles.tagConfirmed]}
-      onPress={onPress}
-      activeOpacity={0.7}
+      style={[styles.tag, disabled && styles.tagDisabled]}
+      onPress={!disabled ? onPress : undefined}
+      activeOpacity={disabled ? 1 : 0.7}
     >
-      <Ionicons name={icon} size={14} color={colors.textPrimary} />
+      <SvgXml xml={iconXml} width={16} height={16} />
       <Text style={styles.tagText}>{label}</Text>
-      <Ionicons
-        name={confirmed ? 'checkmark-circle' : 'checkmark-circle-outline'}
-        size={16}
-        color={confirmed ? colors.success : colors.textDisabled}
-      />
+      {confirmed ? (
+        <Ionicons name="checkmark-circle" size={16} color={colors.success} />
+      ) : (
+        <SvgXml xml={dotPending} width={16} height={16} />
+      )}
     </TouchableOpacity>
   );
 }
@@ -36,12 +42,17 @@ const styles = StyleSheet.create({
   tag: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    backgroundColor: colors.brandTint,
-    borderRadius: radii.pill,
-    paddingHorizontal: spacing.sm + 2,
-    paddingVertical: 6,
+    gap: 4,
+    backgroundColor: colors.chipTint,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
   },
-  tagConfirmed: { backgroundColor: colors.successTint },
-  tagText: { ...typography.small, color: colors.textPrimary },
+  tagDisabled: { opacity: 0.6 },
+  tagText: {
+    fontFamily: fonts.semiBold,
+    fontSize: 11,
+    lineHeight: 16.5,
+    color: colors.textPrimary,
+  },
 });
