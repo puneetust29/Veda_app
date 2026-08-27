@@ -1,9 +1,19 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SvgXml } from 'react-native-svg';
 
 import DropdownMenu, { type DropdownMenuItem } from '../common/DropdownMenu';
-import IconCircle from '../common/IconCircle';
-import { colors, spacing, typography } from '../../theme';
+import { colors, fonts, spacing } from '../../theme';
+import { headerRings, history as historyXml, logo as logoXml } from './figmaSvgs';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+// The decorative rings (Figma node 1:35333) are a 775.552x1035.95 group
+// whose center sits 3.22px left of the frame's center line and ~21px from
+// the top of the 414x1329 frame.
+const RINGS_WIDTH = 775.552;
+const RINGS_HEIGHT = 1035.95;
 
 type Props = {
   avatarInitial: string;
@@ -14,25 +24,35 @@ type Props = {
   menuItems: DropdownMenuItem[];
 };
 
-// Red, rounded-bottom top bar: history icon on the left, brand mark
-// centered, user avatar on the right — matches the Figma header treatment
-// used across screens in the design file. The avatar opens a profile
-// dropdown menu (see DropdownMenu in common/).
+// Red gradient top bar (Figma node 1:35348): 56px history button on the
+// left, Vinto brand mark centered, 56px user avatar on the right. The white
+// content sheet below overlaps this header with a 24px top radius, so the
+// gradient gets extra bottom padding. The avatar opens a profile dropdown
+// menu (see DropdownMenu in common/).
 export default function DashboardHeader({ avatarInitial, onPressHistory, menuItems }: Props) {
   const [menuVisible, setMenuVisible] = useState(false);
+  const insets = useSafeAreaInsets();
 
   return (
-    <View style={styles.header}>
-      <TouchableOpacity onPress={onPressHistory} disabled={!onPressHistory}>
-        <IconCircle
-          icon="time-outline"
-          size={40}
-          iconColor={colors.white}
-          backgroundColor="rgba(255,255,255,0.18)"
-        />
+    <LinearGradient
+      colors={[colors.headerGradientStart, colors.headerGradientEnd]}
+      start={{ x: 1, y: 0 }}
+      end={{ x: 0, y: 1 }}
+      style={[styles.header, { paddingTop: insets.top - 10 + spacing.sm + 2 }]}
+    >
+      <View pointerEvents="none" style={styles.ringsContainer}>
+        <SvgXml xml={headerRings} width={RINGS_WIDTH} height={RINGS_HEIGHT} />
+      </View>
+
+      <TouchableOpacity
+        style={styles.iconButton}
+        onPress={onPressHistory}
+        disabled={!onPressHistory}
+      >
+        <SvgXml xml={historyXml} width={24} height={24} />
       </TouchableOpacity>
 
-      <Text style={styles.logo}>V</Text>
+      <SvgXml xml={logoXml} width={33.35} height={22.16} />
 
       <TouchableOpacity style={styles.avatar} onPress={() => setMenuVisible(true)}>
         <Text style={styles.avatarText}>{avatarInitial}</Text>
@@ -42,32 +62,49 @@ export default function DashboardHeader({ avatarInitial, onPressHistory, menuIte
         visible={menuVisible}
         onClose={() => setMenuVisible(false)}
         items={menuItems}
-        topOffset={96}
+        topOffset={insets.top + spacing.md + 56 + spacing.sm}
       />
-    </View>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   header: {
-    backgroundColor: colors.brand,
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: spacing.xxxl + spacing.lg,
-    paddingBottom: spacing.xxl,
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: spacing.xxl,
+    paddingBottom: 36,
+    overflow: 'hidden',
   },
-  logo: { color: colors.white, fontSize: 22, fontWeight: '800', letterSpacing: 1 },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.25)',
+  ringsContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  iconButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 999,
+    backgroundColor: 'rgba(243,243,243,0.24)',
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
-  avatarText: { color: colors.white, ...typography.bodyBold },
+  avatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 999,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  avatarText: { color: colors.white, fontFamily: fonts.semiBold, fontSize: 20 },
 });

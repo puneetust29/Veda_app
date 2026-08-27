@@ -45,7 +45,8 @@
         {
           "merchantIdentifier": "com.veda.app"
         }
-      ]
+      ],
+      "expo-font"
     ]
   }
 }
