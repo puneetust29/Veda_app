@@ -63,7 +63,7 @@ export default function TripPreparationCard({
         {/* Travellers Section */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>Travellers</Text>
-          <Text style={styles.travellerCount}>3 people</Text>
+          <Text style={styles.travellerCount}>1 people</Text>
         </View>
 
         <View style={styles.divider} />
