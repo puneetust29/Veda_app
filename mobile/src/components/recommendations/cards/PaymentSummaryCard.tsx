@@ -119,8 +119,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.textSecondary,
-    borderBottomOpacity: 0.1,
+    borderBottomColor: `${colors.textSecondary}1a`,
   },
   summaryContent: {
     flex: 1,
@@ -147,11 +146,9 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     marginBottom: spacing.lg,
     borderTopWidth: 2,
-    borderTopColor: colors.textSecondary,
-    borderTopOpacity: 0.2,
+    borderTopColor: `${colors.textSecondary}33`,
     borderBottomWidth: 2,
-    borderBottomColor: colors.textSecondary,
-    borderBottomOpacity: 0.2,
+    borderBottomColor: `${colors.textSecondary}33`,
   },
   totalLabel: {
     ...typography.sectionTitle,

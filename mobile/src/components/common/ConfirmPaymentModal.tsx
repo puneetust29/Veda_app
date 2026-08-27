@@ -200,8 +200,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
     paddingVertical: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.textSecondary,
-    borderBottomOpacity: 0.1,
+    borderBottomColor: `${colors.textSecondary}1a`,
   },
   label: {
     ...typography.body,
