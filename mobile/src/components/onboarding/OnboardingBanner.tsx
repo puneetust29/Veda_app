@@ -1,46 +1,56 @@
-import { LinearGradient } from 'expo-linear-gradient';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, Image } from 'react-native';
+// import { SvgUri } from 'react-native-svg';
+import HeroBanner from '../../../assets/onboarding-banner-swoosh.svg'
 
 import { colors } from '../../theme';
 
 // Red hero banner used behind the headline on Phone Entry / OTP screens.
-// Approximates the Figma reference's radial red gradient + white "swoosh"
-// mark using layered rotated shapes (no SVG dependency in this project yet).
+// Uses Figma vector SVG with a radial-gradient background (requires New Architecture).
 export default function OnboardingBanner() {
   return (
     <View style={styles.container}>
-      <LinearGradient
-        colors={[colors.brandDark, colors.brand]}
-        start={{ x: 0.2, y: 0 }}
-        end={{ x: 0.8, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
-      <View style={styles.swooshWrap}>
-        <View style={styles.swooshBase} />
-        <View style={styles.swooshNotch} />
+      <View style={styles.swooshContainer}>
+        {/* <SvgUri
+          width={200}
+          height={280}
+          uri={require('../../../assets/onboarding-banner-swoosh.svg')}
+          style={styles.swoosh}
+        /> */}
+        <HeroBanner width={200} height={280} style={styles.swoosh} />
+        {/* <Image
+        source={require('../../../assets/onboarding-banner.png')} resizeMode={'contain'} width={200} height={180}/> */}
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { height: 160, overflow: 'hidden' },
-  swooshWrap: { position: 'absolute', bottom: -40, alignSelf: 'center' },
-  swooshBase: {
-    width: 130,
-    height: 170,
-    borderRadius: 65,
-    backgroundColor: 'rgba(255,255,255,0.92)',
-    transform: [{ rotate: '18deg' }],
+  container: {
+    height: 250,
+    overflow: 'hidden',
+    // borderRadius: 100,
+    backgroundColor: colors.brandText,
+    boxShadow: `0px 4px 8px 0px ${colors.bannerGlow} inset`,
+
+    // experimental_backgroundImage: `radial-gradient(97.01% 97.01% at 50% 2.99%, #000000 11.15%, ${colors.brandText} 59.62%, #000000 100%)`,
   },
-  swooshNotch: {
+  swooshContainer: {
     position: 'absolute',
-    top: 18,
-    left: 14,
-    width: 60,
-    height: 90,
-    borderRadius: 40,
-    backgroundColor: colors.brand,
-    transform: [{ rotate: '-12deg' }],
+    top: 40,
+    alignSelf: 'center',
+    width: 200,
+    height: 310,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
+  swoosh: {
+    width: '100%',
+    height: '100%',
+    shadowColor: colors.bannerGlow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 1,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  
 });

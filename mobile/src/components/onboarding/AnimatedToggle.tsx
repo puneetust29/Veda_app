@@ -22,13 +22,16 @@ export default function AnimatedToggle({ value, onValueChange }: Props) {
     Animated.timing(anim, { toValue: value ? 1 : 0, duration: 200, useNativeDriver: false }).start();
   }, [anim, value]);
 
-  const trackColor = anim.interpolate({ inputRange: [0, 1], outputRange: [colors.border, colors.brand] });
+  const trackColor = anim.interpolate({ inputRange: [0, 1], outputRange: [colors.pinkTile, colors.brandBackGround] });
+  const thumbColor = anim.interpolate({ inputRange: [0, 1], outputRange: [colors.accentRed, colors.white] });
   const thumbTranslate = anim.interpolate({ inputRange: [0, 1], outputRange: [2, WIDTH - THUMB - 2] });
 
   return (
     <Pressable onPress={() => onValueChange(!value)} hitSlop={8}>
       <Animated.View style={[styles.track, { backgroundColor: trackColor }]}>
-        <Animated.View style={[styles.thumb, { transform: [{ translateX: thumbTranslate }] }]} />
+        <Animated.View
+          style={[styles.thumb, { backgroundColor: thumbColor, transform: [{ translateX: thumbTranslate }] }]}
+        />
       </Animated.View>
     </Pressable>
   );
@@ -40,8 +43,7 @@ const styles = StyleSheet.create({
     width: THUMB,
     height: THUMB,
     borderRadius: THUMB / 2,
-    backgroundColor: colors.white,
-    shadowColor: '#000',
+    shadowColor: colors.black,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,
     shadowRadius: 2,

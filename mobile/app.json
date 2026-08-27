@@ -39,7 +39,8 @@
         {
           "locationWhenInUsePermission": "Veda uses your location to show local weather on your dashboard."
         }
-      ]
+      ],
+      "expo-font"
     ]
   }
 }

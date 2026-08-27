@@ -52,7 +52,7 @@ export default function ConsentScreen({ navigation }: Props) {
       <StepHeader onBack={() => navigation.goBack()} />
 
       <Animated.ScrollView contentContainerStyle={styles.body}>
-        <StepProgressBar step={4} />
+        <StepProgressBar step={5} totalSteps={5}/>
         <Text style={styles.title}>Your data belongs to you.</Text>
         <Text style={styles.subtitle}>
           Veda only accesses information you've approved, and you can change or remove permissions anytime.

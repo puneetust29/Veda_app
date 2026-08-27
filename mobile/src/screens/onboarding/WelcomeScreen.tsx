@@ -1,29 +1,35 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useEffect, useRef, useState } from 'react';
-import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, StyleSheet, Text, TouchableOpacity, View,   } from 'react-native';
+import type { FC, SVGProps } from 'react';
 
 import StepHeader from '../../components/onboarding/StepHeader';
 import StepProgressBar from '../../components/onboarding/StepProgressBar';
 import { useOnboarding } from '../../context/OnboardingContext';
 import { colors, radii, spacing, typography } from '../../theme';
 import type { OnboardingStackParamList } from '../../types';
+import Cmf2Pro from '../../../assets/CMF-2-pro.svg';
+import bigValueBundle from '../../../assets/big-value-bundle.svg';
+import connectedLines from '../../../assets/connected-lines.svg';
+import payAsYouGo from '../../../assets/pay-as-you-go.svg';
+
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'Welcome'>;
 
 type RecCard = {
   id: string;
-  icon: keyof typeof Ionicons.glyphMap;
+  icon: FC<SVGProps<SVGSVGElement>>;
   title: string;
   subtitle: string;
   bullet: string;
 };
 
 const CARDS: RecCard[] = [
-  { id: 'pay-as-you-go', icon: 'card-outline', title: 'Pay as you go', subtitle: 'Your Vodafone plan', bullet: 'Recommendations will match your plan.' },
-  { id: 'bundle', icon: 'gift-outline', title: '30-day Bundle', subtitle: 'Big Value', bullet: 'Included benefits will be surfaced automatically.' },
-  { id: 'phone', icon: 'phone-portrait-outline', title: 'CMF Phone 2 Pro', subtitle: 'Primary device', bullet: 'Suggestions will adapt to your device.' },
-  { id: 'lines', icon: 'people-outline', title: '3 connected lines', subtitle: 'Your household', bullet: 'Ready to help everyone stay connected.' },
+  { id: 'pay-as-you-go', icon: payAsYouGo, title: 'Pay as you go', subtitle: 'Your Vodafone plan', bullet: 'Recommendations will match your plan.' },
+  { id: 'bundle', icon: bigValueBundle, title: '30-day Bundle', subtitle: 'Big Value', bullet: 'Included benefits will be surfaced automatically.' },
+  { id: 'phone', icon: Cmf2Pro, title: 'CMF Phone 2 Pro', subtitle: 'Primary device', bullet: 'Suggestions will adapt to your device.' },
+  { id: 'lines', icon: connectedLines, title: '3 connected lines', subtitle: 'Your household', bullet: 'Ready to help everyone stay connected.' },
 ];
 
 // Recommendation cards auto-cycle with a crossfade, with the next two cards
@@ -33,6 +39,7 @@ export default function WelcomeScreen({ navigation }: Props) {
   const { firstName } = useOnboarding();
   const [index, setIndex] = useState(0);
   const fade = useRef(new Animated.Value(1)).current;
+  
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -52,88 +59,139 @@ export default function WelcomeScreen({ navigation }: Props) {
       <StepHeader onBack={() => navigation.goBack()} />
 
       <View style={styles.body}>
-        <StepProgressBar step={2} />
+        <StepProgressBar step={3} totalSteps={5} />
         <Text style={styles.title}>Nice to meet you,{'\n'}{firstName}.</Text>
-        <Text style={styles.subtitle}>Your Vodafone account gives me a great place to start.</Text>
-
-        <View style={styles.cardStack}>
-          {/* Peeking cards behind the active one, matching the stacked-deck
-              look in the Figma reference. */}
-          <View style={[styles.peekCard, styles.peekCardFar]} />
-          <View style={[styles.peekCard, styles.peekCardNear]} />
-
-          <Animated.View style={[styles.card, { opacity: fade }]}>
-            <View style={styles.cardArt}>
-              <Ionicons name={card.icon} size={40} color={colors.white} />
+        <Text style={styles.subtitle}>Your Vodafone number helps Veda understand your world, so it can start helping from day one.</Text>
+        <View style={styles.viewContainer}>
+        <View style={styles.contentWrapper}>
+          
+          <Animated.View style={[styles.imageCard, { opacity: fade }]}>
+            <View>
+              {card.icon && <card.icon />}
             </View>
+          </Animated.View>
+
+          
+          <View>
             <Text style={styles.cardTitle}>{card.title}</Text>
             <Text style={styles.cardSubtitle}>{card.subtitle}</Text>
             <View style={styles.bulletRow}>
               <Ionicons name="checkmark-circle" size={16} color={colors.brand} />
               <Text style={styles.bulletText}>{card.bullet}</Text>
             </View>
-          </Animated.View>
-        </View>
+          </View>
+          </View>
 
-        <View style={styles.dots}>
-          {CARDS.map((c, i) => (
-            <View key={c.id} style={[styles.dot, i === index && styles.dotActive]} />
-          ))}
-        </View>
+          {/* Bottom Section - Dots and CTA */}
+          <View style={styles.bottomSection}>
+            <View style={styles.dots}>
+              {CARDS.map((c, i) => (
+                <View key={c.id} style={[styles.dot, i === index && styles.dotActive]} />
+              ))}
+            </View>
 
-        <TouchableOpacity style={styles.cta} onPress={() => navigation.navigate('PlanSelection')}>
-          <Text style={styles.ctaText}>Continue</Text>
-        </TouchableOpacity>
+            <TouchableOpacity style={styles.cta} onPress={() => navigation.navigate('PlanSelection')}>
+              <Text style={styles.ctaText}>Continue</Text>
+            </TouchableOpacity>
+          </View>
+          </View>
+        </View>
       </View>
-    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  body: { paddingHorizontal: spacing.xl, flex: 1 },
+  body: { paddingHorizontal: spacing.xl, flex: 1, flexDirection: 'column' },
   title: { ...typography.headline, color: colors.textPrimary, marginBottom: spacing.sm },
-  subtitle: { ...typography.body, color: colors.textSecondary, marginBottom: spacing.xxl },
-  cardStack: { alignItems: 'center', justifyContent: 'center', marginBottom: spacing.lg },
-  peekCard: {
-    position: 'absolute',
-    width: '86%',
-    height: 220,
-    borderRadius: radii.lg,
-    backgroundColor: colors.brandTint,
+  subtitle: { ...typography.body, color: colors.textSecondary, marginBottom: spacing.lg },
+  viewContainer: {flex: 1, justifyContent: 'space-between',},
+  contentWrapper: {
+    borderWidth: 1,
+    padding: spacing.lg,
+    width: 260,
+    alignSelf: 'center',
+    borderColor: colors.borderMuted,
+    borderRadius: radii.xxl,
+    overflow: 'hidden',
+    marginTop: spacing.xxxl
   },
-  peekCardFar: { top: -16, transform: [{ scale: 0.9 }], opacity: 0.5 },
-  peekCardNear: { top: -8, transform: [{ scale: 0.95 }], opacity: 0.8 },
-  card: {
+
+  imageCard: {
     width: '100%',
-    backgroundColor: colors.brand,
     borderRadius: radii.lg,
-    padding: spacing.xl,
-    alignItems: 'center',
-    minHeight: 220,
-    justifyContent: 'center',
-  },
-  cardArt: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.md,
   },
-  cardTitle: { ...typography.sectionTitle, color: colors.white },
-  cardSubtitle: { ...typography.caption, color: 'rgba(255,255,255,0.8)', marginBottom: spacing.lg },
-  bulletRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.lg },
-  bulletText: { ...typography.caption, color: colors.white, flex: 1, textAlign: 'left' },
-  dots: { flexDirection: 'row', justifyContent: 'center', gap: spacing.xs, marginBottom: spacing.xl },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.border },
-  dotActive: { backgroundColor: colors.brand, width: 18 },
+
+
+  cardTitle: {
+    ...typography.sectionTitle,
+    color: colors.textPrimary,
+    marginBottom: spacing.xs,
+    marginTop: spacing.xl
+  },
+
+  cardSubtitle: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginBottom: spacing.lg
+  },
+
+  bulletRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+  },
+
+  bulletText: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    flex: 1,
+  },
+
+  bottomSection: {
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    paddingBottom: spacing.lg,
+  },
+
+  dots: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    marginBottom: spacing.lg
+  },
+
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.border
+  },
+
+  dotActive: {
+    backgroundColor: colors.brandBackGround,
+    width: 24
+  },
+
   cta: {
-    backgroundColor: colors.brand,
+    width: '100%',
+    backgroundColor: colors.brandBackGround,
     borderRadius: radii.pill,
     paddingVertical: spacing.lg,
     alignItems: 'center',
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  ctaText: { ...typography.bodyBold, color: colors.white, fontSize: 16 },
+
+  ctaText: {
+    ...typography.bodyBold,
+    color: colors.white,
+    fontSize: 16
+  },
 });
