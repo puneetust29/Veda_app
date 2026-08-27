@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { useStripe } from '@stripe/stripe-react-native';
 import { colors, spacing, typography } from '../../theme';
@@ -10,6 +10,8 @@ type State = 'idle' | 'processing' | 'success' | 'error';
 type Props = {
   roamingPlan?: RoamingPlan | null;
   insurancePlan: TravelInsurancePlan;
+  paymentMethodBrand?: string;
+  paymentMethodLast4?: string;
   savedPaymentMethodId: string;
   calendarEventId?: string;
   onViewOptions?: () => void;
@@ -19,6 +21,8 @@ type Props = {
 export default function PaymentSummaryCard({
   roamingPlan,
   insurancePlan,
+  paymentMethodBrand,
+  paymentMethodLast4,
   savedPaymentMethodId,
   calendarEventId,
   onViewOptions,
@@ -26,23 +30,7 @@ export default function PaymentSummaryCard({
 }: Props) {
   const [state, setState] = useState<State>('idle');
   const [errorMessage, setErrorMessage] = useState('');
-  const [paymentMethodBrand, setPaymentMethodBrand] = useState<string | undefined>();
-  const [paymentMethodLast4, setPaymentMethodLast4] = useState<string | undefined>();
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
-
-  useEffect(() => {
-    const fetchPaymentMethod = async () => {
-      try {
-        const response = await api.getCustomerPaymentMethods();
-        setPaymentMethodBrand(response.brand ?? undefined);
-        setPaymentMethodLast4(response.last4 ?? undefined);
-      } catch (err) {
-        console.error('Failed to fetch payment method:', err);
-      }
-    };
-
-    fetchPaymentMethod();
-  }, []);
 
   const handlePayment = async () => {
     try {

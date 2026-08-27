@@ -6,6 +6,7 @@ import TravelInsuranceCard from '../recommendations/cards/TravelInsuranceCard';
 import PaymentSummaryCard from './PaymentSummaryCard';
 import CoverageDetailsCard from './CoverageDetailsCard';
 import MessageBubble from './MessageBubble';
+import StatusLine from './StatusLine';
 import { api } from '../../lib/api';
 
 type Props = {
@@ -25,6 +26,9 @@ export default function TravelInsuranceCardChat({
   const [showCoverageDetails, setShowCoverageDetails] = useState(false);
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(true);
+  const [paymentMethodBrand, setPaymentMethodBrand] = useState<string | undefined>();
+  const [paymentMethodLast4, setPaymentMethodLast4] = useState<string | undefined>();
+  const [paymentMethodLoading, setPaymentMethodLoading] = useState(false);
 
   useEffect(() => {
     const fetchCustomer = async () => {
@@ -39,6 +43,24 @@ export default function TravelInsuranceCardChat({
     };
     fetchCustomer();
   }, []);
+
+  useEffect(() => {
+    if (showPaymentSummary) {
+      const fetchPaymentMethod = async () => {
+        setPaymentMethodLoading(true);
+        try {
+          const response = await api.getCustomerPaymentMethods();
+          setPaymentMethodBrand(response.brand ?? undefined);
+          setPaymentMethodLast4(response.last4 ?? undefined);
+        } catch (err) {
+          console.error('Failed to fetch payment method:', err);
+        } finally {
+          setPaymentMethodLoading(false);
+        }
+      };
+      fetchPaymentMethod();
+    }
+  }, [showPaymentSummary]);
 
   const handleProceed = () => {
     setShowPaymentSummary(true);
@@ -61,14 +83,21 @@ export default function TravelInsuranceCardChat({
           text="Everything is ready for your trip. Here's a summary before payment."
           tone="agent"
         />
-        <PaymentSummaryCard
-          roamingPlan={roamingPlan}
-          insurancePlan={plan}
-          savedPaymentMethodId={paymentMethodId}
-          calendarEventId={calendarEventId}
-          onViewOptions={() => setShowPaymentSummary(false)}
-          onSuccess={handlePaymentSuccess}
-        />
+        {paymentMethodLoading && (
+          <StatusLine label="Looking into your payment method…" state="active" />
+        )}
+        {!paymentMethodLoading && (
+          <PaymentSummaryCard
+            roamingPlan={roamingPlan}
+            insurancePlan={plan}
+            paymentMethodBrand={paymentMethodBrand}
+            paymentMethodLast4={paymentMethodLast4}
+            savedPaymentMethodId={paymentMethodId}
+            calendarEventId={calendarEventId}
+            onViewOptions={() => setShowPaymentSummary(false)}
+            onSuccess={handlePaymentSuccess}
+          />
+        )}
       </View>
     );
   }
