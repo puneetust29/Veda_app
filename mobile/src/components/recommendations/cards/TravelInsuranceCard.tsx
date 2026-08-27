@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography } from '../../../theme';
@@ -16,6 +16,8 @@ type Props = {
 };
 
 export default function TravelInsuranceCard({ plan, onViewDetails, onProceed }: Props) {
+  const [showDetails, setShowDetails] = useState(false);
+
   return (
     <View style={styles.card}>
       {/* Header */}
