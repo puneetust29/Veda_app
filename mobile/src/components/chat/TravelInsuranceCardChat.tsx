@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import type { TravelInsurancePlan, Customer, RoamingPlan } from '../../types';
 import TravelInsuranceCard from '../recommendations/cards/TravelInsuranceCard';
 import PaymentSummaryCard from './PaymentSummaryCard';
+import CoverageDetailsCard from './CoverageDetailsCard';
+import MessageBubble from './MessageBubble';
 import { api } from '../../lib/api';
 
 type Props = {
@@ -24,6 +26,7 @@ export default function TravelInsuranceCardChat({
   onInsurancePurchased,
 }: Props) {
   const [showPaymentSummary, setShowPaymentSummary] = useState(false);
+  const [showCoverageDetails, setShowCoverageDetails] = useState(false);
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [paymentBrand, setPaymentBrand] = useState(propBrand || 'Card');
   const [paymentLast4, setPaymentLast4] = useState(propLast4);
@@ -68,6 +71,10 @@ export default function TravelInsuranceCardChat({
   if (showPaymentSummary && onInsurancePurchased) {
     return (
       <View style={styles.container}>
+        <MessageBubble
+          text="Everything is ready for your trip. Here's a summary before payment."
+          tone="agent"
+        />
         <PaymentSummaryCard
           roamingPlan={roamingPlan}
           insurancePlan={plan}
@@ -84,7 +91,19 @@ export default function TravelInsuranceCardChat({
 
   return (
     <View style={styles.container}>
-      <TravelInsuranceCard plan={plan} onProceed={onInsurancePurchased ? handleProceed : undefined} />
+      <TravelInsuranceCard plan={plan} onViewDetails={() => setShowCoverageDetails(true)} onProceed={onInsurancePurchased ? handleProceed : undefined} />
+      {showCoverageDetails && (
+        <>
+          <MessageBubble
+            text={`Here's everything the ${plan.planName} policy covers.`}
+            tone="agent"
+          />
+          <CoverageDetailsCard
+            plan={plan}
+            onClose={() => setShowCoverageDetails(false)}
+          />
+        </>
+      )}
     </View>
   );
 }

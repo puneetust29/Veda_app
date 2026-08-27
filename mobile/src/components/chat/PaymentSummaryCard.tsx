@@ -135,12 +135,6 @@ export default function PaymentSummaryCard({
 
   return (
     <View style={styles.card}>
-      <View style={styles.headerBanner}>
-        <Text style={styles.headerText}>
-          Everything is ready for your trip. Here's a summary before payment.
-        </Text>
-      </View>
-
       <Text style={styles.sectionTitle}>Payment Summary</Text>
 
       {roamingPlan && (
@@ -252,18 +246,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
-  },
-  headerBanner: {
-    backgroundColor: '#FEE6E6',
-    padding: spacing.lg,
-    borderRadius: 12,
-    marginBottom: spacing.lg,
-  },
-  headerText: {
-    ...typography.body,
-    color: '#333',
-    fontWeight: '500',
-    lineHeight: 22,
   },
   sectionTitle: {
     ...typography.sectionTitle,
