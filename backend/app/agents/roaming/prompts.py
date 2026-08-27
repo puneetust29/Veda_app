@@ -1,5 +1,6 @@
 """Prompt strings for the roaming agent's LLM nodes, extracted verbatim from graph.py
 so the graph module stays focused on topology/control-flow."""
+from __future__ import annotations
 
 import json
 

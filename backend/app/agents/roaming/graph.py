@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from langchain_anthropic import ChatAnthropic
 from langgraph.graph import END, StateGraph
 from langgraph.types import StreamWriter

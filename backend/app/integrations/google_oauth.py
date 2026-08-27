@@ -1,10 +1,11 @@
+from __future__ import annotations
+
 """Google OAuth 2.0 (authorization code + PKCE) against the real Google endpoints.
 
 Nothing in here touches the database or FastAPI -- it is the pure HTTP/crypto
 layer, so it can be tested by stubbing httpx alone. Credential storage and token
 freshness live in google_calendar.py.
 """
-from __future__ import annotations
 
 import base64
 import hashlib

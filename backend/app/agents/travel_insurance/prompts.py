@@ -1,4 +1,5 @@
 """Prompts for travel insurance recommendation and judgment."""
+from __future__ import annotations
 
 
 def recommend_prompt(

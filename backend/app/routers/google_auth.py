@@ -1,4 +1,6 @@
 """Unified Google OAuth endpoints for Calendar + Gmail in a single auth flow."""
+from __future__ import annotations
+
 import html
 import json
 

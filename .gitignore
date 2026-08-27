@@ -10,6 +10,10 @@ mobile/node_modules/
 mobile/.expo/
 mobile/dist/
 mobile/.env
+mobile/test-results/
 
 # OS
 .DS_Store
+
+# Research / internal docs
+research/

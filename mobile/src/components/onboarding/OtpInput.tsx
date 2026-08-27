@@ -24,6 +24,8 @@ export default function OtpInput({ length = 6, value, onChange, disabled }: Prop
 
     if (digit && index < length - 1) {
       inputs.current[index + 1]?.focus();
+    } else if (digit && index === length - 1) {
+      inputs.current[index]?.blur();
     }
   };
 

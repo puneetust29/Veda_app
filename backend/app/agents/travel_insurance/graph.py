@@ -1,4 +1,6 @@
 """LangGraph for travel insurance plan recommendation and judgment."""
+from __future__ import annotations
+
 from typing import TypedDict, Optional
 from langchain_anthropic import ChatAnthropic
 from langgraph.graph import END, StateGraph
