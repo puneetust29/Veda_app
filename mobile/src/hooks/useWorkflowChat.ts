@@ -476,13 +476,6 @@ export function useWorkflowChat(event: CalendarEvent) {
                   plan: plan,
                   calendarEventId: event.id,
                 },
-                {
-                  id: nextId(),
-                  createdAt: Date.now(),
-                  kind: 'text',
-                  role: 'agent',
-                  text: 'You can always come back to add roaming if you change your mind.',
-                },
               ]);
             }
             setPhase('complete');
@@ -704,13 +697,6 @@ export function useWorkflowChat(event: CalendarEvent) {
                   kind: 'travel_insurance',
                   plan: plan,
                   calendarEventId: event.id,
-                },
-                {
-                  id: nextId(),
-                  createdAt: Date.now(),
-                  kind: 'text',
-                  role: 'agent',
-                  text: 'You can always come back to add roaming if you need it.',
                 },
               ]);
             }

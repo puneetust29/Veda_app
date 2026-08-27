@@ -92,14 +92,16 @@ export default function TripPreparationCard({
           </View>
         </View>
 
-        {/* Continue Button */}
-        <TouchableOpacity
-          style={styles.continueButton}
-          onPress={onContinue}
-          disabled={!anyPending}
-        >
-          <Text style={styles.continueButtonText}>Continue</Text>
-        </TouchableOpacity>
+        {/* Continue Button - only show if there are pending items */}
+        {anyPending && (
+          <TouchableOpacity
+            style={[styles.continueButton, !onContinue && styles.continueButtonDisabled]}
+            onPress={onContinue}
+            disabled={!onContinue}
+          >
+            <Text style={styles.continueButtonText}>Continue</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
@@ -226,6 +228,9 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     paddingVertical: 14,
     alignItems: 'center',
+  },
+  continueButtonDisabled: {
+    opacity: 0.5,
   },
   continueButtonText: {
     color: '#FFFFFF',

@@ -24,6 +24,7 @@ export default function ChatScreen({ route, navigation }: Props) {
   const { items, phase, confirm, decline, retry, sendMessage, handleInsurancePurchased, workflowState, continueWorkflow } = useWorkflowChat(event);
   const scrollViewRef = useRef<ScrollView>(null);
   const [draft, setDraft] = useState('');
+  const [continueClicked, setContinueClicked] = useState(false);
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
@@ -65,7 +66,10 @@ export default function ChatScreen({ route, navigation }: Props) {
               onConfirm={confirm}
               onDecline={decline}
               onInsurancePurchased={item.kind === 'travel_insurance' && isInsuranceAlreadyPurchased(items, idx) ? undefined : handleInsurancePurchased}
-              onContinuePrep={continueWorkflow}
+              onContinuePrep={item.kind === 'trip_preparation' && !continueClicked ? () => {
+                setContinueClicked(true);
+                continueWorkflow();
+              } : undefined}
               // Pass the next item if it's a confirmation for a roaming card
               nextItem={
                 item.kind === 'card' && item.card.kind === 'roaming_plan' && items[idx + 1]?.kind === 'confirmation'
