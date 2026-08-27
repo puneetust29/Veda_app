@@ -161,7 +161,8 @@ const styles = StyleSheet.create({
   },
   section: {
     paddingHorizontal: 16,
-    marginBottom: 8,
+    marginBottom: 16,
+
   },
   sectionLabel: {
     fontSize: 12,
