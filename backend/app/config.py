@@ -20,7 +20,10 @@ class Settings(BaseSettings):
     google_client_secret: str = ""
     google_redirect_uri: str = "http://localhost:8000/auth/google/callback"
     google_calendar_scopes: str = "https://www.googleapis.com/auth/calendar.events"
-    google_gmail_scopes: str = "https://www.googleapis.com/auth/gmail.readonly"
+    google_gmail_scopes: str = (
+        "https://www.googleapis.com/auth/gmail.readonly "
+        "https://www.googleapis.com/auth/gmail.send"
+    )
     # Deep link the callback page bounces back to after auth. Must match the `scheme` in mobile/app.json.
     google_post_auth_redirect: str = "veda://google-auth-complete"
 

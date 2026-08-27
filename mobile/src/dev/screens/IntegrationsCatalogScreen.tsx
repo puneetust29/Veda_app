@@ -1,11 +1,11 @@
 import { SectionList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
-import { INTEGRATIONS_CATALOG } from '../config/integrationsCatalog';
-import { colors } from '../theme';
-import type { RootStackParamList } from '../types';
+import { CATEGORY_NOTES, INTEGRATIONS_CATALOG } from '../integrationsCatalog';
+import { colors } from '../../theme';
+import type { DevStackParamList } from '../types';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'IntegrationsCatalog'>;
+type Props = NativeStackScreenProps<DevStackParamList, 'Catalog'>;
 
 const STATUS_COLORS: Record<string, string> = {
   Done: colors.success,
@@ -16,11 +16,17 @@ const STATUS_COLORS: Record<string, string> = {
 function buildSections() {
   const byCategory = new Map<string, typeof INTEGRATIONS_CATALOG>();
   for (const entry of INTEGRATIONS_CATALOG) {
+    if (entry.status === 'Not Started') continue;
     const list = byCategory.get(entry.category) ?? [];
     list.push(entry);
     byCategory.set(entry.category, list);
   }
-  return Array.from(byCategory.entries()).map(([title, data]) => ({ title, data }));
+  return Array.from(byCategory.entries())
+    .map(([title, data]) => {
+      const note = CATEGORY_NOTES[title];
+      return { title, data: note ? [] : data, note };
+    })
+    .filter((section) => section.data.length > 0 || section.note);
 }
 
 export default function IntegrationsCatalogScreen({ navigation }: Props) {
@@ -34,10 +40,17 @@ export default function IntegrationsCatalogScreen({ navigation }: Props) {
         renderSectionHeader={({ section }) => (
           <Text style={styles.sectionHeader}>{section.title}</Text>
         )}
+        renderSectionFooter={({ section }) =>
+          section.note ? (
+            <View style={styles.noteBox}>
+              <Text style={styles.noteText}>{section.note}</Text>
+            </View>
+          ) : null
+        }
         renderItem={({ item }) => (
           <TouchableOpacity
             style={styles.row}
-            onPress={() => navigation.navigate('IntegrationDetail', { id: item.id })}
+            onPress={() => navigation.navigate('Detail', { id: item.id })}
           >
             <View style={styles.rowHeader}>
               <Text style={styles.rowName}>{item.name}</Text>
@@ -73,6 +86,13 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
+  noteBox: {
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  noteText: { fontSize: 13, color: colors.textMuted, fontStyle: 'italic', lineHeight: 18 },
   rowHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',

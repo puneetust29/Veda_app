@@ -154,10 +154,10 @@ export type RootStackParamList = {
   // those accounts in the OS Settings app) and displays them together.
   DeviceCalendar: undefined;
   Gmail: undefined;
-  // Dev-only integrations catalog (see config/devFlags.ts) -- lists every
-  // planned third-party integration and lets a developer test one standalone.
-  IntegrationsCatalog: undefined;
-  IntegrationDetail: { id: string };
+  // Dev-only integrations catalog (see dev/devFlags.ts and dev/DevNavigator.tsx)
+  // -- a self-contained nested navigator; its own screens/params live in
+  // dev/types.ts, not here.
+  Dev: undefined;
 };
 
 // --- Onboarding flow (pre-auth) ---

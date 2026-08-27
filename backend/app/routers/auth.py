@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from jose import jwt
@@ -25,7 +26,7 @@ def read_profile(customer: dict = Depends(get_current_customer)) -> dict:
 
 class DevLoginRequest(BaseModel):
     phone_number: str
-    otp: str | None = None
+    otp: Optional[str] = None
 
 
 class DevLoginResponse(BaseModel):

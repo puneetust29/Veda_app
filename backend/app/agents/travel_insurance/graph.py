@@ -105,7 +105,7 @@ def route_after_fetch_catalog(state: TravelInsuranceAgentState) -> str:
     return "empty" if not state.get("insurance_catalog") else "has_plans"
 
 
-def _next_tier_plan(catalog: list[dict], trip_duration_days: int) -> dict | None:
+def _next_tier_plan(catalog: list[dict], trip_duration_days: int) -> Optional[dict]:
     """Shortest plan whose coverageDurationDays covers the trip; else longest available."""
     covering = [p for p in catalog if p.get("coverageDurationDays", 0) >= trip_duration_days]
     if covering:

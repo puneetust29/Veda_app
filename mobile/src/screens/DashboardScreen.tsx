@@ -11,7 +11,7 @@ import DashboardHeader from '../components/dashboard/DashboardHeader';
 import GreetingWeather from '../components/dashboard/GreetingWeather';
 import SuggestionGrid, { type Suggestion } from '../components/dashboard/SuggestionGrid';
 import { useAuth } from '../context/AuthContext';
-import { DEV_CATALOG_ENABLED } from '../config/devFlags';
+import { DEV_CATALOG_ENABLED } from '../dev/devFlags';
 import { api } from '../lib/api';
 import { readDeviceCalendarEvents } from '../lib/deviceCalendar';
 import { FALLBACK_WEATHER, getDeviceWeatherSummary } from '../lib/weather';
@@ -187,7 +187,7 @@ export default function DashboardScreen({ navigation }: Props) {
             id: 'dev-integrations',
             icon: 'flask-outline' as const,
             label: 'Integrations (Dev)',
-            onPress: () => navigation.navigate('IntegrationsCatalog'),
+            onPress: () => navigation.navigate('Dev'),
           },
         ]
       : []),

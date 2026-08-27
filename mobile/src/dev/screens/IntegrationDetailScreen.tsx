@@ -2,11 +2,11 @@ import { useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
-import { INTEGRATIONS_CATALOG } from '../config/integrationsCatalog';
-import { colors } from '../theme';
-import type { RootStackParamList } from '../types';
+import { INTEGRATIONS_CATALOG } from '../integrationsCatalog';
+import { colors } from '../../theme';
+import type { DevStackParamList } from '../types';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'IntegrationDetail'>;
+type Props = NativeStackScreenProps<DevStackParamList, 'Detail'>;
 
 function Field({ label, value }: { label: string; value: string }) {
   if (!value) return null;
@@ -18,7 +18,7 @@ function Field({ label, value }: { label: string; value: string }) {
   );
 }
 
-export default function IntegrationDetailScreen({ route }: Props) {
+export default function IntegrationDetailScreen({ route, navigation }: Props) {
   const entry = INTEGRATIONS_CATALOG.find((item) => item.id === route.params.id);
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<string | null>(null);
@@ -34,6 +34,13 @@ export default function IntegrationDetailScreen({ route }: Props) {
 
   const handleRun = async () => {
     if (!entry.action) return;
+
+    // Special handling for Stripe integration
+    if (entry.id === 'stripe') {
+      navigation.navigate('StripePayment');
+      return;
+    }
+
     setRunning(true);
     setError(null);
     setResult(null);

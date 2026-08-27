@@ -1,3 +1,5 @@
+from typing import Optional
+
 from langchain_anthropic import ChatAnthropic
 from langgraph.graph import END, StateGraph
 from langgraph.types import StreamWriter
@@ -103,7 +105,7 @@ def route_after_fetch_catalog(state: RoamingAgentState) -> str:
     return "empty" if not state.get("roaming_catalog") else "has_plans"
 
 
-def _next_tier_plan(catalog: list[dict], trip_duration_days: int) -> dict | None:
+def _next_tier_plan(catalog: list[dict], trip_duration_days: int) -> Optional[dict]:
     """Shortest plan whose duration_days covers the trip; if the trip outlasts every
     plan in the catalog, fall back to the longest one available."""
     covering = [p for p in catalog if p["duration_days"] >= trip_duration_days]

@@ -144,6 +144,11 @@ export const api = {
       `/gmail/sync?max_results=${maxResults}`,
       { method: 'POST' },
     ),
+  sendGmail: (params: { to: string; subject: string; body: string }) =>
+    authedFetch<{ sent: boolean; gmail_message_id?: string }>('/gmail/send', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    }),
   streamRoamingConversation: async (params: {
     calendarEventId: string;
     signal: AbortSignal;

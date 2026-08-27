@@ -1,5 +1,11 @@
-import { getDeviceLocationSample } from '../lib/deviceLocation';
-import { shareToWhatsApp } from '../lib/whatsapp';
+import { getAppleCalendarSample } from './lib/appleCalendar';
+import { getDeviceLocationSample } from './lib/deviceLocation';
+import { getGmailSample } from './lib/gmail';
+import { sendGmailSample } from './lib/gmailSend';
+import { getGoogleCalendarSample } from './lib/googleCalendar';
+import { getWeatherSample } from './lib/weather';
+import { shareToWhatsApp } from './lib/whatsapp';
+import { createStripeTestPayment } from './lib/stripe';
 import { VEDA_CONTACT } from './vedaContact';
 
 export type IntegrationStatus = 'Done' | 'In Progress' | 'Not Started';
@@ -24,6 +30,14 @@ export type IntegrationCatalogEntry = {
   action?: IntegrationAction;
 };
 
+// Categories that are already live in the main app rather than pending
+// integrations. The catalog screen shows this note instead of a status list
+// for these categories.
+export const CATEGORY_NOTES: Record<string, string> = {
+  'AI & Agent Platform':
+    "Already part of the main app — the chat agent, LLM orchestration and context store are live and in use. Nothing to build here.",
+};
+
 // Mirrors the integrations tracking spreadsheet row-for-row (category,
 // purpose, example usage, status, priority, notes). This file is the single
 // source of truth for the dev catalog -- update an entry here as it moves
@@ -40,6 +54,10 @@ export const INTEGRATIONS_CATALOG: IntegrationCatalogEntry[] = [
     priority: 'Tier 1',
     notes:
       'Silent mobile-number verification; strong fit for passwordless onboarding/authentication',
+    action: {
+      label: 'Read top 10 Gmail emails',
+      run: getGmailSample,
+    },
   },
   {
     id: 'google-calendar',
@@ -50,6 +68,10 @@ export const INTEGRATIONS_CATALOG: IntegrationCatalogEntry[] = [
     status: 'Done',
     priority: 'Tier 1',
     notes: 'Meetings, travel plans and event context',
+    action: {
+      label: 'Read top 10 calendar events',
+      run: getGoogleCalendarSample,
+    },
   },
   {
     id: 'apple-calendar',
@@ -60,6 +82,10 @@ export const INTEGRATIONS_CATALOG: IntegrationCatalogEntry[] = [
     status: 'Done',
     priority: 'Tier 1',
     notes: 'Native iOS calendar context',
+    action: {
+      label: 'Read upcoming Apple Calendar events',
+      run: getAppleCalendarSample,
+    },
   },
   {
     id: 'outlook-365',
@@ -138,6 +164,10 @@ export const INTEGRATIONS_CATALOG: IntegrationCatalogEntry[] = [
     status: 'Done',
     priority: 'Tier 1',
     notes: 'Payment processing and saved-payment flows',
+    action: {
+      label: 'Test Payment Sheet ($10)',
+      run: createStripeTestPayment,
+    },
   },
   {
     id: 'paypal',
@@ -319,6 +349,10 @@ export const INTEGRATIONS_CATALOG: IntegrationCatalogEntry[] = [
     status: 'Done',
     priority: 'Tier 1',
     notes: 'UK weather-driven commute and travel alerts',
+    action: {
+      label: 'Get current weather',
+      run: getWeatherSample,
+    },
   },
 
   // --- Messaging & Notifications ---
@@ -379,6 +413,10 @@ export const INTEGRATIONS_CATALOG: IntegrationCatalogEntry[] = [
     status: 'Done',
     priority: 'Tier 1',
     notes: 'Outbound email actions with user confirmation',
+    action: {
+      label: 'Send test email via Gmail',
+      run: sendGmailSample,
+    },
   },
 
   // --- Food & Grocery ---
