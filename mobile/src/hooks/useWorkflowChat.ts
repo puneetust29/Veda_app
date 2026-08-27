@@ -414,17 +414,25 @@ export function useWorkflowChat(event: CalendarEvent) {
       if (isRoamingDecline && workflowState.currentStep === 'roaming') {
         console.log('[useWorkflowChat] Advancing to insurance...');
 
-        // Check if insurance is already purchased (receipt exists in chat)
-        // Insurance receipt has planName with "insurance" or subscription object without roaming_plans
+        // Check if insurance is already purchased (from receipts, confirmations, or API)
         const hasInsuranceReceipt = itemsRef.current.some((item) => {
-          if (item.kind !== 'receipt' || !('planName' in item)) return false;
-          const isInsurancePlan = item.planName?.toLowerCase().includes('insurance') ||
-                                   item.planName?.toLowerCase().includes('travel');
-          return isInsurancePlan;
+          if (item.kind === 'receipt' && 'planName' in item) {
+            return item.planName?.toLowerCase().includes('insurance') || item.planName?.toLowerCase().includes('travel');
+          }
+          if (item.kind === 'confirmation_success' && (item as any).planType === 'insurance') {
+            return true;
+          }
+          return false;
         });
-        console.log('[useWorkflowChat] hasInsuranceReceipt:', hasInsuranceReceipt);
 
-        if (hasInsuranceReceipt) {
+        const tripPrepCard = itemsRef.current.find((item) => item.kind === 'trip_preparation');
+        const hasInsuranceFromAPI = tripPrepCard?.kind === 'trip_preparation' && tripPrepCard.hasInsuranceActive;
+        const hasInsuranceCompleted = workflowStateRef.current.completedSteps.includes('insurance');
+        const hasInsuranceActive = hasInsuranceReceipt || hasInsuranceFromAPI || hasInsuranceCompleted;
+
+        console.log('[useWorkflowChat] Insurance check - hasInsuranceReceipt:', hasInsuranceReceipt, 'hasInsuranceFromAPI:', hasInsuranceFromAPI, 'hasInsuranceActive:', hasInsuranceActive);
+
+        if (hasInsuranceActive) {
           // Insurance already purchased, show completion
           console.log('[useWorkflowChat] Insurance already purchased, showing completion...');
           appendItems([
