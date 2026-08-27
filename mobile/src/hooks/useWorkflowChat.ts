@@ -591,19 +591,72 @@ export function useWorkflowChat(event: CalendarEvent) {
       const mentionsInsurance = insuranceKeywords.some((keyword) => messageText.includes(keyword));
       const mentionsRoaming = roamingKeywords.some((keyword) => messageText.includes(keyword));
 
+      // Get trip prep card to check initial status
+      const tripPrepCard = itemsRef.current.find((item) => item.kind === 'trip_preparation');
+      const tripPrepInsuranceActive = tripPrepCard?.kind === 'trip_preparation' ? tripPrepCard.hasInsuranceActive : false;
+      const tripPrepRoamingActive = tripPrepCard?.kind === 'trip_preparation' ? tripPrepCard.hasRoamingActive : false;
+
+      // Check if insurance is already purchased (from receipts, workflowState, or trip prep)
+      const hasInsuranceReceipt = itemsRef.current.some((item) => {
+        if (item.kind === 'receipt' && 'planName' in item) {
+          return item.planName?.toLowerCase().includes('insurance') || item.planName?.toLowerCase().includes('travel');
+        }
+        if (item.kind === 'confirmation_success' && (item as any).planType === 'insurance') {
+          return true;
+        }
+        return false;
+      });
+      const hasInsuranceCompleted = workflowStateRef.current.completedSteps.includes('insurance');
+      const hasInsuranceActive = hasInsuranceReceipt || hasInsuranceCompleted || tripPrepInsuranceActive;
+
+      // Check if roaming is already purchased (from receipts, workflowState, or trip prep)
+      const hasRoamingReceipt = itemsRef.current.some((item) => {
+        if (item.kind === 'receipt' && 'subscription' in item) {
+          return item.subscription?.roaming_plans !== undefined;
+        }
+        if (item.kind === 'confirmation_success' && (item as any).planType === 'roaming') {
+          return true;
+        }
+        return false;
+      });
+      const hasRoamingCompleted = workflowStateRef.current.completedSteps.includes('roaming');
+      const hasRoamingActive = hasRoamingReceipt || hasRoamingCompleted || tripPrepRoamingActive;
+
+      // If user asks about insurance and already has it, acknowledge and show summary
+      if (mentionsInsurance && hasInsuranceActive) {
+        console.log('[useWorkflowChat] User asking about insurance but already has it');
+        appendItems([
+          {
+            id: nextId(),
+            createdAt: Date.now(),
+            kind: 'text',
+            role: 'agent',
+            text: '✓ You already have travel insurance purchased for this trip.',
+          },
+        ]);
+        return;
+      }
+
+      // If user asks about roaming and already has it, acknowledge and show summary
+      if (mentionsRoaming && hasRoamingActive) {
+        console.log('[useWorkflowChat] User asking about roaming but already has it');
+        appendItems([
+          {
+            id: nextId(),
+            createdAt: Date.now(),
+            kind: 'text',
+            role: 'agent',
+            text: '✓ You already have roaming purchased for this trip.',
+          },
+        ]);
+        return;
+      }
+
       // If user asks about insurance while on roaming step, skip to insurance
       if (mentionsInsurance && workflowState.currentStep === 'roaming') {
         console.log('[useWorkflowChat] User asking about insurance, skipping to insurance step');
 
-        // Check if insurance already purchased
-        const hasInsuranceReceipt = itemsRef.current.some((item) => {
-          if (item.kind !== 'receipt' || !('planName' in item)) return false;
-          const isInsurancePlan = item.planName?.toLowerCase().includes('insurance') ||
-                                   item.planName?.toLowerCase().includes('travel');
-          return isInsurancePlan;
-        });
-
-        if (hasInsuranceReceipt) {
+        if (hasInsuranceActive) {
           // Insurance already purchased, show completion
           appendItems([
             {
@@ -671,12 +724,7 @@ export function useWorkflowChat(event: CalendarEvent) {
       }
 
       // Check if user is asking about roaming while on insurance step or beyond
-      const hasRoamingReceipt = itemsRef.current.some((item) => {
-        if (item.kind !== 'receipt' || !('subscription' in item)) return false;
-        return item.subscription?.roaming_plans !== undefined;
-      });
-
-      if (mentionsRoaming && workflowState.currentStep !== 'roaming' && !hasRoamingReceipt) {
+      if (mentionsRoaming && workflowState.currentStep !== 'roaming' && !hasRoamingActive) {
         console.log('[useWorkflowChat] User asking about roaming, showing roaming step');
 
         // Check if roaming already active (shouldn't happen if we got here, but double check)
