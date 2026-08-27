@@ -76,6 +76,7 @@ export default function AttentionCarousel({ flights, activeRoamingEventIds, acti
   // Insurance status now comes from backend, so only track local confirmations if needed.
   const [confirmed, setConfirmed] = useState<Record<string, Set<TagKey>>>({}); // TODO: Consider removing if not needed
 
+
   const toggleTag = (flightId: string, tag: TagKey) => {
     setConfirmed((prev) => {
       const current = new Set(prev[flightId] ?? []);
@@ -169,6 +170,7 @@ function AttentionCard({
 
   const destinationCity = cityFromLocation(flight.destination);
 
+
   return (
     <Animated.View style={[styles.card, { transform: [{ scale }] }]}>
       <View style={styles.banner}>
@@ -190,20 +192,22 @@ function AttentionCard({
           I&apos;ve found two things you&apos;ll want to complete before you travel.
         </Text>
 
-        <View style={styles.tagRow}>
-          <CheckableTag
-            iconXml={chipMap}
-            label="Travel Insurance"
-            confirmed={insuranceActive || confirmedTags.has('insurance')}
-            onPress={() => onToggleTag('insurance')}
-          />
-          <CheckableTag
-            iconXml={chipDevices}
-            label="Roaming"
-            confirmed={roamingActive || confirmedTags.has('roaming')}
-            onPress={() => onToggleTag('roaming')}
-          />
-        </View>
+        {!flight.is_domestic && (
+          <View style={styles.tagRow}>
+            <CheckableTag
+              iconXml={chipMap}
+              label="Travel Insurance"
+              confirmed={insuranceActive || confirmedTags.has('insurance')}
+              onPress={() => onToggleTag('insurance')}
+            />
+            <CheckableTag
+              iconXml={chipDevices}
+              label="Roaming"
+              confirmed={roamingActive || confirmedTags.has('roaming')}
+              onPress={() => onToggleTag('roaming')}
+            />
+          </View>
+        )}
       </View>
 
       <TouchableOpacity style={styles.ctaRow} onPress={onPress} activeOpacity={0.8}>
