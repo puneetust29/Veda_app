@@ -9,11 +9,22 @@ import type { RootStackParamList } from '../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Chat'>;
 
+function isInsuranceAlreadyPurchased(items: any[], currentIdx: number): boolean {
+  // Check if there's a confirmation_success item with planType 'insurance' after this item
+  for (let i = currentIdx + 1; i < items.length; i++) {
+    if (items[i].kind === 'confirmation_success' && items[i].planType === 'insurance') {
+      return true;
+    }
+  }
+  return false;
+}
+
 export default function ChatScreen({ route, navigation }: Props) {
   const { event } = route.params;
   const { items, phase, confirm, decline, retry, sendMessage, handleInsurancePurchased, workflowState, continueWorkflow } = useWorkflowChat(event);
   const scrollViewRef = useRef<ScrollView>(null);
   const [draft, setDraft] = useState('');
+  const [continueClicked, setContinueClicked] = useState(false);
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
@@ -54,8 +65,11 @@ export default function ChatScreen({ route, navigation }: Props) {
               item={item}
               onConfirm={confirm}
               onDecline={decline}
-              onInsurancePurchased={handleInsurancePurchased}
-              onContinuePrep={continueWorkflow}
+              onInsurancePurchased={item.kind === 'travel_insurance' && isInsuranceAlreadyPurchased(items, idx) ? undefined : handleInsurancePurchased}
+              onContinuePrep={item.kind === 'trip_preparation' && !continueClicked ? () => {
+                setContinueClicked(true);
+                continueWorkflow();
+              } : undefined}
               // Pass the next item if it's a confirmation for a roaming card
               nextItem={
                 item.kind === 'card' && item.card.kind === 'roaming_plan' && items[idx + 1]?.kind === 'confirmation'

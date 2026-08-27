@@ -255,4 +255,13 @@ export const api = {
     }>('/payments/insurance/active', {
       method: 'GET',
     }),
+
+  getCustomerPaymentMethods: () =>
+    authedFetch<{
+      brand: string | null;
+      last4: string | null;
+      id: string | null;
+    }>('/payments/customer-payment-methods', {
+      method: 'GET',
+    }),
 };

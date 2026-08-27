@@ -1,6 +1,8 @@
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SvgXml } from 'react-native-svg';
 
 import type { RecommendationCardPayload, ChatItem } from '../../types';
+import { vodafoneIcon } from '../dashboard/figmaSvgs';
 
 type ConfirmationItem = Extract<ChatItem, { kind: 'confirmation' }>;
 
@@ -46,17 +48,24 @@ export default function RecommendationCard({ card, confirmation, onConfirm, onDe
       const price = confirmation ? extractPrice(confirmation.summary) : null;
 
       return (
-        <View style={styles.planCard}>
+        <View style={styles.cardShadow}>
+          <View style={styles.planCard}>
+          {/* Background Pattern */}
+          <View style={styles.backgroundPattern} />
           {/* Provider Section */}
           <View style={styles.providerSection}>
             <View style={styles.providerBadge}>
-              <Text style={styles.providerBadgeText}>🌍</Text>
+              <SvgXml xml={vodafoneIcon} width={21} height={21} />
             </View>
-            <Text style={styles.providerName}>{card.plan.country_name}</Text>
+            <View style={styles.providerInfo}>
+              <Text style={styles.providerName}>vodafone</Text>
+            </View>
           </View>
-
+          <View style={styles.providerSection}>
+            <Text style={styles.providerName}>{card.plan.plan_name}</Text>
+          </View>
           {/* Plan Name */}
-          <Text style={styles.planName}>{card.plan.plan_name}</Text>
+          <Text style={styles.planName}>{card.plan.description}</Text>
 
           {/* Divider */}
           <View style={styles.divider} />
@@ -70,21 +79,6 @@ export default function RecommendationCard({ card, confirmation, onConfirm, onDe
                 <Text style={styles.reasoningText}>{line}</Text>
               </View>
             ))}
-          </View>
-
-          {/* Family Setup Section - Placeholder */}
-          <View style={styles.divider} />
-          <Text style={styles.sectionHeader}>Family setup</Text>
-          <View style={styles.familySetup}>
-            <View style={styles.familyMember}>
-              <View style={styles.avatarBadge}>
-                <Text style={styles.avatarText}>👤</Text>
-              </View>
-              <View style={styles.memberInfo}>
-                <Text style={styles.memberName}>All travellers</Text>
-                <Text style={styles.memberPlan}>Data plan included</Text>
-              </View>
-            </View>
           </View>
 
           {/* Total & Buttons Section */}
@@ -114,6 +108,7 @@ export default function RecommendationCard({ card, confirmation, onConfirm, onDe
               )}
             </>
           )}
+          </View>
         </View>
       );
     }
@@ -123,13 +118,32 @@ export default function RecommendationCard({ card, confirmation, onConfirm, onDe
 }
 
 const styles = StyleSheet.create({
+    cardShadow: {
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 4,
+    borderRadius: 24,
+  },
   planCard: {
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: 12,
+    borderRadius: 24,
     padding: 16,
     backgroundColor: '#FFFFFF',
     marginBottom: 12,
+    overflow: 'hidden',
+  },
+  backgroundPattern: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 141,
+    backgroundColor: '#F5F5F5',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    opacity: 0.3,
   },
   providerSection: {
     flexDirection: 'row',
@@ -137,21 +151,28 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   providerBadge: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    backgroundColor: '#FFE0E0',
+    width: 21,
+    height: 21,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 4,
+  },
+  providerIcon: {
+    width: 21,
+    height: 21,
+    resizeMode: 'contain',
   },
   providerBadgeText: {
-    fontSize: 22,
+    fontSize: 17,
+  },
+  providerInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   providerName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1F1F1F',
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#1A1A1A',
   },
   planName: {
     fontSize: 20,
@@ -179,50 +200,17 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   checkmark: {
-    fontSize: 16,
-    color: '#D32F2F',
+    fontSize: 12,
+    color: '#1A1A1A',
     fontWeight: '700',
-    marginRight: 10,
-    marginTop: 0,
+    marginRight: 12,
+    marginTop: 2,
   },
   reasoningText: {
-    fontSize: 15,
-    color: '#1F1F1F',
+    fontSize: 12,
+    color: '#1A1A1A',
     flex: 1,
-    lineHeight: 22,
-  },
-  familySetup: {
-    gap: 10,
-  },
-  familyMember: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-  avatarBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#FFE0E0',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  avatarText: {
-    fontSize: 18,
-  },
-  memberInfo: {
-    flex: 1,
-    paddingTop: 2,
-  },
-  memberName: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#1F1F1F',
-    marginBottom: 2,
-  },
-  memberPlan: {
-    fontSize: 13,
-    color: '#999999',
+    lineHeight: 16,
   },
   totalRow: {
     flexDirection: 'row',
@@ -231,14 +219,14 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   totalLabel: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
-    color: '#1F1F1F',
+    color: '#1A1A1A',
   },
   totalPrice: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#1F1F1F',
+    fontWeight: '700',
+    color: '#1A1A1A',
     textAlign: 'right',
   },
   actions: {
@@ -248,29 +236,31 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     flex: 1,
-    backgroundColor: '#D32F2F',
-    borderRadius: 24,
-    padding: 16,
+    backgroundColor: '#F00405',
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
   primaryButtonText: {
     color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '700',
   },
   secondaryButton: {
     paddingHorizontal: 24,
     paddingVertical: 16,
-    borderRadius: 24,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#D32F2F',
+    borderWidth: 1.5,
+    borderColor: 'rgba(230, 0, 0, 0.07)',
+    backgroundColor: '#FFFFFF',
   },
   secondaryButtonText: {
-    color: '#D32F2F',
-    fontSize: 16,
+    color: '#E60000',
+    fontSize: 13.5,
     fontWeight: '600',
   },
 });
