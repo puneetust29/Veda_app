@@ -44,8 +44,6 @@ export default function ConsentScreen({ navigation }: Props) {
     Animated.timing(ctaAnim, { toValue: allOpened ? 1 : 0, duration: 300, useNativeDriver: false }).start();
   }, [allOpened, ctaAnim]);
 
-  const ctaBackground = ctaAnim.interpolate({ inputRange: [0, 1], outputRange: [colors.brandTint, colors.brand] });
-  const ctaTextColor = ctaAnim.interpolate({ inputRange: [0, 1], outputRange: [colors.brand, colors.white] });
 
   return (
     <View style={styles.container}>
@@ -117,7 +115,7 @@ export default function ConsentScreen({ navigation }: Props) {
       <View style={styles.footer}>
         <TouchableOpacity disabled={!allOpened} onPress={() => navigation.navigate('Success')}>
           <Animated.View style={styles.cta}>
-            <Animated.Text style={[styles.ctaText, { color: ctaTextColor }]}>Agree & Continue</Animated.Text>
+            <Animated.Text style={styles.ctaText}>Agree & Continue</Animated.Text>
           </Animated.View>
         </TouchableOpacity>
         <Text style={styles.counterText}>{openedCount}/3 Terms read.</Text>
@@ -144,6 +142,6 @@ const styles = StyleSheet.create({
   legalDivider: { ...typography.small, color: colors.textMuted },
   footer: { paddingHorizontal: spacing.xl, paddingBottom: spacing.xl, paddingTop: spacing.sm },
   cta: { backgroundColor: colors.brandBackGround,borderRadius: radii.pill, paddingVertical: spacing.lg, alignItems: 'center' },
-  ctaText: { ...typography.bodyBold, fontSize: 16 },
+  ctaText: { ...typography.bodyBold, color: colors.white, fontSize: 16 },
   counterText: { ...typography.small, color: colors.textMuted, textAlign: 'center', marginTop: spacing.sm },
 });

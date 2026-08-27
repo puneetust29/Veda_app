@@ -215,8 +215,8 @@ function SelectionFan({ width }: { width: number }) {
 
   return (
     <View style={{ width, height: FAN_HEIGHT }}>
-      <Svg width={width} height={FAN_HEIGHT} style={StyleSheet.absoluteFill}>
-        {Array.from({ length: FAN_RAYS }, (_, i) => {
+      {/* <Svg width={width} height={FAN_HEIGHT} style={StyleSheet.absoluteFill}> */}
+        {/* {Array.from({ length: FAN_RAYS }, (_, i) => {
           const deg = 20 + (140 * i) / (FAN_RAYS - 1);
           const cos = Math.cos((deg * Math.PI) / 180);
           const sin = Math.sin((deg * Math.PI) / 180);
@@ -232,9 +232,9 @@ function SelectionFan({ width }: { width: number }) {
               strokeLinecap="round"
             />
           );
-        })}
+        })} */}
         {/* The stem is shorter and more saturated than the rays. */}
-        <Line
+        {/* <Line
           x1={cx}
           y1={cy + 1}
           x2={cx}
@@ -242,7 +242,7 @@ function SelectionFan({ width }: { width: number }) {
           stroke={withOpacity(colors.accentRed, 0.45)}
           strokeWidth={1.2}
         />
-      </Svg>
+      </Svg> */}
       <View style={[styles.indicatorCircle, { left: cx - FAN_DISC / 2 }]}>
         <Ionicons name="checkmark" size={15} color={colors.white} />
       </View>
@@ -267,9 +267,7 @@ type AccessLevel = {
   includes?: IncludesSpec;
   categories: AccessCategory[];
 };
-
-// Counts verified against the pills: lite 3+5+1=9, balanced 9+3+4+3=19,
-// complete 19+3+2+4+3=31. Nothing missing.
+//Need to update with proper data and svgs in place of icons
 const ACCESS_LEVELS: AccessLevel[] = [
   {
     id: 'lite',
@@ -533,7 +531,7 @@ export default function PlanSelectionScreen({ navigation }: Props) {
         contentContainerStyle={styles.bodyContent}
         showsVerticalScrollIndicator={false}
       >
-        <StepProgressBar step={2} totalSteps={5} />
+        <StepProgressBar step={3} totalSteps={5} />
 
         <View style={styles.cardsViewport}>
           <ScrollView
@@ -564,7 +562,7 @@ export default function PlanSelectionScreen({ navigation }: Props) {
 
       <View style={[styles.actions, { paddingBottom: Math.max(insets.bottom, 10) }]}>
         <TouchableOpacity style={styles.cta} onPress={() => navigation.navigate('AppPermissions')}>
-          <Animated.Text style={[styles.ctaText, { opacity: fade }]}>
+          <Animated.Text style={[styles.ctaText]}>
             Select {TIER_LABELS[planTier]} & Continue
           </Animated.Text>
         </TouchableOpacity>

@@ -59,7 +59,7 @@ export default function WelcomeScreen({ navigation }: Props) {
       <StepHeader onBack={() => navigation.goBack()} />
 
       <View style={styles.body}>
-        <StepProgressBar step={3} totalSteps={5} />
+        <StepProgressBar step={2} totalSteps={5} />
         <Text style={styles.title}>Nice to meet you,{'\n'}{firstName}.</Text>
         <Text style={styles.subtitle}>Your Vodafone number helps Veda understand your world, so it can start helping from day one.</Text>
         <View style={styles.viewContainer}>
