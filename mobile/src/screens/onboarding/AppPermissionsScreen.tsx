@@ -13,7 +13,7 @@ import StepProgressBar from '../../components/onboarding/StepProgressBar';
 import { useOnboarding } from '../../context/OnboardingContext';
 import { api } from '../../lib/api';
 import { readDeviceCalendarEvents } from '../../lib/deviceCalendar';
-import { brandIcons, colors, radii, spacing, typography, withOpacity } from '../../theme';
+import { brandIcons, colors, fonts, radii, spacing, typography, withOpacity } from '../../theme';
 import type { OnboardingStackParamList } from '../../types';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'AppPermissions'>;
@@ -508,26 +508,32 @@ const styles = StyleSheet.create({
   },
 
   title: {
-    ...typography.title,
+    fontSize: 38,
+    fontWeight: '600',
+    fontFamily: fonts.semiBold,
     color: colors.textPrimary,
-    fontSize: 28,
-    lineHeight: 34,
     marginTop: spacing.md,
+    marginBottom: spacing.sm,
+    lineHeight: 46,
   },
 
   titleAccent: {
-    color: colors.brand,
+    color: '#f00405',
   },
 
   subtitle: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    marginTop: spacing.sm,
+    fontSize: 14,
+    fontWeight: '300',
+    fontFamily: fonts.bodyLight,
+    color: '#6b7280',
     marginBottom: spacing.lg,
+    lineHeight: 21,
   },
 
   sectionTitle: {
-    ...typography.bodyBold,
+    fontSize: 18,
+    fontWeight: '600',
+    fontFamily: fonts.semiBold,
     color: colors.textPrimary,
     marginTop: spacing.sm,
     marginBottom: spacing.sm,
@@ -671,13 +677,17 @@ const styles = StyleSheet.create({
   },
 
   appText: {
-    ...typography.body,
-    color: colors.textPrimary,
+    fontSize: 16,
+    fontWeight: '500',
+    fontFamily: fonts.medium,
+    color: '#222',
   },
 
   footerNote: {
-    ...typography.small,
-    color: colors.textMuted,
+    fontSize: 14,
+    fontWeight: '300',
+    fontFamily: fonts.bodyLight,
+    color: '#6b7280',
     marginTop: spacing.sm,
   },
 
@@ -693,15 +703,24 @@ const styles = StyleSheet.create({
   },
 
   cta: {
-    backgroundColor: colors.brandBackGround,
-    borderRadius: radii.pill,
-    paddingVertical: spacing.lg,
+    backgroundColor: '#f00405',
+    borderRadius: 24,
+    paddingVertical: 18,
+    paddingHorizontal: spacing.xl,
     alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    elevation: 3,
+    shadowColor: '#f00405',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
   },
 
   ctaText: {
-    ...typography.bodyBold,
     color: colors.white,
     fontSize: 16,
+    fontWeight: '700',
+    fontFamily: fonts.bold,
   },
 });

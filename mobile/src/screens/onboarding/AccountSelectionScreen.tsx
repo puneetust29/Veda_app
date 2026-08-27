@@ -10,7 +10,7 @@ import StepHeader from '../../components/onboarding/StepHeader';
 import StepProgressBar from '../../components/onboarding/StepProgressBar';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../lib/api';
-import { colors, radii, spacing, typography } from '../../theme';
+import { colors, fonts, radii, spacing, typography } from '../../theme';
 import type { GoogleCalendarStatus, OnboardingStackParamList } from '../../types';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'AccountSelection'>;
@@ -129,7 +129,7 @@ export default function AccountSelectionScreen({ navigation }: Props) {
               <View style={styles.accountRow}>
                 <Text style={styles.accountEmail}>{status.google_account_email ?? 'Connected'}</Text>
                 <View style={styles.checkCircle}>
-                  <Ionicons name="checkmark" size={13} color={colors.brandBackGround} />
+                  <Ionicons name="checkmark" size={14} color="#111" />
                 </View>
               </View>
             ) : (
@@ -144,7 +144,7 @@ export default function AccountSelectionScreen({ navigation }: Props) {
                     <Text style={styles.serviceName}>Calendar</Text>
                   </View>
                   <View style={styles.checkCircle}>
-                    <Ionicons name="checkmark" size={13} color={colors.brandBackGround} />
+                    <Ionicons name="checkmark" size={14} color="#111" />
                   </View>
                 </View>
                 <View style={styles.serviceRow}>
@@ -153,7 +153,7 @@ export default function AccountSelectionScreen({ navigation }: Props) {
                     <Text style={styles.serviceName}>Gmail</Text>
                   </View>
                   <View style={styles.checkCircle}>
-                    <Ionicons name="checkmark" size={13} color={colors.brandBackGround} />
+                    <Ionicons name="checkmark" size={14} color="#111" />
                   </View>
                 </View>
               </>
@@ -169,7 +169,7 @@ export default function AccountSelectionScreen({ navigation }: Props) {
               onPress={status.connected ? handleDisconnectGoogle : handleConnectGoogle}
             >
               {busy ? (
-                <ActivityIndicator color={status.connected ? colors.brand : colors.white} />
+                <ActivityIndicator color={status.connected ? '#f00405' : colors.white} />
               ) : (
                 <Text style={[styles.connectButtonText, status.connected && styles.disconnectButtonText]}>
                   {status.connected ? 'Disconnect' : 'Connect Google'}
@@ -193,8 +193,8 @@ export default function AccountSelectionScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   body: { paddingHorizontal: spacing.xl, paddingTop: spacing.xl, flex: 1 },
-  title: { ...typography.title, color: colors.textPrimary, marginBottom: spacing.sm },
-  subtitle: { ...typography.caption, color: colors.textSecondary, marginBottom: spacing.lg },
+  title: { fontSize: 38, fontWeight: '600', fontFamily: fonts.semiBold, color: colors.textPrimary, marginBottom: spacing.sm, lineHeight: 46 },
+  subtitle: { fontSize: 14, fontWeight: '300', fontFamily: fonts.bodyLight, color: '#6b7280', marginBottom: spacing.lg, lineHeight: 21 },
   loading: { marginTop: spacing.xxl },
   notice: { padding: spacing.lg, borderRadius: radii.md, backgroundColor: colors.warningTint, marginBottom: spacing.lg },
   noticeTitle: { ...typography.bodyBold, color: colors.warningText },
@@ -214,7 +214,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  groupTitle: { ...typography.bodyBold, color: colors.textPrimary },
+  groupTitle: { fontSize: 16, fontWeight: '600', fontFamily: fonts.semiBold, color: colors.textPrimary },
   groupPill: {
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
@@ -229,7 +229,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: spacing.sm,
   },
-  accountEmail: { ...typography.body, color: colors.textPrimary, flex: 1 },
+  accountEmail: { fontSize: 16, fontWeight: '400', fontFamily: fonts.body, color: colors.textPrimary, flex: 1 },
   serviceRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -242,13 +242,13 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     flex: 1,
   },
-  serviceName: { ...typography.body, color: colors.textPrimary },
+  serviceName: { fontSize: 16, fontWeight: '400', fontFamily: fonts.body, color: colors.textPrimary },
   checkCircle: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 1.5,
-    borderColor: colors.brandBackGround,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#f00405',
     backgroundColor: colors.white,
     alignItems: 'center',
     justifyContent: 'center',
@@ -264,32 +264,43 @@ const styles = StyleSheet.create({
   },
   scopeWarningText: { ...typography.caption, color: colors.warningText, flex: 1, lineHeight: 18 },
   connectButton: {
-    backgroundColor: colors.brandBackGround,
-    borderRadius: radii.pill,
-    paddingVertical: spacing.md,
+    backgroundColor: '#f00405',
+    borderRadius: 24,
+    paddingVertical: 12,
     alignItems: 'center',
+    justifyContent: 'center',
     marginTop: spacing.md,
   },
   disconnectButton: {
     backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.brand,
+    borderWidth: 1.5,
+    borderColor: '#f00405',
   },
   connectButtonDisabled: { opacity: 0.6 },
-  connectButtonText: { ...typography.bodyBold, color: colors.white },
-  disconnectButtonText: { color: colors.brand },
+  connectButtonText: { fontSize: 16, fontWeight: '600', fontFamily: fonts.semiBold, color: colors.white },
+  disconnectButtonText: { color: '#f00405' },
   footer: { paddingHorizontal: spacing.xl, paddingBottom: spacing.xl, paddingTop: spacing.sm },
   selectionNote: {
-    ...typography.caption,
-    color: colors.textMuted,
+    fontSize: 14,
+    fontWeight: '300',
+    fontFamily: fonts.bodyLight,
+    color: '#6b7280',
     textAlign: 'center',
     marginBottom: spacing.sm,
   },
   cta: {
-    backgroundColor: colors.brandBackGround,
-    borderRadius: radii.pill,
-    paddingVertical: spacing.lg,
+    backgroundColor: '#f00405',
+    borderRadius: 24,
+    paddingVertical: 18,
+    paddingHorizontal: spacing.xl,
     alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    elevation: 3,
+    shadowColor: '#f00405',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
   },
-  ctaText: { ...typography.bodyBold, color: colors.white, fontSize: 16 },
+  ctaText: { color: colors.white, fontSize: 16, fontWeight: '700', fontFamily: fonts.bold },
 });
