@@ -14,8 +14,22 @@ import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
 import { readDeviceCalendarEvents } from '../lib/deviceCalendar';
 import { FALLBACK_WEATHER, getDeviceWeatherSummary } from '../lib/weather';
-import { colors, spacing, typography } from '../theme';
+import {
+  tileBuildings,
+  tileCalendar,
+  tileEcommerce,
+  tileFood,
+  tileHealth,
+  tileMap,
+} from '../components/dashboard/figmaSvgs';
+import { colors, fonts, spacing } from '../theme';
 import type { CalendarEvent, RootStackParamList, WeatherSummary } from '../types';
+
+const appGmail = require('../../assets/dashboard/app-gmail.png');
+const appGcal = require('../../assets/dashboard/app-gcal.png');
+const ellipse1 = require('../../assets/dashboard/ellipse-1.png');
+const ellipse2 = require('../../assets/dashboard/ellipse-2.png');
+const ellipse3 = require('../../assets/dashboard/ellipse-3.png');
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Dashboard'>;
 
@@ -149,18 +163,31 @@ export default function DashboardScreen({ navigation }: Props) {
   // "Connect apps" tiles are visual placeholders for integrations that
   // aren't wired up yet; the rest route into existing screens/nav entries.
   const suggestions: Suggestion[] = [
-    { id: 'school-fees', icon: 'school-outline', label: 'Pay school fees' },
-    { id: 'health-checkup', icon: 'medkit-outline', label: 'Book annual health checkup' },
-    { id: 'broadband', icon: 'home-outline', label: 'Renew home broadband' },
-    { id: 'groceries', icon: 'cart-outline', label: 'Restock weekly groceries', connectApps: true },
+    { id: 'school-fees', iconXml: tileMap, label: 'Pay school fees' },
+    { id: 'health-checkup', iconXml: tileHealth, label: 'Book annual health checkup' },
+    { id: 'broadband', iconXml: tileBuildings, label: 'Renew home broadband' },
+    {
+      id: 'groceries',
+      iconXml: tileEcommerce,
+      label: 'Restock weekly groceries',
+      connectAppIcons: [{ source: ellipse1 }, { source: ellipse2 }],
+    },
     {
       id: 'meetings',
-      icon: 'calendar-outline',
+      iconXml: tileCalendar,
       label: "Plan next week's meetings",
-      connectApps: true,
+      connectAppIcons: [
+        { source: appGmail, inset: true },
+        { source: appGcal, inset: true },
+      ],
       onPress: () => navigation.navigate('DeviceCalendar'),
     },
-    { id: 'food', icon: 'fast-food-outline', label: 'Order food', connectApps: true },
+    {
+      id: 'food',
+      iconXml: tileFood,
+      label: 'Order food',
+      connectAppIcons: [{ source: ellipse1 }, { source: ellipse3 }],
+    },
   ];
 
   // No dedicated profile/settings screen exists in the Figma design yet, so
@@ -187,58 +214,83 @@ export default function DashboardScreen({ navigation }: Props) {
     <View style={styles.container}>
       <DashboardHeader avatarInitial={firstName.charAt(0).toUpperCase()} menuItems={menuItems} />
 
-      {loading && events.length === 0 ? (
-        <ActivityIndicator style={styles.loading} />
-      ) : (
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
-        >
-          <GreetingWeather name={firstName} weather={weather} />
+      <View style={styles.sheet}>
+        {loading && events.length === 0 ? (
+          <ActivityIndicator style={styles.loading} />
+        ) : (
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
+          >
+            <GreetingWeather name={firstName} weather={weather} />
 
-          <View style={styles.attentionHeader}>
-            <Text style={styles.attentionTitle}>What needs your attention</Text>
-            {upcomingFlights.length > 0 ? (
-              <View style={styles.countBadge}>
-                <Text style={styles.countBadgeText}>{upcomingFlights.length}</Text>
-              </View>
-            ) : null}
-          </View>
+            <View style={styles.attentionHeader}>
+              <Text style={styles.attentionTitle}>What needs your attention</Text>
+              {upcomingFlights.length > 0 ? (
+                <View style={styles.countBadge}>
+                  <Text style={styles.countBadgeText}>{upcomingFlights.length}</Text>
+                </View>
+              ) : null}
+            </View>
 
-          <AttentionCarousel
-            flights={upcomingFlights}
-            activeRoamingEventIds={activeRoamingEventIds}
-            activeInsuranceEventIds={activeInsuranceEventIds}
-            onPressFlight={(event) => navigation.navigate('Chat', { event })}
-          />
+            <AttentionCarousel
+              flights={upcomingFlights}
+              activeRoamingEventIds={activeRoamingEventIds}
+              activeInsuranceEventIds={activeInsuranceEventIds}
+              onPressFlight={(event) => navigation.navigate('Chat', { event })}
+            />
 
-          <SuggestionGrid suggestions={suggestions} />
-        </ScrollView>
-      )}
+            <SuggestionGrid suggestions={suggestions} />
+          </ScrollView>
+        )}
 
-      <AskVintoButton />
+        <AskVintoButton />
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+  container: { flex: 1, backgroundColor: colors.headerGradientEnd },
+  // White content sheet that overlaps the red header with a 24px-radius top
+  // edge (Figma node 1:35346).
+  sheet: {
+    flex: 1,
+    marginTop: -24,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    backgroundColor: colors.background,
+    overflow: 'hidden',
+  },
   loading: { marginTop: spacing.xxxl },
-  scrollContent: { paddingBottom: spacing.xl },
+  scrollContent: { paddingBottom: 96 },
   attentionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    marginHorizontal: spacing.xl,
-    marginTop: spacing.xxl,
-    marginBottom: spacing.md,
+    marginHorizontal: spacing.xxl,
+    marginTop: spacing.xxxl,
+    marginBottom: spacing.xl,
   },
-  attentionTitle: { ...typography.sectionTitle, color: colors.textPrimary },
+  attentionTitle: {
+    fontFamily: fonts.semiBold,
+    fontSize: 20,
+    lineHeight: 22,
+    letterSpacing: -0.4,
+    color: colors.textPrimary,
+  },
   countBadge: {
-    backgroundColor: colors.brandTint,
-    borderRadius: 10,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+    width: 24,
+    height: 24,
+    borderRadius: 8,
+    backgroundColor: colors.badgeTint,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  countBadgeText: { ...typography.small, color: colors.brand },
+  countBadgeText: {
+    fontFamily: fonts.semiBold,
+    fontSize: 12,
+    lineHeight: 14,
+    color: colors.textPrimary,
+  },
 });
