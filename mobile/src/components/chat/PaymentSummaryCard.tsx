@@ -226,8 +226,10 @@ export default function PaymentSummaryCard({
           style={[styles.payButton, onViewOptions ? { flex: 1 } : { width: '100%' }]}
           onPress={handlePayment}
         >
-          <Text style={styles.payButtonText}>
-            Pay with {paymentMethodBrand ? paymentMethodBrand.charAt(0).toUpperCase() + paymentMethodBrand.slice(1) : ''} card
+          <Text style={styles.payButtonText} numberOfLines={1} adjustsFontSizeToFit>
+            {paymentMethodBrand
+              ? `Pay with ${paymentMethodBrand.charAt(0).toUpperCase() + paymentMethodBrand.slice(1)}`
+              : 'Pay with card'}
           </Text>
         </TouchableOpacity>
       </View>

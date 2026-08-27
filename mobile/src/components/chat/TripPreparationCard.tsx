@@ -1,8 +1,9 @@
-import { StyleSheet, Text, TouchableOpacity, View, Image } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { CalendarEvent } from '../../types';
 import ProgressIcon from '../icons/ProgressIcon';
 import CalendarIcon from '../icons/CalendarIcon';
+import HeaderBackground from '../../../assets/header-background.svg';
 
 type Props = {
   event: CalendarEvent;
@@ -44,11 +45,9 @@ export default function TripPreparationCard({
     <View style={styles.cardShadow}>
       <View style={styles.card}>
         {/* Decorative Header Background */}
-        <Image
-          source={require('../../../assets/header-background.svg')}
-          style={styles.decorativeHeader}
-          resizeMode="cover"
-        />
+        <View style={styles.decorativeHeader} pointerEvents="none">
+          <HeaderBackground width="100%" height="100%" preserveAspectRatio="xMidYMid slice" />
+        </View>
 
         {/* Trip Info Section */}
         <View style={styles.tripInfo}>
