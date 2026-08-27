@@ -17,25 +17,30 @@ export default function MessageBubble({ text, tone }: Props) {
 
 const styles = StyleSheet.create({
   bubble: {
-    borderRadius: 14,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    marginBottom: 10,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginBottom: 12,
     maxWidth: '90%',
   },
   agentBubble: {
-    backgroundColor: '#f1f1f3',
+    backgroundColor: '#FFF3E0',
     alignSelf: 'flex-start',
+    borderWidth: 0,
+    borderColor: '#FFE0B2',
   },
   userBubble: {
-    backgroundColor: '#111',
+    backgroundColor: '#D32F2F',
     alignSelf: 'flex-end',
+    borderWidth: 0,
   },
   errorBubble: {
-    backgroundColor: '#fdecea',
+    backgroundColor: '#FFEBEE',
     alignSelf: 'stretch',
+    borderWidth: 1,
+    borderColor: '#FFCDD2',
   },
-  agentText: { color: '#111', fontSize: 15, lineHeight: 21 },
-  userText: { color: '#fff', fontSize: 15, lineHeight: 21 },
-  errorText: { color: '#c0392b', fontSize: 15, lineHeight: 21 },
+  agentText: { color: '#1F1F1F', fontSize: 15, lineHeight: 21, fontWeight: '400' },
+  userText: { color: '#FFFFFF', fontSize: 15, lineHeight: 21, fontWeight: '400' },
+  errorText: { color: '#C62828', fontSize: 15, lineHeight: 21, fontWeight: '500' },
 });

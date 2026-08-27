@@ -1,0 +1,16 @@
+name: workflow_agent
+version: 0.1.0
+description: Orchestrates roaming and insurance agents in a sequential workflow.
+enabled: true
+priority: 5
+capabilities: [workflow]
+triggers:
+  events: [trip.detected, trip.updated]
+  rules:
+    - key: calendar_event.event_type
+      op: eq
+      value: flight
+required_context: [customer, calendar_event]
+tools: []
+actions: []
+output_schema: null

@@ -39,6 +39,19 @@ function markActiveStatusesDone(items: ChatItem[]): ChatItem[] {
   return changed ? next : items;
 }
 
+function removeAllStatuses(items: ChatItem[]): ChatItem[] {
+  const filtered = items.filter((item) => item.kind !== 'status');
+  return filtered.length < items.length ? filtered : items;
+}
+
+function replaceActiveStatus(items: ChatItem[], newStatus: ChatItem): ChatItem[] {
+  // Remove the last active status item and add the new one
+  const filtered = items.filter(
+    (item) => !(item.kind === 'status' && item.state === 'active'),
+  );
+  return [...filtered, newStatus];
+}
+
 export function applyStreamEvent(items: ChatItem[], event: AgentStreamEvent): ChatItem[] {
   switch (event.type) {
     case 'run_started':
@@ -46,23 +59,23 @@ export function applyStreamEvent(items: ChatItem[], event: AgentStreamEvent): Ch
       return items;
 
     case 'status':
-      return [
-        ...items,
-        { id: nextId(), createdAt: Date.now(), kind: 'status', label: event.data.text, state: 'active' },
-      ];
+      return replaceActiveStatus(items, {
+        id: nextId(),
+        createdAt: Date.now(),
+        kind: 'status',
+        label: event.data.text,
+        state: 'active',
+      });
 
     case 'tool_started':
-      return [
-        ...items,
-        {
-          id: nextId(),
-          createdAt: Date.now(),
-          kind: 'status',
-          tool: event.data.tool,
-          label: event.data.label ?? TOOL_LABELS[event.data.tool] ?? 'Working…',
-          state: 'active',
-        },
-      ];
+      return replaceActiveStatus(items, {
+        id: nextId(),
+        createdAt: Date.now(),
+        kind: 'status',
+        tool: event.data.tool,
+        label: event.data.label ?? TOOL_LABELS[event.data.tool] ?? 'Working…',
+        state: 'active',
+      });
 
     case 'tool_completed': {
       const idx = findLastIndex(
@@ -84,13 +97,13 @@ export function applyStreamEvent(items: ChatItem[], event: AgentStreamEvent): Ch
       ];
 
     case 'recommendation_ready': {
-      const withDone = markActiveStatusesDone(items);
-      return [...withDone, { id: nextId(), createdAt: Date.now(), kind: 'card', card: event.data.card }];
+      const withoutStatus = removeAllStatuses(items);
+      return [...withoutStatus, { id: nextId(), createdAt: Date.now(), kind: 'card', card: event.data.card }];
     }
 
     case 'hotel_result': {
-      const withDone = markActiveStatusesDone(items);
-      return [...withDone, { id: nextId(), createdAt: Date.now(), kind: 'hotel', hotel: event.data }];
+      const withoutStatus = removeAllStatuses(items);
+      return [...withoutStatus, { id: nextId(), createdAt: Date.now(), kind: 'hotel', hotel: event.data }];
     }
 
     case 'confirmation_required': {
@@ -115,9 +128,9 @@ export function applyStreamEvent(items: ChatItem[], event: AgentStreamEvent): Ch
     }
 
     case 'error': {
-      const withDone = markActiveStatusesDone(items);
+      const withoutStatus = removeAllStatuses(items);
       return [
-        ...withDone,
+        ...withoutStatus,
         {
           id: nextId(),
           createdAt: Date.now(),
@@ -129,7 +142,8 @@ export function applyStreamEvent(items: ChatItem[], event: AgentStreamEvent): Ch
     }
 
     case 'done':
-      return markActiveStatusesDone(items);
+      // Remove all status items when workflow completes
+      return removeAllStatuses(items);
 
     default: {
       // Unknown event type — the backend contract could still shift under us.
