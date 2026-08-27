@@ -7,8 +7,7 @@ import type { FC, SVGProps } from 'react';
 import StepHeader from '../../components/onboarding/StepHeader';
 import StepProgressBar from '../../components/onboarding/StepProgressBar';
 import { useAuth } from '../../context/AuthContext';
-import { useOnboarding } from '../../context/OnboardingContext';
-import { colors, radii, spacing, typography } from '../../theme';
+import { colors, fonts, radii, spacing, typography } from '../../theme';
 import type { CurrentPlanCard, OnboardingStackParamList } from '../../types';
 import Cmf2Pro from '../../../assets/CMF-2-pro.svg';
 import bigValueBundle from '../../../assets/big-value-bundle.svg';
@@ -39,7 +38,6 @@ const FALLBACK_CARDS: CurrentPlanCard[] = [
 // gently peeking from behind — matches the "Nice to meet you" screen where
 // cards swap on their own while the user reads the greeting.
 export default function WelcomeScreen({ navigation }: Props) {
-  const { firstName } = useOnboarding();
   const { customer } = useAuth();
   const [index, setIndex] = useState(0);
   const fade = useRef(new Animated.Value(1)).current;
@@ -66,7 +64,7 @@ export default function WelcomeScreen({ navigation }: Props) {
 
       <View style={styles.body}>
         <StepProgressBar step={2} totalSteps={5} />
-        <Text style={styles.title}>Nice to meet you,{'\n'}{firstName}.</Text>
+        <Text style={styles.title}>Nice to meet you,{'\n'}{customer?.full_name?.split(' ')[0] || 'there'}.</Text>
         <Text style={styles.subtitle}>Your Vodafone number helps Veda understand your world, so it can start helping from day one.</Text>
         <View style={styles.viewContainer}>
         <View style={styles.contentWrapper}>
@@ -82,7 +80,9 @@ export default function WelcomeScreen({ navigation }: Props) {
             <Text style={styles.cardTitle}>{card.title}</Text>
             <Text style={styles.cardSubtitle}>{card.subtitle}</Text>
             <View style={styles.bulletRow}>
-              <Ionicons name="checkmark-circle" size={16} color={colors.brand} />
+              <View style={styles.checkmarkCircle}>
+                <Ionicons name="checkmark" size={14} color={colors.white} />
+              </View>
               <Text style={styles.bulletText}>{card.bullet}</Text>
             </View>
           </View>
@@ -109,8 +109,8 @@ export default function WelcomeScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   body: { paddingHorizontal: spacing.xl, flex: 1, flexDirection: 'column' },
-  title: { ...typography.headline, color: colors.textPrimary, marginBottom: spacing.sm },
-  subtitle: { ...typography.body, color: colors.textSecondary, marginBottom: spacing.lg },
+  title: { fontSize: 32, fontWeight: '700', fontFamily: fonts.bold, color: colors.textPrimary, marginBottom: spacing.sm, lineHeight: 40 },
+  subtitle: { fontSize: 14, fontWeight: '400', fontFamily: fonts.body, color: '#6b7280', marginBottom: spacing.lg, lineHeight: 21 },
   viewContainer: {flex: 1, justifyContent: 'space-between',},
   contentWrapper: {
     borderWidth: 1,
@@ -133,16 +133,22 @@ const styles = StyleSheet.create({
 
 
   cardTitle: {
-    ...typography.sectionTitle,
+    fontSize: 16,
+    fontWeight: '700',
+    fontFamily: fonts.bold,
     color: colors.textPrimary,
     marginBottom: spacing.xs,
-    marginTop: spacing.xl
+    marginTop: spacing.xl,
+    lineHeight: 20
   },
 
   cardSubtitle: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    marginBottom: spacing.lg
+    fontSize: 13,
+    fontWeight: '400',
+    fontFamily: fonts.body,
+    color: '#6b7280',
+    marginBottom: spacing.lg,
+    lineHeight: 19
   },
 
   bulletRow: {
@@ -151,10 +157,24 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
 
+  checkmarkCircle: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: colors.textPrimary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+    flexShrink: 0,
+  },
+
   bulletText: {
-    ...typography.caption,
-    color: colors.textSecondary,
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: fonts.semiBold,
+    color: '#6b7280',
     flex: 1,
+    lineHeight: 21
   },
 
   bottomSection: {
@@ -183,21 +203,25 @@ const styles = StyleSheet.create({
   },
 
   cta: {
-    width: '100%',
-    backgroundColor: colors.brandBackGround,
-    borderRadius: radii.pill,
-    paddingVertical: spacing.lg,
+    backgroundColor: '#f00405',
+    borderRadius: 24,
+    paddingVertical: 18,
+    paddingHorizontal: spacing.xl,
     alignItems: 'center',
-    shadowColor: colors.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    justifyContent: 'center',
+    width: '100%',
+    maxWidth: 366,
     elevation: 3,
+    shadowColor: '#f00405',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
   },
 
   ctaText: {
-    ...typography.bodyBold,
     color: colors.white,
-    fontSize: 16
+    fontSize: 16,
+    fontWeight: '700',
+    fontFamily: fonts.bold,
   },
 });

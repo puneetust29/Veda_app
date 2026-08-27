@@ -15,6 +15,7 @@ export const fonts = {
 // the Figma design (greeting headline, section titles, card copy, etc.).
 // Uses Urbanist for headlines/bold accents and Inter for body/labels.
 export const typography: Record<string, TextStyle> = {
+  display: { fontSize: 42, fontFamily: fonts.bold },
   headline: { fontSize: 28, fontWeight: '700', fontFamily: fonts.bold },
   title: { fontSize: 24, fontWeight: '700', fontFamily: fonts.bold },
   sectionTitle: { fontSize: 18, fontWeight: '700', fontFamily: fonts.bold },

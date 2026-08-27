@@ -41,6 +41,12 @@ export default function OtpVerificationScreen({ navigation }: Props) {
     return () => clearInterval(timer);
   }, [resendTimer]);
 
+  useEffect(() => {
+    if (code.length === 6 && status === 'idle') {
+      handleVerify();
+    }
+  }, [code]);
+
   const handleCodeChange = (newCode: string) => {
     setCode(newCode);
     if (status === 'error') {
@@ -73,6 +79,8 @@ export default function OtpVerificationScreen({ navigation }: Props) {
         setTimeout(() => navigation.navigate('Welcome'), 600);
       } catch (err) {
         setStatus('error');
+        setCode('');
+        setOtpResetKey((prev) => prev + 1);
         const errorMsg = err instanceof Error ? err.message : String(err);
         const userFriendlyMsg = errorMsg.includes('Invalid OTP')
           ? 'Incorrect code. Please try again.'
@@ -118,20 +126,15 @@ export default function OtpVerificationScreen({ navigation }: Props) {
         <TouchableOpacity
           style={[
             styles.cta,
-            (!isComplete || status === 'verifying') && styles.ctaDisabled,
-            status === 'verified' && styles.ctaVerified,
+            !isComplete && status !== 'verified' && styles.ctaDisabled,
             status === 'error' && styles.ctaError,
           ]}
-          disabled={!isComplete || status === 'verifying' || status === 'verified'}
-          onPress={handleVerify}
+          disabled={!isComplete && status !== 'verified'}
+          onPress={status === 'verified' ? () => navigation.navigate('Welcome') : handleVerify}
         >
-          {status === 'verifying' ? (
-            <ActivityIndicator color={colors.white} />
-          ) : (
-            <Text style={[styles.ctaText, !isComplete && styles.ctaTextDisabled]}>
-              {status === 'verified' ? 'Verified' : 'Continue'}
-            </Text>
-          )}
+          <Text style={[styles.ctaText, !isComplete && styles.ctaTextDisabled]}>
+            {status === 'verifying' ? 'Verifying' : status === 'verified' ? 'Verified' : 'Continue'}
+          </Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -157,7 +160,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   ctaDisabled: { backgroundColor: colors.textDisabled },
-  ctaVerified: { backgroundColor: colors.success },
   ctaError: { backgroundColor: colors.brandBackGround },
   ctaText: { ...typography.bodyBold, color: colors.white, fontSize: 16 },
   ctaTextDisabled: { color: colors.white },

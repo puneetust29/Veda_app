@@ -832,24 +832,29 @@ const styles = StyleSheet.create({
   },
 
   cta: {
-    height: 50,
-    backgroundColor: CTA_RED,
-    borderRadius: radii.pill,
+    height: 56,
+    backgroundColor: '#f00405',
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 15,
+    paddingHorizontal: spacing.xl,
+    elevation: 3,
+    shadowColor: '#f00405',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
   },
 
-  ctaText: { ...typography.bodyBold, color: colors.white, fontSize: 14, textAlign: 'center' },
+  ctaText: { color: colors.white, fontSize: 16, fontWeight: '700', textAlign: 'center' },
 
   skipButton: {
-    height: 50,
-    backgroundColor: colors.neutralFillLight,
-    borderRadius: radii.pill,
+    height: 56,
+    backgroundColor: '#f3f3f3',
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: spacing.md,
   },
 
-  skipText: { ...typography.bodyBold, color: colors.textPrimary, fontSize: 14 },
+  skipText: { color: colors.textPrimary, fontSize: 16, fontWeight: '600' },
 });

@@ -1,13 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 import OnboardingBanner from '../../components/onboarding/OnboardingBanner';
 import StepHeader from '../../components/onboarding/StepHeader';
 import StepProgressBar from '../../components/onboarding/StepProgressBar';
 import { useOnboarding } from '../../context/OnboardingContext';
-import { colors, radii, spacing, typography } from '../../theme';
+import { colors, fonts, radii, spacing, typography } from '../../theme';
 import type { OnboardingStackParamList } from '../../types';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'PhoneEntry'>;
@@ -43,6 +44,13 @@ export default function PhoneEntryScreen({ navigation }: Props) {
   const [localNumber, setLocalNumber] = useState(phoneNumber.replace(/^\+\d+/, ''));
   const [helpVisible, setHelpVisible] = useState(false);
   const [countryPickerVisible, setCountryPickerVisible] = useState(false);
+  const phoneInputRef = useRef<TextInput>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      phoneInputRef.current?.focus();
+    }, [])
+  );
 
   const isValid = localNumber.replace(/\s/g, '').length >= 10;
 
@@ -72,13 +80,20 @@ export default function PhoneEntryScreen({ navigation }: Props) {
             <Text style={styles.countryCode}>{selectedCountry.code}</Text>
           </TouchableOpacity>
           <TextInput
+            ref={phoneInputRef}
             style={styles.input}
             placeholder="Mobile number"
             placeholderTextColor={colors.textMuted}
             keyboardType="phone-pad"
             autoComplete="tel"
             value={localNumber}
-            onChangeText={setLocalNumber}
+            onChangeText={(text) => {
+              const digitsOnly = text.replace(/\D/g, '');
+              if (digitsOnly.length <= 13) {
+                setLocalNumber(digitsOnly);
+              }
+            }}
+            maxLength={13}
           />
         </View>
 
@@ -101,7 +116,7 @@ export default function PhoneEntryScreen({ navigation }: Props) {
               <Text style={styles.footerCaption}>Need a new line?</Text>
               <Text style={styles.footerLinkText}>Get a Vodafone number</Text>
             </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.brand} />
+            <Ionicons name="chevron-forward" size={18} color={colors.brandText} />
           </TouchableOpacity>
           <View style={styles.footerDivider} />
           <TouchableOpacity style={styles.footerRow}>
@@ -109,7 +124,7 @@ export default function PhoneEntryScreen({ navigation }: Props) {
               <Text style={styles.footerCaption}>Already with another network?</Text>
               <Text style={styles.footerLinkText}>Switch to Vodafone</Text>
             </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.brand} />
+            <Ionicons name="chevron-forward" size={18} color={colors.brandText} />
           </TouchableOpacity>
         </View>
         </ScrollView>
@@ -186,15 +201,15 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   cardWrapper: { flex: 1, backgroundColor: colors.background, borderTopLeftRadius: radii.xl, borderTopRightRadius: radii.xl, overflow: 'hidden', position: 'relative', marginTop: -35, padding: spacing.xxl },
   body: { flex: 1 },
-  title: { ...typography.heading,color: colors.textPrimary,marginBottom: spacing.sm, fontSize: 28, fontWeight: '700', lineHeight: 34 },
-  subtitle: { color: colors.textSecondary, marginBottom: spacing.xxl, fontSize: 14, fontWeight: '400', lineHeight: 20 },
+  title: { fontSize: 38, fontWeight: '600', fontFamily: fonts.semiBold, color: colors.textPrimary, marginBottom: spacing.sm, lineHeight: 46 },
+  subtitle: { fontSize: 14, fontWeight: '300', fontFamily: fonts.bodyLight, color: '#6b7280', marginBottom: spacing.xxl, lineHeight: 21 },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: radii.md,
-    backgroundColor: colors.surface,
-    paddingHorizontal: 14,
-    paddingVertical: 13,
+    borderRadius: 14,
+    backgroundColor: '#f4f4f4',
+    paddingHorizontal: 12,
+    paddingVertical: 12,
     gap: 0,
     borderWidth: 0,
     minHeight: 52,
@@ -207,28 +222,28 @@ const styles = StyleSheet.create({
     borderRightWidth: 1,
     borderRightColor: colors.border,
   },
-  flag: { fontSize: 22 },
-  countryCode: { color: colors.textPrimary, fontSize: 15, fontWeight: '600' },
-  input: { flex: 1, paddingVertical: 0, fontSize: 15, color: colors.textPrimary, fontWeight: '400', paddingHorizontal: spacing.md },
+  flag: { fontSize: 20 },
+  countryCode: { color: '#111', fontSize: 14, fontWeight: '600', fontFamily: fonts.semiBold },
+  input: { flex: 1, paddingVertical: 0, fontSize: 14, color: colors.textPrimary, fontWeight: '400', fontFamily: fonts.body, paddingHorizontal: spacing.md, placeholderTextColor: '#808080' },
   helpLink: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.md },
-  helper: { color: colors.brandText, fontWeight: '600', fontSize: 13, lineHeight: 16 },
+  helper: { color: colors.brandText, fontWeight: '600', fontFamily: fonts.semiBold, fontSize: 14, lineHeight: 16 },
   cta: {
-    backgroundColor: colors.brandBackGround,
-    borderRadius: radii.pill,
-    paddingVertical: 14,
+    backgroundColor: '#f00405',
+    borderRadius: 24,
+    paddingVertical: 18,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: spacing.xxl,
     marginBottom: spacing.xxxl,
     opacity: 1,
   },
-  ctaDisabled: { backgroundColor: colors.ctaDisabledLight, opacity: 1 },
-  ctaText: { color: colors.white, fontSize: 15, fontWeight: '600' },
+  ctaDisabled: { backgroundColor: '#d0d0d0', opacity: 1 },
+  ctaText: { color: colors.white, fontSize: 16, fontWeight: '700', fontFamily: fonts.bold },
   ctaTextDisabled: { color: colors.white },
   footerLinks: { position: 'absolute', bottom: spacing.xxxl, right: spacing.lg, left: spacing.lg },
   footerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14 },
-  footerCaption: { color: colors.textMuted, fontSize: 12, lineHeight: 14, fontWeight: '400', marginBottom: spacing.xs },
-  footerLinkText: { color: colors.textPrimary, fontSize: 15, fontWeight: '600', lineHeight: 18 },
+  footerCaption: { color: '#6b7280', fontSize: 12, lineHeight: 14, fontWeight: '400', fontFamily: fonts.body, marginBottom: spacing.xs },
+  footerLinkText: { color: '#111', fontSize: 16, fontWeight: '600', fontFamily: fonts.semiBold, lineHeight: 20 },
   footerDivider: { height: 1, backgroundColor: colors.border },
   sheetBackdrop: { flex: 1, backgroundColor: colors.backdrop, justifyContent: 'flex-end' },
   sheet: {
