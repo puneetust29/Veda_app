@@ -9,7 +9,6 @@ import StepProgressBar from '../../components/onboarding/StepProgressBar';
 import { useOnboarding } from '../../context/OnboardingContext';
 import { colors, radii, spacing, typography } from '../../theme';
 import type { OnboardingStackParamList } from '../../types';
-import { fontFamily } from '../../theme';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'PhoneEntry'>;
 
@@ -188,7 +187,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   cardWrapper: { flex: 1, backgroundColor: colors.background, borderTopLeftRadius: radii.xl, borderTopRightRadius: radii.xl, overflow: 'hidden', position: 'relative', marginTop: -35, padding: spacing.xxl },
   body: { flex: 1 },
-  title: { ...typography.heading, fontFamily: fontFamily.headline,color: colors.textPrimary,marginBottom: spacing.sm, fontSize: 28, fontWeight: '700', lineHeight: 34 },
+  title: { ...typography.heading,color: colors.textPrimary,marginBottom: spacing.sm, fontSize: 28, fontWeight: '700', lineHeight: 34 },
   subtitle: { color: colors.textSecondary, marginBottom: spacing.xxl, fontSize: 14, fontWeight: '400', lineHeight: 20 },
   inputRow: {
     flexDirection: 'row',

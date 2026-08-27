@@ -54,7 +54,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.xxl,
   },
   title: { ...typography.bodyBold, color: colors.textPrimary, flex: 1 },
   body: { paddingBottom: spacing.md },
