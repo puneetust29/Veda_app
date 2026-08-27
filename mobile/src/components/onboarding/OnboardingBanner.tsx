@@ -19,11 +19,7 @@ const styles = StyleSheet.create({
   container: {
     height: 250,
     overflow: 'hidden',
-    // borderRadius: 100,
     backgroundColor: colors.brandText,
-    boxShadow: `0px 4px 8px 0px ${colors.bannerGlow} inset`,
-
-    // experimental_backgroundImage: `radial-gradient(97.01% 97.01% at 50% 2.99%, #000000 11.15%, ${colors.brandText} 59.62%, #000000 100%)`,
   },
   swooshContainer: {
     position: 'absolute',
@@ -43,5 +39,4 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 8,
   },
-  
 });
