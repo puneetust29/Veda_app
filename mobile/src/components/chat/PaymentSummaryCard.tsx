@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { useStripe } from '@stripe/stripe-react-native';
 import { colors, spacing, typography } from '../../theme';
+import { useSubscriptionInsurance } from '../../context/SubscriptionInsuranceContext';
 import { api } from '../../lib/api';
 import type { TravelInsurancePlan, RoamingPlan } from '../../types';
 
@@ -31,6 +32,7 @@ export default function PaymentSummaryCard({
   const [state, setState] = useState<State>('idle');
   const [errorMessage, setErrorMessage] = useState('');
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
+  const { refreshInsurance } = useSubscriptionInsurance();
 
   const handlePayment = async () => {
     try {
@@ -70,6 +72,9 @@ export default function PaymentSummaryCard({
         paymentIntentId,
         calendarEventId,
       );
+
+      // Refresh insurance data in context so other screens update
+      await refreshInsurance();
 
       setState('success');
       setTimeout(() => {
