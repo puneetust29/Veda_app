@@ -15,6 +15,7 @@ import {
 import { SvgXml } from 'react-native-svg';
 
 import CheckableTag from '../common/CheckableTag';
+import { useSubscriptionInsurance } from '../../context/SubscriptionInsuranceContext';
 import { colors, fonts, spacing } from '../../theme';
 import type { CalendarEvent } from '../../types';
 import { arrowWhite, chipDevices, chipMap } from './figmaSvgs';
@@ -61,6 +62,29 @@ function cityFromLocation(location: string | null): string {
   if (!location) return 'your trip';
   // "London Heathrow (LHR)" -> "London"; "NRT" -> "NRT" (fall back to as-is).
   return location.split(' ')[0];
+}
+
+type CompletionStatus = 'both_done' | 'one_done' | 'both_pending';
+
+function getFlightCompletionStatus(
+  flightId: string,
+  subscriptions: any[] | null,
+  activeInsurance: { purchases: any[] } | null,
+): CompletionStatus {
+  const hasRoaming = subscriptions?.some(
+    (s) => s.calendar_event_id === flightId && s.status === 'active',
+  );
+  const hasInsurance = activeInsurance?.purchases?.some((p) => p.calendar_event_id === flightId);
+
+  if (hasRoaming && hasInsurance) return 'both_done';
+  if (hasRoaming || hasInsurance) return 'one_done';
+  return 'both_pending';
+}
+
+function getCardSubtitle(status: CompletionStatus): string {
+  if (status === 'both_done') return "You're all set to fly! Everything is ready for your trip.";
+  if (status === 'one_done') return "I've found one thing you'll want to complete before you travel.";
+  return "I've found two things you'll want to complete before you travel.";
 }
 
 // Horizontal, snap-paged carousel of "needs your attention" flight cards —
@@ -157,6 +181,7 @@ function AttentionCard({
   onToggleTag: (tag: TagKey) => void;
   onPress: () => void;
 }) {
+  const { subscriptions, activeInsurance } = useSubscriptionInsurance();
   const inputRange = [
     (index - 1) * SNAP_INTERVAL,
     index * SNAP_INTERVAL,
@@ -169,6 +194,10 @@ function AttentionCard({
   });
 
   const destinationCity = cityFromLocation(flight.destination);
+  const completionStatus = getFlightCompletionStatus(flight.id, subscriptions, activeInsurance);
+  const isDomestic = flight.is_domestic ?? false;
+  const cardSubtitle = getCardSubtitle(completionStatus);
+  const shouldDisableButton = isDomestic || completionStatus === 'both_done';
 
 
   return (
@@ -189,7 +218,7 @@ function AttentionCard({
           Get your {destinationCity} trip ready
         </Text>
         <Text style={styles.cardSubtitle} numberOfLines={2}>
-          I&apos;ve found two things you&apos;ll want to complete before you travel.
+          {cardSubtitle}
         </Text>
 
         {!flight.is_domestic && (
@@ -210,9 +239,16 @@ function AttentionCard({
         )}
       </View>
 
-      <TouchableOpacity style={styles.ctaRow} onPress={onPress} activeOpacity={0.8}>
-        <Text style={styles.ctaText}>Review recommendation</Text>
-        <View style={styles.ctaButton}>
+      <TouchableOpacity
+        style={[styles.ctaRow, shouldDisableButton && styles.ctaRowDisabled]}
+        onPress={shouldDisableButton ? undefined : onPress}
+        activeOpacity={shouldDisableButton ? 1 : 0.8}
+        disabled={shouldDisableButton}
+      >
+        <Text style={[styles.ctaText, shouldDisableButton && styles.ctaTextDisabled]}>
+          {isDomestic ? 'Domestic coming soon' : completionStatus === 'both_done' ? 'All set!' : 'Review recommendation'}
+        </Text>
+        <View style={[styles.ctaButton, shouldDisableButton && styles.ctaButtonDisabled]}>
           <SvgXml xml={arrowWhite} width={14} height={14} />
         </View>
       </TouchableOpacity>
@@ -303,6 +339,16 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accentButton,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  ctaRowDisabled: {
+    backgroundColor: '#E8E8E8',
+    opacity: 0.6,
+  },
+  ctaTextDisabled: {
+    color: '#999999',
+  },
+  ctaButtonDisabled: {
+    backgroundColor: '#CCCCCC',
   },
   dots: { flexDirection: 'row', justifyContent: 'center', gap: 4 },
   dot: { width: 5, height: 5, borderRadius: 100, backgroundColor: colors.dotInactive },
