@@ -54,10 +54,17 @@ const COUNTRY_TO_ISO: Record<string, string> = {
 
 function formatLocation(location: string): string {
   const parts = location.split(',').map((part) => part.trim());
-  return parts
+  const formatted = parts
     .map((part) => COUNTRY_TO_ISO[part] || part)
-    .filter(Boolean)
-    .join(', ');
+    .filter(Boolean);
+
+  // Remove duplicates while preserving order
+  const seen = new Set<string>();
+  return formatted.filter((item) => {
+    if (seen.has(item)) return false;
+    seen.add(item);
+    return true;
+  }).join(', ');
 }
 
 function weatherIconName(weatherCode: number | null): IoniconName {
