@@ -11,5 +11,8 @@ mobile/.expo/
 mobile/dist/
 mobile/.env
 
+# Research / local docs (not committed)
+research/
+
 # OS
 .DS_Store
