@@ -330,14 +330,20 @@ export function useWorkflowChat(event: CalendarEvent) {
           // If insurance already active, show completion
           if (hasInsuranceReceipt) {
             console.log('[useWorkflowChat] Insurance already active, showing completion...');
-            appendItems([
-              {
+            const hasPaymentComplete = itemsRef.current.some((item) => item.kind === 'payment_complete');
+            const itemsToAdd: ChatItem[] = [];
+
+            if (!hasPaymentComplete) {
+              itemsToAdd.push({
                 id: nextId(),
                 createdAt: Date.now(),
                 kind: 'payment_complete',
                 insuranceId: 'insurance-active',
                 destination: event.destination ?? 'your destination',
-              },
+              });
+            }
+
+            itemsToAdd.push(
               {
                 id: nextId(),
                 createdAt: Date.now(),
@@ -350,8 +356,9 @@ export function useWorkflowChat(event: CalendarEvent) {
                 createdAt: Date.now(),
                 kind: 'trip_checklist',
                 destination: event.destination ?? 'your destination',
-              },
-            ]);
+              }
+            );
+            appendItems(itemsToAdd);
             setWorkflowState({
               currentStep: 'complete',
               completedSteps: ['roaming', 'insurance'],
@@ -564,20 +571,27 @@ export function useWorkflowChat(event: CalendarEvent) {
         },
       ];
 
+      // Check if payment_complete already shown
+      const hasPaymentComplete = itemsRef.current.some((item) => item.kind === 'payment_complete');
+
       // If both roaming and insurance are active, show payment complete
       if (hasRoamingActive) {
+        if (!hasPaymentComplete) {
+          newItems.push(
+            {
+              id: nextId(),
+              createdAt: Date.now(),
+              kind: 'payment_complete',
+              insuranceId: purchaseData.id || 'insurance-' + Date.now(),
+              insuranceAmount: purchaseData.insuranceAmount,
+              insuranceCurrency: purchaseData.insuranceCurrency,
+              destination: event.destination ?? 'your destination',
+              cardBrand: purchaseData.cardBrand,
+              cardLast4: purchaseData.cardLast4,
+            }
+          );
+        }
         newItems.push(
-          {
-            id: nextId(),
-            createdAt: Date.now(),
-            kind: 'payment_complete',
-            insuranceId: purchaseData.id || 'insurance-' + Date.now(),
-            insuranceAmount: purchaseData.insuranceAmount,
-            insuranceCurrency: purchaseData.insuranceCurrency,
-            destination: event.destination ?? 'your destination',
-            cardBrand: purchaseData.cardBrand,
-            cardLast4: purchaseData.cardLast4,
-          },
           {
             id: nextId(),
             createdAt: Date.now(),
@@ -593,14 +607,31 @@ export function useWorkflowChat(event: CalendarEvent) {
           }
         );
       } else {
-        // Only insurance purchased
-        newItems.push({
-          id: nextId(),
-          createdAt: Date.now(),
-          kind: 'text',
-          role: 'agent',
-          text: '✓ Your travel insurance is now active. You can add roaming anytime if you need it.',
-        });
+        // Only insurance purchased - show payment complete card
+        if (!hasPaymentComplete) {
+          newItems.push(
+            {
+              id: nextId(),
+              createdAt: Date.now(),
+              kind: 'payment_complete',
+              insuranceId: purchaseData.id || 'insurance-' + Date.now(),
+              insuranceAmount: purchaseData.insuranceAmount,
+              insuranceCurrency: purchaseData.insuranceCurrency,
+              destination: event.destination ?? 'your destination',
+              cardBrand: purchaseData.cardBrand,
+              cardLast4: purchaseData.cardLast4,
+            }
+          );
+        }
+        newItems.push(
+          {
+            id: nextId(),
+            createdAt: Date.now(),
+            kind: 'text',
+            role: 'agent',
+            text: '✓ Your travel insurance is now active. You can add roaming anytime if you need it.',
+          }
+        );
       }
 
       appendItems(newItems);

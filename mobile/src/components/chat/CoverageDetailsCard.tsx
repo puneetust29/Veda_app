@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
-import { colors, spacing, typography } from '../../theme';
+import { colors, fonts, spacing, typography } from '../../theme';
 import type { TravelInsurancePlan } from '../../types';
 
 type Props = {
@@ -70,9 +70,11 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   title: {
+    fontFamily: fonts.semiBold,
     fontSize: 20,
+    lineHeight: 24,
     fontWeight: '600',
-    color: colors.textPrimary,
+    color: '#000000',
     marginBottom: spacing.lg,
   },
   coverageRow: {
@@ -82,14 +84,14 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
   },
   coverageLabel: {
-    ...typography.body,
+    ...typography.caption,
     color: colors.textPrimary,
     fontWeight: '500',
     flex: 1,
     paddingRight: spacing.md,
   },
   coverageValue: {
-    ...typography.body,
+    ...typography.caption,
     color: colors.textPrimary,
     fontWeight: '600',
   },

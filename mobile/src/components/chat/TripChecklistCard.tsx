@@ -48,7 +48,7 @@ export default function TripChecklistCard({
           )}
           <Text style={styles.checklistLabel}>{item.label}</Text>
           <View style={styles.checkmark}>
-            <CheckIcon size={16} />
+            <CheckIcon size={16} color="white" />
           </View>
         </View>
       ))}

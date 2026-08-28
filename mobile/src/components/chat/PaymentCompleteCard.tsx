@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { colors, fonts, spacing } from '../../theme';
 import CheckmarkIcon from '../icons/CheckmarkIcon';
 import HeaderBackground from '../icons/HeaderBackground';
+import { api } from '../../lib/api';
 
 
 
@@ -16,6 +17,24 @@ type Props = {
 };
 
 export default function PaymentCompleteCard({ insuranceId, insuranceAmount, insuranceCurrency, destination, cardLast4, cardBrand }: Props) {
+  const [paymentMethodBrand, setPaymentMethodBrand] = useState(cardBrand);
+  const [paymentMethodLast4, setPaymentMethodLast4] = useState(cardLast4);
+
+  useEffect(() => {
+    if (!cardBrand || !cardLast4) {
+      const fetchPaymentMethod = async () => {
+        try {
+          const response = await api.getCustomerPaymentMethods();
+          if (!cardBrand) setPaymentMethodBrand(response.brand ?? undefined);
+          if (!cardLast4) setPaymentMethodLast4(response.last4 ?? undefined);
+        } catch (err) {
+          if (__DEV__) console.debug('Payment method fetch failed:', err);
+        }
+      };
+      fetchPaymentMethod();
+    }
+  }, [cardBrand, cardLast4]);
+
   const totalAmount = insuranceAmount || 0;
   const currency = insuranceCurrency || '£';
   const transactionId = insuranceId || 'N/A';
@@ -37,11 +56,11 @@ export default function PaymentCompleteCard({ insuranceId, insuranceAmount, insu
         <View style={styles.divider} />
 
         <View style={styles.detailsSection}>
-          {cardBrand && cardLast4 && (
+          {paymentMethodBrand && paymentMethodLast4 && (
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Payment method</Text>
               <Text style={styles.detailValue}>
-                {cardBrand.charAt(0).toUpperCase() + cardBrand.slice(1)} •••• {cardLast4}
+                {paymentMethodBrand.charAt(0).toUpperCase() + paymentMethodBrand.slice(1)} •••• {paymentMethodLast4}
               </Text>
             </View>
           )}
