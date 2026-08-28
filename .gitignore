@@ -11,5 +11,9 @@ mobile/.expo/
 mobile/dist/
 mobile/.env
 
+# Research / local notes
+research/
+mobile/test-results/
+
 # OS
 .DS_Store

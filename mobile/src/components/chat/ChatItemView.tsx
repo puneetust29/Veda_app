@@ -11,6 +11,7 @@ import StatusLine from './StatusLine';
 import WhatsAppShareCard from './WhatsAppShareCard';
 import TravelInsuranceCardChat from './TravelInsuranceCardChat';
 import TripPreparationCard from './TripPreparationCard';
+import TransportStatusCard from '../common/TransportStatusCard';
 
 type Props = {
   item: ChatItem;
@@ -55,6 +56,8 @@ function ChatItemViewImpl({ item, onConfirm, onDecline, onInsurancePurchased, on
           recommendations={item.hotel.recommendations}
         />
       );
+    case 'transport':
+      return <TransportStatusCard transport={item.transport} />;
     case 'whatsapp_share':
       return <WhatsAppShareCard text={item.text} />;
     case 'travel_insurance':

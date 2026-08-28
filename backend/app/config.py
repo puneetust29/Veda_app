@@ -37,6 +37,9 @@ class Settings(BaseSettings):
     stripe_secret_key: str = ""
     stripe_publishable_key: str = ""
 
+    # TfL (Transport for London) API key. Optional: transport agent skips TfL calls if empty.
+    tfl_api_key: str = ""
+
     environment: str = "development"
     cors_origins: str = "*"
 

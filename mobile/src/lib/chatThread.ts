@@ -110,6 +110,14 @@ export function applyStreamEvent(items: ChatItem[], event: AgentStreamEvent): Ch
       return [...withoutStatus, { id: nextId(), createdAt: Date.now(), kind: 'hotel', hotel: event.data }];
     }
 
+    case 'transport_result': {
+      const withoutStatus = removeAllStatuses(items);
+      return [
+        ...withoutStatus,
+        { id: nextId(), createdAt: Date.now(), kind: 'transport', transport: event.data },
+      ];
+    }
+
     case 'share_draft': {
       const withDone = markActiveStatusesDone(items);
       return [...withDone, { id: nextId(), createdAt: Date.now(), kind: 'whatsapp_share', text: event.data.text }];

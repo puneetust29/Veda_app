@@ -197,6 +197,33 @@ export type HotelDetectionResultPayload = {
   recommendations?: Array<{ name: string; rating: number; price: number; location: string }> | null;
 };
 
+export type TransportLineStatus = {
+  line_name: string;
+  status: string;
+  severity: number;
+  disruption: string | null;
+};
+
+export type TransportJourneyLeg = {
+  mode: string;
+  instruction: string;
+  duration_mins: number;
+};
+
+export type TransportJourneyOption = {
+  duration_mins: number;
+  legs: TransportJourneyLeg[];
+};
+
+export type TransportResultPayload = {
+  has_london: boolean;
+  direction: 'from_london' | 'to_london' | null;
+  airport: string | null;
+  line_statuses: TransportLineStatus[];
+  journey_options: TransportJourneyOption[];
+  summary: string;
+};
+
 // The wire event contract emitted by `POST /chat/stream`. This is the backend's
 // still-being-finalized shape — only `chatThread.ts` should need to know both this
 // and `ChatItem` below; everything else in the app works off the stable render model.
@@ -208,6 +235,7 @@ export type AgentStreamEvent =
   | { type: 'text'; data: { role: 'agent' | 'user'; text: string } }
   | { type: 'recommendation_ready'; data: { card: RecommendationCardPayload } }
   | { type: 'hotel_result'; data: HotelDetectionResultPayload }
+  | { type: 'transport_result'; data: TransportResultPayload }
   | { type: 'share_draft'; data: { text: string } }
   | {
       type: 'confirmation_required';
@@ -252,4 +280,5 @@ export type ChatItem =
       planType: 'roaming' | 'insurance';
       planId: string;
     })
+  | (ChatItemBase & { kind: 'transport'; transport: TransportResultPayload })
   | (ChatItemBase & { kind: 'error'; message: string; retryable: boolean });
