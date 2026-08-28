@@ -93,13 +93,6 @@ export default function ChatScreen({ route, navigation }: Props) {
         })}
       </ScrollView>
 
-      {phase === 'complete' && (
-        <View style={styles.footer}>
-          <TouchableOpacity style={styles.primaryButton} onPress={() => navigation.navigate('Subscriptions')}>
-            <Text style={styles.primaryButtonText}>View my plans</Text>
-          </TouchableOpacity>
-        </View>
-      )}
 
       {phase === 'failed' && (
         <View style={styles.footer}>

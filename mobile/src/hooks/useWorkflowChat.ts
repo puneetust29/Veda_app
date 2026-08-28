@@ -308,7 +308,7 @@ export function useWorkflowChat(event: CalendarEvent) {
           });
           console.log('[useWorkflowChat] confirm - hasInsuranceReceipt:', hasInsuranceReceipt);
 
-          appendItems([
+          const newItems: ChatItem[] = [
             {
               id: nextId(),
               createdAt: Date.now(),
@@ -323,7 +323,9 @@ export function useWorkflowChat(event: CalendarEvent) {
               subscription,
               planName: subscription.roaming_plans?.plan_name ?? target.summary,
             },
-          ]);
+          ];
+
+          appendItems(newItems);
 
           // If insurance already active, show completion
           if (hasInsuranceReceipt) {
@@ -332,9 +334,10 @@ export function useWorkflowChat(event: CalendarEvent) {
               {
                 id: nextId(),
                 createdAt: Date.now(),
-                kind: 'text',
-                role: 'agent',
-                text: '✓ You\'re all set! You have both roaming and travel insurance for this trip.',
+                kind: 'payment_complete',
+                roamingSubscription: subscription,
+                insuranceId: 'insurance-active',
+                destination: event.destination ?? 'your destination',
               },
             ]);
             setWorkflowState({
@@ -516,15 +519,16 @@ export function useWorkflowChat(event: CalendarEvent) {
         (item) => item.kind === 'receipt' && 'subscription' in item && item.subscription?.roaming_plans
       );
 
+      // Get roaming subscription if it exists
+      const roamingSubscription = (itemsRef.current.find(
+        (item) => item.kind === 'receipt' && 'subscription' in item && item.subscription?.roaming_plans
+      ) as any)?.subscription;
+
       // Also check if we're tracking it in workflow state
       const hasRoamingCompleted = workflowStateRef.current.completedSteps.includes('roaming');
       const hasRoamingActive = hasRoamingReceipt || hasRoamingCompleted;
 
       console.log('[useWorkflowChat] handleInsurancePurchased - hasRoamingReceipt:', hasRoamingReceipt, 'hasRoamingCompleted:', hasRoamingCompleted);
-
-      const successMessage = hasRoamingActive
-        ? '✓ You are all set for your trip! You have both roaming and travel insurance.'
-        : '✓ Your travel insurance is now active. You can add roaming anytime if you need it.';
 
       // Create receipt for insurance purchase to track completion
       const newItems: ChatItem[] = [
@@ -546,14 +550,28 @@ export function useWorkflowChat(event: CalendarEvent) {
           } as any,
           planName: purchaseData.planName || 'Travel Insurance',
         },
-        {
+      ];
+
+      // If both roaming and insurance are active, show payment complete
+      if (hasRoamingActive) {
+        newItems.push({
+          id: nextId(),
+          createdAt: Date.now(),
+          kind: 'payment_complete',
+          roamingSubscription,
+          insuranceId: purchaseData.id || 'insurance-' + Date.now(),
+          destination: event.destination ?? 'your destination',
+        });
+      } else {
+        // Only insurance purchased
+        newItems.push({
           id: nextId(),
           createdAt: Date.now(),
           kind: 'text',
           role: 'agent',
-          text: successMessage,
-        },
-      ];
+          text: '✓ Your travel insurance is now active. You can add roaming anytime if you need it.',
+        });
+      }
 
       appendItems(newItems);
 
@@ -570,7 +588,7 @@ export function useWorkflowChat(event: CalendarEvent) {
 
       setPhase('complete');
     },
-    [appendItems],
+    [appendItems, event],
   );
 
   const retry = useCallback(() => {

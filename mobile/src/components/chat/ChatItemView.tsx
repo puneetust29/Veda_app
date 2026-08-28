@@ -5,6 +5,7 @@ import ConfirmationPrompt from './ConfirmationPrompt';
 import ConfirmationSuccessCard from './ConfirmationSuccessCard';
 import HotelBookingCard from '../common/HotelBookingCard';
 import MessageBubble from './MessageBubble';
+import PaymentCompleteCard from './PaymentCompleteCard';
 import ReceiptCard from './ReceiptCard';
 import RecommendationCard from './RecommendationCard';
 import StatusLine from './StatusLine';
@@ -68,6 +69,13 @@ function ChatItemViewImpl({ item, onConfirm, onDecline, onInsurancePurchased, on
       return null; // Don't show receipt cards in chat
     case 'confirmation_success':
       return <ConfirmationSuccessCard planType={item.planType} />;
+    case 'payment_complete':
+      return (
+        <PaymentCompleteCard
+          roamingSubscription={item.roamingSubscription}
+          destination={item.destination}
+        />
+      );
     case 'error':
       return <MessageBubble text={item.message} tone="error" />;
     default: {

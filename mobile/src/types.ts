@@ -246,4 +246,10 @@ export type ChatItem =
       planType: 'roaming' | 'insurance';
       planId: string;
     })
+  | (ChatItemBase & {
+      kind: 'payment_complete';
+      roamingSubscription?: Subscription;
+      insuranceId?: string;
+      destination: string;
+    })
   | (ChatItemBase & { kind: 'error'; message: string; retryable: boolean });

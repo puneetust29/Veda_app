@@ -60,8 +60,8 @@ export default function CoverageDetailsCard({ plan, onClose }: Props) {
 const styles = StyleSheet.create({
   card: {
     backgroundColor: 'white',
-    borderRadius: 12,
-    padding: spacing.lg,
+    borderRadius: 24,
+    padding: 16,
     marginBottom: spacing.lg,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -98,11 +98,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#E0E0E0',
   },
   backButton: {
-    backgroundColor: colors.brand,
-    paddingVertical: spacing.lg,
-    borderRadius: 50,
+    backgroundColor: colors.accentCta,
+    height: 49,
+    borderRadius: 16,
     alignItems: 'center',
+    justifyContent: 'center',
     marginTop: spacing.lg,
+    width: '100%',
   },
   backButtonText: {
     ...typography.body,
