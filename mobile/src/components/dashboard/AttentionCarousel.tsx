@@ -199,7 +199,7 @@ function AttentionCard({
       </View>
 
       <Text style={styles.cardTitle} numberOfLines={2}>
-        Get your {destinationCity} trip ready
+        #{index + 1} · Get your {destinationCity} trip ready
       </Text>
       <Text style={styles.cardSubtitle} numberOfLines={2}>
         I&apos;ve found two things you&apos;ll want to complete before you travel.

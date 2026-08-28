@@ -18,12 +18,14 @@ export default function AskVedaButton({ onPress }: Props) {
 
 const styles = StyleSheet.create({
   button: {
+    position: 'absolute',
+    bottom: spacing.xl,
+    left: spacing.xl,
+    right: spacing.xl,
     backgroundColor: colors.brand,
     borderRadius: radii.pill,
     paddingVertical: spacing.lg,
     alignItems: 'center',
-    marginHorizontal: spacing.xl,
-    marginBottom: spacing.lg,
   },
   label: { color: colors.white, ...typography.bodyBold, fontSize: 16 },
 });

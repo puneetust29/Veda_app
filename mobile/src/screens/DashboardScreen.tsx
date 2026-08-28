@@ -144,7 +144,15 @@ export default function DashboardScreen({ navigation }: Props) {
     setRefreshing(false);
   };
 
-  const upcomingFlights = events.filter((event) => event.event_type === 'flight');
+  const upcomingFlights = events
+    .filter((event) => event.event_type === 'flight')
+    .sort((a, b) => {
+      const isLondon = (e: typeof a) =>
+        (e.origin ?? '').toLowerCase().includes('london') ||
+        (e.destination ?? '').toLowerCase().includes('london');
+      return Number(isLondon(b)) - Number(isLondon(a));
+    });
+  console.log('[Dashboard] upcomingFlights order:', upcomingFlights.map((e, i) => `#${i+1} "${e.title}" origin=${e.origin} dest=${e.destination} start=${e.start_datetime} end=${e.end_datetime}`));
   const firstName = customer?.full_name?.split(' ')[0] ?? 'there';
 
   // "Connect apps" tiles are visual placeholders for integrations that
@@ -220,7 +228,11 @@ export default function DashboardScreen({ navigation }: Props) {
             flights={upcomingFlights}
             activeRoamingEventIds={activeRoamingEventIds}
             activeInsuranceEventIds={activeInsuranceEventIds}
-            onPressFlight={(event) => navigation.navigate('Chat', { event })}
+            onPressFlight={(event) => {
+              const idx = upcomingFlights.findIndex((f) => f.id === event.id);
+              console.log(`[Dashboard] opened card #${idx + 1} "${event.title}" origin=${event.origin} dest=${event.destination} start=${event.start_datetime}`);
+              navigation.navigate('Chat', { event });
+            }}
           />
 
           <SuggestionGrid suggestions={suggestions} />
@@ -235,7 +247,7 @@ export default function DashboardScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   loading: { marginTop: spacing.xxxl },
-  scrollContent: { paddingBottom: spacing.xl },
+  scrollContent: { paddingBottom: 96 },
   attentionHeader: {
     flexDirection: 'row',
     alignItems: 'center',

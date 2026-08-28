@@ -131,6 +131,7 @@ export function useWorkflowChat(event: CalendarEvent) {
 
   const handleStreamEvent = useCallback(
     (event_: AgentStreamEvent) => {
+      console.log('[stream event]', event_.type, JSON.stringify((event_ as any).data ?? {}).slice(0, 200));
       resetWatchdog();
       const next = applyStreamEvent(itemsRef.current, event_);
       commitItems(next);
@@ -190,6 +191,7 @@ export function useWorkflowChat(event: CalendarEvent) {
       if (params) {
         lastRequestParamsRef.current = params;
       }
+      console.log('[startStream] event_id=%s params=%s', event.id, JSON.stringify(params ?? {}));
       setPhase('streaming');
       resetWatchdog();
       api
@@ -199,13 +201,18 @@ export function useWorkflowChat(event: CalendarEvent) {
           onEvent: handleStreamEvent,
           onError: (err) => {
             if (controller.signal.aborted) return;
+            console.warn('[startStream] SSE error:', err);
             handleStreamError(err);
           },
-          onClose: clearWatchdog,
+          onClose: () => {
+            console.log('[startStream] SSE closed event_id=%s', event.id);
+            clearWatchdog();
+          },
           ...params,
         })
         .catch((err) => {
           if (controller.signal.aborted) return;
+          console.error('[startStream] stream promise rejected:', err);
           handleStreamError(err);
         });
     },
@@ -263,6 +270,7 @@ export function useWorkflowChat(event: CalendarEvent) {
             hasTransportInfo: false,
           },
         ]);
+        console.log('[useWorkflowChat] trip_preparation loaded | hasFlightBooking=true | hasHotelBooking:', hasHotelBooking, '| hasRoamingActive:', !!existingRoaming, '| hasInsuranceActive:', !!existingInsurance, '| hasTransportInfo: false');
         setPhase('awaiting_confirmation');
         return;
       } catch (err) {

@@ -11,6 +11,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Chat'>;
 
 export default function ChatScreen({ route, navigation }: Props) {
   const { event } = route.params;
+  console.log('[ChatScreen] opened for event:', event.title, '| origin:', event.origin, '| dest:', event.destination, '| start:', event.start_datetime);
   const { items, phase, confirm, decline, retry, sendMessage, handleInsurancePurchased, workflowState, continueWorkflow } = useWorkflowChat(event);
   const scrollViewRef = useRef<ScrollView>(null);
   const [draft, setDraft] = useState('');
