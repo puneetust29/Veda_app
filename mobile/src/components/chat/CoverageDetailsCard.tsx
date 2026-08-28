@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
-import { colors, spacing, typography } from '../../theme';
+import { colors, fonts, spacing, typography } from '../../theme';
 import type { TravelInsurancePlan } from '../../types';
 
 type Props = {
@@ -60,8 +60,8 @@ export default function CoverageDetailsCard({ plan, onClose }: Props) {
 const styles = StyleSheet.create({
   card: {
     backgroundColor: 'white',
-    borderRadius: 12,
-    padding: spacing.lg,
+    borderRadius: 24,
+    padding: 16,
     marginBottom: spacing.lg,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -70,9 +70,11 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   title: {
+    fontFamily: fonts.semiBold,
     fontSize: 20,
+    lineHeight: 24,
     fontWeight: '600',
-    color: colors.textPrimary,
+    color: '#000000',
     marginBottom: spacing.lg,
   },
   coverageRow: {
@@ -82,14 +84,14 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
   },
   coverageLabel: {
-    ...typography.body,
+    ...typography.caption,
     color: colors.textPrimary,
     fontWeight: '500',
     flex: 1,
     paddingRight: spacing.md,
   },
   coverageValue: {
-    ...typography.body,
+    ...typography.caption,
     color: colors.textPrimary,
     fontWeight: '600',
   },
@@ -98,11 +100,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#E0E0E0',
   },
   backButton: {
-    backgroundColor: colors.brand,
-    paddingVertical: spacing.lg,
-    borderRadius: 50,
+    backgroundColor: colors.accentCta,
+    height: 49,
+    borderRadius: 16,
     alignItems: 'center',
+    justifyContent: 'center',
     marginTop: spacing.lg,
+    width: '100%',
   },
   backButtonText: {
     ...typography.body,

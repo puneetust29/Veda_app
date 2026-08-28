@@ -1,11 +1,17 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { ActivityIndicator, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useStripe } from '@stripe/stripe-react-native';
-import { colors, spacing, typography } from '../../theme';
+import { colors, fonts, spacing, typography } from '../../theme';
+import { useSubscriptionInsurance } from '../../context/SubscriptionInsuranceContext';
 import { api } from '../../lib/api';
+import CalendarIcon from '../icons/CalendarIcon';
+import CoverageDurationIcon from '../icons/CoverageDurationIcon';
+import PaymentProcessingCard from './PaymentProcessingCard';
 import type { TravelInsurancePlan, RoamingPlan } from '../../types';
 
 type State = 'idle' | 'processing' | 'success' | 'error';
+
 
 type Props = {
   roamingPlan?: RoamingPlan | null;
@@ -136,6 +142,7 @@ export default function PaymentSummaryCard({
   return (
     <View style={styles.card}>
       <Text style={styles.sectionTitle}>Payment Summary</Text>
+      <View style={styles.headerDivider} />
 
       {roamingPlan && (
         <View style={styles.itemSection}>
@@ -189,7 +196,7 @@ export default function PaymentSummaryCard({
 
         <View style={styles.timelineItem}>
           <View style={styles.timelineIcon}>
-            <Text style={styles.timelineIconText}>📶</Text>
+            <CoverageDurationIcon size={16} />
           </View>
           <View style={styles.timelineContent}>
             <Text style={styles.timelineLabel}>Roaming</Text>
@@ -201,7 +208,7 @@ export default function PaymentSummaryCard({
 
         <View style={styles.timelineItem}>
           <View style={styles.timelineIcon}>
-            <Text style={styles.timelineIconText}>📅</Text>
+            <CalendarIcon size={16} color={colors.brand} />
           </View>
           <View style={styles.timelineContent}>
             <Text style={styles.timelineLabel}>Travel insurance</Text>
@@ -226,10 +233,8 @@ export default function PaymentSummaryCard({
           style={[styles.payButton, onViewOptions ? { flex: 1 } : { width: '100%' }]}
           onPress={handlePayment}
         >
-          <Text style={styles.payButtonText} numberOfLines={1} adjustsFontSizeToFit>
-            {paymentMethodBrand
-              ? `Pay with ${paymentMethodBrand.charAt(0).toUpperCase() + paymentMethodBrand.slice(1)}`
-              : 'Pay with card'}
+          <Text style={styles.payButtonText}>
+            {paymentMethodBrand ? `Pay with ${paymentMethodBrand.charAt(0).toUpperCase() + paymentMethodBrand.slice(1)}` : 'Pay'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -239,9 +244,9 @@ export default function PaymentSummaryCard({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: spacing.lg,
+    backgroundColor: colors.white,
+    borderRadius: 24,
+    padding: 16,
     marginBottom: spacing.lg,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -249,58 +254,88 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+  summaryPattern: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 141,
+    opacity: 0.16,
+  },
   sectionTitle: {
-    ...typography.sectionTitle,
-    color: colors.textPrimary,
-    marginBottom: spacing.lg,
+    fontFamily: fonts.semiBold,
+    fontSize: 20,
+    lineHeight: 24,
+    fontWeight: '600',
+    color: '#000000',
+    marginBottom: 16,
+  },
+  headerDivider: {
+    height: 1,
+    backgroundColor: '#eeeeee',
+    marginBottom: 16,
   },
   itemSection: {
-    marginBottom: spacing.md,
+    marginBottom: 0,
   },
   itemHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    paddingVertical: spacing.md,
+    paddingVertical: 0,
+    marginBottom: 16,
   },
   itemInfo: {
     flex: 1,
-    marginRight: spacing.md,
+    marginRight: 12,
   },
   itemName: {
-    ...typography.body,
+    fontFamily: fonts.semiBold,
+    fontSize: 16,
+    lineHeight: 20,
     fontWeight: '600',
-    color: colors.textPrimary,
-    marginBottom: spacing.xs,
+    color: '#000000',
+    marginBottom: 1,
   },
   itemSubtext: {
-    ...typography.small,
-    color: colors.textSecondary,
+    fontFamily: fonts.body,
+    fontSize: 10,
+    lineHeight: 12,
+    fontWeight: '400',
+    color: '#3e3e3e',
   },
   itemPrice: {
-    ...typography.body,
-    fontWeight: '600',
-    color: colors.textPrimary,
+    fontFamily: fonts.bold,
+    fontSize: 14,
+    lineHeight: 17,
+    fontWeight: '700',
+    color: '#1a1a1a',
   },
   divider: {
     height: 1,
-    backgroundColor: '#E0E0E0',
+    backgroundColor: '#eeeeee',
+    marginBottom: 16,
   },
   totalSection: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: spacing.md,
-    marginBottom: spacing.lg,
+    paddingVertical: 0,
+    marginBottom: 44,
   },
   totalLabel: {
-    ...typography.body,
+    fontFamily: fonts.semiBold,
+    fontSize: 14,
+    lineHeight: 17,
     fontWeight: '600',
-    color: colors.textPrimary,
+    color: '#1a1a1a',
   },
   totalAmount: {
-    ...typography.sectionTitle,
-    color: colors.textPrimary,
+    fontFamily: fonts.bold,
+    fontSize: 16,
+    lineHeight: 19,
+    fontWeight: '700',
+    color: '#1a1a1a',
   },
   paymentMethodSection: {
     paddingVertical: spacing.md,
@@ -315,76 +350,87 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   whatHappensSection: {
-    marginBottom: spacing.xl,
+    marginBottom: 24,
   },
   whatHappensTitle: {
-    ...typography.body,
+    fontFamily: fonts.semiBold,
+    fontSize: 16,
+    lineHeight: 19,
     fontWeight: '600',
-    color: colors.textPrimary,
-    marginBottom: spacing.lg,
+    color: '#000000',
+    marginBottom: 20,
   },
   timelineItem: {
     flexDirection: 'row',
-    marginBottom: spacing.lg,
+    marginBottom: 20,
   },
   timelineIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#FCE6E6',
+    width: 36,
+    height: 36,
+    borderRadius: 12.5,
+    backgroundColor: 'rgba(230, 0, 0, 0.08)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: spacing.md,
-  },
-  timelineIconText: {
-    fontSize: 18,
+    marginRight: 12,
   },
   timelineContent: {
     flex: 1,
   },
   timelineLabel: {
-    ...typography.small,
-    fontWeight: '600',
-    color: colors.textSecondary,
-    marginBottom: spacing.xs,
+    fontFamily: fonts.bodyLight,
+    fontSize: 12,
+    lineHeight: 15,
+    fontWeight: '300',
+    color: '#1a1a1a',
+    marginBottom: 4,
   },
   timelineText: {
-    ...typography.small,
-    color: colors.textPrimary,
+    fontFamily: fonts.semiBold,
+    fontSize: 14,
+    lineHeight: 17,
     fontWeight: '600',
+    color: '#1a1a1a',
   },
   policyNote: {
-    ...typography.small,
-    color: colors.textSecondary,
-    lineHeight: 18,
+    fontFamily: fonts.body,
+    fontSize: 12,
+    lineHeight: 14,
+    fontWeight: '400',
+    color: '#1a1a1a',
   },
   buttonGroup: {
     flexDirection: 'row',
-    gap: spacing.md,
+    gap: 8,
   },
   secondaryButton: {
     flex: 1,
     borderWidth: 2,
     borderColor: colors.brand,
-    paddingVertical: spacing.md,
-    borderRadius: 50,
+    paddingHorizontal: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
     alignItems: 'center',
   },
   secondaryButtonText: {
-    ...typography.body,
+    fontFamily: fonts.semiBold,
+    fontSize: 13.5,
+    lineHeight: 21.5,
     fontWeight: '600',
     color: colors.brand,
   },
   payButton: {
     flex: 1,
-    backgroundColor: colors.brand,
-    paddingVertical: spacing.md,
-    borderRadius: 50,
+    backgroundColor: '#F00405',
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 8,
     alignItems: 'center',
   },
   payButtonText: {
-    ...typography.body,
-    fontWeight: '600',
+    fontFamily: fonts.bold,
+    fontSize: 14,
+    lineHeight: 17,
+    fontWeight: '700',
     color: 'white',
   },
   cancelButton: {

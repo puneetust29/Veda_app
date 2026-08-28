@@ -316,7 +316,7 @@ export function useWorkflowChat(event: CalendarEvent) {
             return item;
           });
 
-          const roamingItems: ChatItem[] = [
+          const newItems: ChatItem[] = [
             {
               id: nextId(),
               createdAt: Date.now(),
@@ -333,20 +333,40 @@ export function useWorkflowChat(event: CalendarEvent) {
             },
           ];
 
-          commitItems([...updatedItemsAfterRoaming, ...roamingItems]);
+          commitItems([...updatedItemsAfterRoaming, ...newItems]);
 
           // If insurance already active, show completion
           if (hasInsuranceReceipt) {
             console.log('[useWorkflowChat] Insurance already active, showing completion...');
-            appendItems([
+            const hasPaymentComplete = itemsRef.current.some((item) => item.kind === 'payment_complete');
+            const itemsToAdd: ChatItem[] = [];
+
+            if (!hasPaymentComplete) {
+              itemsToAdd.push({
+                id: nextId(),
+                createdAt: Date.now(),
+                kind: 'payment_complete',
+                insuranceId: 'insurance-active',
+                destination: event.destination ?? 'your destination',
+              });
+            }
+
+            itemsToAdd.push(
               {
                 id: nextId(),
                 createdAt: Date.now(),
                 kind: 'text',
                 role: 'agent',
-                text: '✓ You\'re all set! You have both roaming and travel insurance for this trip.',
+                text: `Everything's taken care of — you're all set for ${event.destination ?? 'your destination'}.`,
               },
-            ]);
+              {
+                id: nextId(),
+                createdAt: Date.now(),
+                kind: 'trip_checklist',
+                destination: event.destination ?? 'your destination',
+              }
+            );
+            appendItems(itemsToAdd);
             setWorkflowState({
               currentStep: 'complete',
               completedSteps: ['roaming', 'insurance'],
@@ -401,7 +421,7 @@ export function useWorkflowChat(event: CalendarEvent) {
           });
         });
     },
-    [appendItems, updateConfirmationItem, event.id, refreshSubscriptions],
+    [appendItems, commitItems, updateConfirmationItem, event.id, refreshSubscriptions],
   );
 
   const decline = useCallback(
@@ -532,10 +552,6 @@ export function useWorkflowChat(event: CalendarEvent) {
 
       console.log('[useWorkflowChat] handleInsurancePurchased - hasRoamingReceipt:', hasRoamingReceipt, 'hasRoamingCompleted:', hasRoamingCompleted);
 
-      const successMessage = hasRoamingActive
-        ? '✓ You are all set for your trip! You have both roaming and travel insurance.'
-        : '✓ Your travel insurance is now active. You can add roaming anytime if you need it.';
-
       // Create receipt for insurance purchase to track completion
       const newItems: ChatItem[] = [
         {
@@ -556,13 +572,6 @@ export function useWorkflowChat(event: CalendarEvent) {
           } as any,
           planName: purchaseData.planName || 'Travel Insurance',
         },
-        {
-          id: nextId(),
-          createdAt: Date.now(),
-          kind: 'text',
-          role: 'agent',
-          text: successMessage,
-        },
       ];
 
       // Update trip preparation card to mark insurance as active
@@ -577,6 +586,71 @@ export function useWorkflowChat(event: CalendarEvent) {
       // Refresh dashboard data to show insurance as purchased
       refreshInsurance();
 
+      // Check if payment_complete already shown
+      const hasPaymentComplete = itemsRef.current.some((item) => item.kind === 'payment_complete');
+
+      // If both roaming and insurance are active, show payment complete
+      if (hasRoamingActive) {
+        if (!hasPaymentComplete) {
+          newItems.push(
+            {
+              id: nextId(),
+              createdAt: Date.now(),
+              kind: 'payment_complete',
+              insuranceId: purchaseData.id || 'insurance-' + Date.now(),
+              insuranceAmount: purchaseData.insuranceAmount,
+              insuranceCurrency: purchaseData.insuranceCurrency,
+              destination: event.destination ?? 'your destination',
+              cardBrand: purchaseData.cardBrand,
+              cardLast4: purchaseData.cardLast4,
+            }
+          );
+        }
+        newItems.push(
+          {
+            id: nextId(),
+            createdAt: Date.now(),
+            kind: 'text',
+            role: 'agent',
+            text: `Everything's taken care of — you're all set for ${event.destination ?? 'your destination'}.`,
+          },
+          {
+            id: nextId(),
+            createdAt: Date.now(),
+            kind: 'trip_checklist',
+            destination: event.destination ?? 'your destination',
+          }
+        );
+      } else {
+        // Only insurance purchased - show payment complete card
+        if (!hasPaymentComplete) {
+          newItems.push(
+            {
+              id: nextId(),
+              createdAt: Date.now(),
+              kind: 'payment_complete',
+              insuranceId: purchaseData.id || 'insurance-' + Date.now(),
+              insuranceAmount: purchaseData.insuranceAmount,
+              insuranceCurrency: purchaseData.insuranceCurrency,
+              destination: event.destination ?? 'your destination',
+              cardBrand: purchaseData.cardBrand,
+              cardLast4: purchaseData.cardLast4,
+            }
+          );
+        }
+        newItems.push(
+          {
+            id: nextId(),
+            createdAt: Date.now(),
+            kind: 'text',
+            role: 'agent',
+            text: '✓ Your travel insurance is now active. You can add roaming anytime if you need it.',
+          }
+        );
+      }
+
+      appendItems(newItems);
+
       // Determine completedSteps - if both roaming and insurance are done, mark as complete
       const finalCompletedSteps: WorkflowStep[] = hasRoamingActive
         ? ['roaming', 'insurance']
@@ -590,7 +664,7 @@ export function useWorkflowChat(event: CalendarEvent) {
 
       setPhase('complete');
     },
-    [appendItems, commitItems, refreshInsurance],
+    [appendItems, event, commitItems, refreshInsurance],
   );
 
   const retry = useCallback(() => {

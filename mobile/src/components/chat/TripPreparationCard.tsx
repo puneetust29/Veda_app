@@ -4,6 +4,7 @@ import type { CalendarEvent } from '../../types';
 import ProgressIcon from '../icons/ProgressIcon';
 import CalendarIcon from '../icons/CalendarIcon';
 import HeaderBackground from '../../../assets/header-background.svg';
+import CheckIcon from '../icons/CheckIcon';
 
 type Props = {
   event: CalendarEvent;
@@ -75,7 +76,7 @@ export default function TripPreparationCard({
               <View key={idx} style={styles.statusItem}>
                 <View style={styles.statusIconContainer}>
                   {item.active ? (
-                    <Ionicons name="checkmark" size={12} color="#e60000" />
+                    <CheckIcon size={12} />
                   ) : (
                     <ProgressIcon size={12} color="#6B7280" />
                   )}
