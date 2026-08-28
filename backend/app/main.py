@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -5,6 +6,11 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
 from app.orchestration.orchestrator import get_orchestrator
+
+# Set our own loggers to INFO so they propagate through uvicorn's handlers.
+# basicConfig() is a no-op once uvicorn has touched the root logger, so we
+# set the level directly on the "app" namespace instead.
+logging.getLogger("app").setLevel(logging.INFO)
 from app.routers import auth, calendar, conversation, gmail, google_auth, roaming, subscriptions, insurance, payments
 
 settings = get_settings()

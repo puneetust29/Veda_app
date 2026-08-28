@@ -19,16 +19,19 @@ def geocode(address: str, api_key: str) -> Optional[dict]:
             params={"address": address, "key": api_key},
             timeout=8,
         )
+        logger.info("    geocode HTTP %s for '%s'", r.status_code, address)
         r.raise_for_status()
-        results = r.json().get("results", [])
+        data = r.json()
+        status = data.get("status", "UNKNOWN")
+        results = data.get("results", [])
+        logger.info("    geocode API status=%s  results=%d", status, len(results))
         if not results:
-            logger.warning("Geocode returned no results for: %s", address)
+            logger.warning("    geocode no results for: '%s' (status=%s)", address, status)
             return None
         loc = results[0]["geometry"]["location"]
-        logger.info("Geocoded '%s' → lat=%.4f lng=%.4f", address, loc["lat"], loc["lng"])
         return {"lat": loc["lat"], "lng": loc["lng"]}
     except Exception as exc:
-        logger.warning("Geocode failed for '%s': %s", address, exc)
+        logger.warning("    geocode exception for '%s': %s", address, exc)
         return None
 
 
@@ -54,11 +57,15 @@ def get_route(origin: str, destination: str, api_key: str) -> Optional[dict]:
             "Content-Type": "application/json",
         }
         r = httpx.post(_ROUTES_URL, json=payload, headers=headers, timeout=10)
+        logger.info("    routes HTTP %s for '%s' → '%s'", r.status_code, origin, destination)
         r.raise_for_status()
         data = r.json()
         routes = data.get("routes", [])
+        logger.info("    routes API returned %d route(s)", len(routes))
         if not routes:
-            logger.warning("Routes API returned no routes for %s → %s", origin, destination)
+            logger.warning(
+                "    routes: 0 results — likely no drive path exists (international/ocean route)"
+            )
             return None
 
         route = routes[0]
@@ -67,15 +74,11 @@ def get_route(origin: str, destination: str, api_key: str) -> Optional[dict]:
         distance_m = route.get("distanceMeters", 0)
         polyline = route.get("polyline", {}).get("encodedPolyline", "")
 
-        logger.info(
-            "Route %s → %s: %dm, %ds, polyline len=%d",
-            origin, destination, distance_m, duration_secs, len(polyline),
-        )
         return {
             "duration_secs": duration_secs,
             "distance_m": distance_m,
             "encoded_polyline": polyline,
         }
     except Exception as exc:
-        logger.warning("Routes API failed for %s → %s: %s", origin, destination, exc)
+        logger.warning("    routes exception for '%s' → '%s': %s", origin, destination, exc)
         return None
