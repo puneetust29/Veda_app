@@ -3,6 +3,7 @@ import { SvgXml } from 'react-native-svg';
 
 import type { RecommendationCardPayload, ChatItem } from '../../types';
 import { vodafoneIcon } from '../dashboard/figmaSvgs';
+import CheckIcon from '../icons/CheckIcon';
 
 type ConfirmationItem = Extract<ChatItem, { kind: 'confirmation' }>;
 
@@ -74,7 +75,7 @@ export default function RecommendationCard({ card, confirmation, onConfirm, onDe
           <View style={styles.reasoningList}>
             {parseReasoningPoints(card.reasoning).map((line, idx) => (
               <View key={idx} style={styles.reasoningItem}>
-                <Text style={styles.checkmark}>✓</Text>
+                <CheckIcon size={12} />
                 <Text style={styles.reasoningText}>{line}</Text>
               </View>
             ))}
@@ -197,13 +198,7 @@ const styles = StyleSheet.create({
   reasoningItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-  },
-  checkmark: {
-    fontSize: 12,
-    color: '#1A1A1A',
-    fontWeight: '700',
-    marginRight: 12,
-    marginTop: 2,
+    gap: 12,
   },
   reasoningText: {
     fontSize: 12,
