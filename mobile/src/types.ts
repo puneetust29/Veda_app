@@ -247,6 +247,20 @@ export type MapsLatLng = {
   lng: number;
 };
 
+export type RouteOption = {
+  mode: 'DRIVE' | 'TRANSIT' | 'WALK';
+  duration_mins: number;
+  distance_km: number | null;
+  encoded_polyline: string | null;
+};
+
+export type NearbyPlace = {
+  name: string;
+  category: 'hotel' | 'restaurant' | 'attraction';
+  rating: number | null;
+  address: string | null;
+};
+
 export type MapsResultPayload = {
   origin: string;
   destination: string;
@@ -258,6 +272,8 @@ export type MapsResultPayload = {
   summary: string;
   geocode_ok: boolean;
   route_ok: boolean;
+  routes: RouteOption[];
+  nearby_places: NearbyPlace[];
 };
 
 // The wire event contract emitted by `POST /chat/stream`. This is the backend's

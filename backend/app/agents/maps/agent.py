@@ -7,8 +7,8 @@ from app.agents.base.contracts import AgentContext, AgentMode, AgentResult, Base
 from app.agents.base.manifest import load_manifest
 from app.config import get_settings
 
-from .maps_client import geocode, get_route
-from .schemas import LatLng, MapsResult
+from .maps_client import geocode, get_nearby_places, get_route
+from .schemas import LatLng, MapsResult, NearbyPlace, RouteOption
 
 logger = logging.getLogger(__name__)
 _MANIFEST_PATH = pathlib.Path(__file__).parent / "manifest.yaml"
@@ -74,32 +74,42 @@ class MapsAgent(BaseAgent):
         else:
             logger.warning("  [geocode] SKIP — GOOGLE_MAPS_API_KEY not set in backend/.env")
 
-        # ── Routing ──────────────────────────────────────────────────────────
+        # ── Routing (all 3 modes) ────────────────────────────────────────────
         route_ok = False
         distance_km = None
         duration_mins = None
         encoded_polyline = None
+        routes: list[RouteOption] = []
 
         if api_key and geocode_ok:
-            logger.info("  [route] requesting drive route: '%s' → '%s'", origin, destination)
-            route = get_route(origin, destination, api_key)
-            if route:
-                route_ok = True
-                distance_km = round(route["distance_m"] / 1000, 1)
-                duration_mins = max(1, round(route["duration_secs"] / 60))
-                encoded_polyline = route["encoded_polyline"]
-                logger.info(
-                    "  [route] OK ✓ — %.1f km, %d min, polyline %d chars",
-                    distance_km, duration_mins, len(encoded_polyline or ""),
-                )
-            else:
-                logger.warning(
-                    "  [route] no drive route returned (international flight? routes API limitation)"
-                )
+            for mode in ["DRIVE", "TRANSIT", "WALK"]:
+                logger.info("  [route] requesting %s route: '%s' → '%s'", mode, origin, destination)
+                route = get_route(origin, destination, api_key, mode)
+                if route:
+                    dist = round(route["distance_m"] / 1000, 1) if route["distance_m"] else None
+                    mins = max(1, round(route["duration_secs"] / 60))
+                    polyline = route["encoded_polyline"]
+                    routes.append(RouteOption(mode=mode, duration_mins=mins, distance_km=dist, encoded_polyline=polyline))
+                    logger.info("  [route] %s OK ✓ — %s km, %d min", mode, dist, mins)
+                    if mode == "DRIVE":
+                        route_ok = True
+                        distance_km = dist
+                        duration_mins = mins
+                        encoded_polyline = polyline
+                else:
+                    logger.warning("  [route] %s — no route returned", mode)
         elif geocode_ok:
             logger.info("  [route] SKIP — no api_key")
         else:
             logger.info("  [route] SKIP — geocode did not succeed")
+
+        # ── Nearby Places ────────────────────────────────────────────────────
+        nearby_places: list[NearbyPlace] = []
+        if api_key and destination_latlng:
+            logger.info("  [places] fetching nearby places at destination lat=%.4f lng=%.4f", destination_latlng.lat, destination_latlng.lng)
+            raw_places = get_nearby_places(destination_latlng.lat, destination_latlng.lng, api_key)
+            nearby_places = [NearbyPlace(**p) for p in raw_places]
+            logger.info("  [places] %d places found", len(nearby_places))
 
         # ── Result ───────────────────────────────────────────────────────────
         if route_ok:
@@ -120,6 +130,8 @@ class MapsAgent(BaseAgent):
             summary=summary,
             geocode_ok=geocode_ok,
             route_ok=route_ok,
+            routes=routes,
+            nearby_places=nearby_places,
         )
 
         logger.info("  emitting maps_result — geocode_ok=%s  route_ok=%s", geocode_ok, route_ok)

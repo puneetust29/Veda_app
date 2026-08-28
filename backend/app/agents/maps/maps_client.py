@@ -9,6 +9,7 @@ logger = logging.getLogger(__name__)
 
 _GEOCODE_URL = "https://maps.googleapis.com/maps/api/geocode/json"
 _ROUTES_URL = "https://routes.googleapis.com/directions/v2:computeRoutes"
+_PLACES_URL = "https://places.googleapis.com/v1/places:searchNearby"
 
 
 def geocode(address: str, api_key: str) -> Optional[dict]:
@@ -35,37 +36,34 @@ def geocode(address: str, api_key: str) -> Optional[dict]:
         return None
 
 
-def get_route(origin: str, destination: str, api_key: str) -> Optional[dict]:
+def get_route(origin: str, destination: str, api_key: str, mode: str = "DRIVE") -> Optional[dict]:
     """
-    Call Routes API (POST). Returns a dict with:
-      duration_secs, distance_m, encoded_polyline
-    or None on failure.
+    Call Routes API (POST) for a given travel mode.
+    mode: "DRIVE" | "TRANSIT" | "WALK"
+    Returns dict with duration_secs, distance_m, encoded_polyline or None.
     """
     try:
-        payload = {
+        payload: dict = {
             "origin": {"address": origin},
             "destination": {"address": destination},
-            "travelMode": "DRIVE",
-            "routingPreference": "TRAFFIC_AWARE",
+            "travelMode": mode,
         }
+        if mode == "DRIVE":
+            payload["routingPreference"] = "TRAFFIC_AWARE"
+
+        field_mask = "routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline"
         headers = {
             "X-Goog-Api-Key": api_key,
-            "X-Goog-FieldMask": (
-                "routes.duration,routes.distanceMeters,"
-                "routes.polyline.encodedPolyline"
-            ),
+            "X-Goog-FieldMask": field_mask,
             "Content-Type": "application/json",
         }
         r = httpx.post(_ROUTES_URL, json=payload, headers=headers, timeout=10)
-        logger.info("    routes HTTP %s for '%s' → '%s'", r.status_code, origin, destination)
+        logger.info("    routes [%s] HTTP %s for '%s' → '%s'", mode, r.status_code, origin, destination)
         r.raise_for_status()
         data = r.json()
         routes = data.get("routes", [])
-        logger.info("    routes API returned %d route(s)", len(routes))
+        logger.info("    routes [%s] returned %d route(s)", mode, len(routes))
         if not routes:
-            logger.warning(
-                "    routes: 0 results — likely no drive path exists (international/ocean route)"
-            )
             return None
 
         route = routes[0]
@@ -80,5 +78,55 @@ def get_route(origin: str, destination: str, api_key: str) -> Optional[dict]:
             "encoded_polyline": polyline,
         }
     except Exception as exc:
-        logger.warning("    routes exception for '%s' → '%s': %s", origin, destination, exc)
+        logger.warning("    routes [%s] exception: %s", mode, exc)
         return None
+
+
+def get_nearby_places(lat: float, lng: float, api_key: str) -> list[dict]:
+    """
+    Use Places API (New) to fetch nearby hotels, restaurants, and attractions
+    at the destination. Returns a list of place dicts.
+    """
+    all_places: list[dict] = []
+    categories = [
+        ("lodging", "hotel"),
+        ("restaurant", "restaurant"),
+        ("tourist_attraction", "attraction"),
+    ]
+
+    for place_type, category in categories:
+        try:
+            payload = {
+                "includedTypes": [place_type],
+                "maxResultCount": 3,
+                "locationRestriction": {
+                    "circle": {
+                        "center": {"latitude": lat, "longitude": lng},
+                        "radius": 2000.0,
+                    }
+                },
+            }
+            headers = {
+                "X-Goog-Api-Key": api_key,
+                "X-Goog-FieldMask": "places.displayName,places.rating,places.formattedAddress",
+                "Content-Type": "application/json",
+            }
+            r = httpx.post(_PLACES_URL, json=payload, headers=headers, timeout=8)
+            logger.info("    places [%s] HTTP %s", place_type, r.status_code)
+            if r.status_code != 200:
+                logger.warning("    places [%s] error: %s", place_type, r.text[:200])
+                continue
+            data = r.json()
+            places = data.get("places", [])
+            logger.info("    places [%s] returned %d results", place_type, len(places))
+            for p in places:
+                all_places.append({
+                    "name": p.get("displayName", {}).get("text", ""),
+                    "category": category,
+                    "rating": p.get("rating"),
+                    "address": p.get("formattedAddress"),
+                })
+        except Exception as exc:
+            logger.warning("    places [%s] exception: %s", place_type, exc)
+
+    return all_places
