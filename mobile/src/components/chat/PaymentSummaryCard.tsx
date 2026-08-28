@@ -37,6 +37,7 @@ export default function PaymentSummaryCard({
   const [state, setState] = useState<State>('idle');
   const [errorMessage, setErrorMessage] = useState('');
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
+  const { refreshInsurance } = useSubscriptionInsurance();
 
   const handlePayment = async () => {
     try {
@@ -76,6 +77,9 @@ export default function PaymentSummaryCard({
         paymentIntentId,
         calendarEventId,
       );
+
+      // Refresh insurance data in context so other screens update
+      await refreshInsurance();
 
       setState('success');
       setTimeout(() => {
@@ -387,6 +391,10 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: 'rgba(230, 0, 0, 0.07)',
+    backgroundColor: '#FFFFFF',
   },
   secondaryButtonText: {
     fontFamily: fonts.semiBold,
@@ -402,6 +410,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 8,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   payButtonText: {
     fontFamily: fonts.bold,
