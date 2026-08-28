@@ -308,7 +308,15 @@ export function useWorkflowChat(event: CalendarEvent) {
           });
           console.log('[useWorkflowChat] confirm - hasInsuranceReceipt:', hasInsuranceReceipt);
 
-          appendItems([
+          // Update trip preparation card to mark roaming as active
+          const updatedItemsAfterRoaming = itemsRef.current.map((item) => {
+            if (item.kind === 'trip_preparation') {
+              return { ...item, hasRoamingActive: true };
+            }
+            return item;
+          });
+
+          const roamingItems: ChatItem[] = [
             {
               id: nextId(),
               createdAt: Date.now(),
@@ -323,7 +331,9 @@ export function useWorkflowChat(event: CalendarEvent) {
               subscription,
               planName: subscription.roaming_plans?.plan_name ?? target.summary,
             },
-          ]);
+          ];
+
+          commitItems([...updatedItemsAfterRoaming, ...roamingItems]);
 
           // If insurance already active, show completion
           if (hasInsuranceReceipt) {
@@ -555,7 +565,17 @@ export function useWorkflowChat(event: CalendarEvent) {
         },
       ];
 
-      appendItems(newItems);
+      // Update trip preparation card to mark insurance as active
+      const updatedItems = itemsRef.current.map((item) => {
+        if (item.kind === 'trip_preparation') {
+          return { ...item, hasInsuranceActive: true };
+        }
+        return item;
+      });
+      commitItems([...updatedItems, ...newItems]);
+
+      // Refresh dashboard data to show insurance as purchased
+      refreshInsurance();
 
       // Determine completedSteps - if both roaming and insurance are done, mark as complete
       const finalCompletedSteps: WorkflowStep[] = hasRoamingActive
@@ -570,7 +590,7 @@ export function useWorkflowChat(event: CalendarEvent) {
 
       setPhase('complete');
     },
-    [appendItems],
+    [appendItems, commitItems, refreshInsurance],
   );
 
   const retry = useCallback(() => {
