@@ -13,6 +13,11 @@ class Settings(BaseSettings):
     anthropic_api_key: str
     anthropic_model: str = "claude-haiku-4-5-20251001"
 
+    openai_api_key: str = ""
+    openai_model: str = "gpt-4o-mini"
+    # "anthropic" | "openai" — agents that support both check this to pick the provider
+    llm_provider: str = "anthropic"
+
     # Google OAuth (unified for Calendar + Gmail). Optional: the app boots without these,
     # and Google routes answer 503 until configured. Deliberate, so a deployment that
     # hasn't done the Cloud Console setup isn't a hard boot failure.

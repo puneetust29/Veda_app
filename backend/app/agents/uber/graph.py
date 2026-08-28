@@ -5,6 +5,7 @@ import logging
 from datetime import datetime
 
 from langchain_anthropic import ChatAnthropic
+from langchain_openai import ChatOpenAI
 from langgraph.graph import END, StateGraph
 from langgraph.types import StreamWriter
 
@@ -25,11 +26,14 @@ logger = logging.getLogger(__name__)
 
 def _llm():
     settings = get_settings()
-    return ChatAnthropic(
-        model=settings.anthropic_model,
-        api_key=settings.anthropic_api_key,
-        temperature=0,
-    )
+    provider = (settings.llm_provider or "anthropic").strip().lower()
+    if provider == "openai":
+        if not settings.openai_api_key:
+            raise RuntimeError("LLM_PROVIDER=openai but OPENAI_API_KEY is not set")
+        return ChatOpenAI(model=settings.openai_model, api_key=settings.openai_api_key, temperature=0)
+    if settings.openai_api_key and not settings.anthropic_api_key:
+        return ChatOpenAI(model=settings.openai_model, api_key=settings.openai_api_key, temperature=0)
+    return ChatAnthropic(model=settings.anthropic_model, api_key=settings.anthropic_api_key, temperature=0)
 
 
 def _trip_duration_days(calendar_event: dict) -> int:
