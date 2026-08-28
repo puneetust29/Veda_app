@@ -274,6 +274,7 @@ export type ChatItem =
       hasHotelBooking: boolean;
       hasRoamingActive: boolean;
       hasInsuranceActive: boolean;
+      hasTransportInfo: boolean;
     })
   | (ChatItemBase & {
       kind: 'confirmation_success';

@@ -36,6 +36,7 @@ function ChatItemViewImpl({ item, onConfirm, onDecline, onInsurancePurchased, on
           hasHotelBooking={item.hasHotelBooking}
           hasRoamingActive={item.hasRoamingActive}
           hasInsuranceActive={item.hasInsuranceActive}
+          hasTransportInfo={item.hasTransportInfo}
           onContinue={() => onContinuePrep?.()}
         />
       );

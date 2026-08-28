@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import logging
 import pathlib
 import sys
 
 from app.agents.base.contracts import AgentContext, AgentMode, AgentResult, BaseAgent
+
+logger = logging.getLogger(__name__)
 from app.agents.base.manifest import load_manifest
 from .schemas import JourneyLeg, JourneyOption, LineStatus, TransportResult
 from .tfl_client import (
@@ -86,14 +89,21 @@ class TransportAgent(BaseAgent):
             origin = flight.get("origin", "") or ""
             destination = flight.get("destination", "") or ""
 
+            logger.info("[transport_agent] flight origin=%r destination=%r", origin, destination)
+
             # Detect whether this flight involves London at all
             origin_airport = detect_london_airport(origin)
             dest_airport = detect_london_airport(destination)
             london_origin = origin_airport or is_london(origin)
             london_dest = dest_airport or is_london(destination)
 
+            logger.info(
+                "[transport_agent] london_origin=%s (airport=%s) london_dest=%s (airport=%s)",
+                london_origin, origin_airport, london_dest, dest_airport,
+            )
+
             if not london_origin and not london_dest:
-                # Not a London trip — skip silently
+                logger.info("[transport_agent] no London leg detected — skipping")
                 ctx.emit({"type": "done", "data": {"status": "skipped"}})
                 return AgentResult(
                     agent="transport_agent",
@@ -115,9 +125,12 @@ class TransportAgent(BaseAgent):
                 direction = "from_london" if london_origin else "to_london"
                 airport_meta = None
 
+            logger.info("[transport_agent] direction=%s airport=%s", direction, airport_meta)
+
             # Fetch live line statuses
             raw_statuses = get_line_status()
             line_statuses = _parse_line_statuses(raw_statuses)
+            logger.info("[transport_agent] fetched %d line statuses", len(line_statuses))
 
             # Fetch journey options if we know the airport
             journey_options: list[JourneyOption] = []
@@ -125,11 +138,15 @@ class TransportAgent(BaseAgent):
                 airport_loc = airport_meta["journey_loc"]
                 try:
                     if direction == "from_london":
+                        logger.info("[transport_agent] journey: %s → %s", CENTRAL_LONDON, airport_loc)
                         raw_journeys = get_journey(CENTRAL_LONDON, airport_loc)
                     else:
+                        logger.info("[transport_agent] journey: %s → %s", airport_loc, CENTRAL_LONDON)
                         raw_journeys = get_journey(airport_loc, CENTRAL_LONDON)
                     journey_options = _parse_journey_options(raw_journeys)
+                    logger.info("[transport_agent] got %d journey options", len(journey_options))
                 except Exception as e:
+                    logger.warning("[transport_agent] journey planning failed: %s", e)
                     print(f"[transport_agent] Journey planning failed: {e}", file=sys.stderr)
 
             result = TransportResult(
@@ -148,6 +165,7 @@ class TransportAgent(BaseAgent):
                 ),
             )
 
+            logger.info("[transport_agent] emitting transport_result: summary=%r", result.summary)
             ctx.emit({"type": "transport_result", "data": result.model_dump()})
             ctx.emit({"type": "done", "data": {"status": "ok"}})
 

@@ -136,6 +136,15 @@ export function useWorkflowChat(event: CalendarEvent) {
       commitItems(next);
 
       switch (event_.type) {
+        case 'transport_result': {
+          // Mark the trip_preparation card as having transport info
+          commitItems(
+            next.map((item) =>
+              item.kind === 'trip_preparation' ? { ...item, hasTransportInfo: true } : item,
+            ),
+          );
+          break;
+        }
         case 'confirmation_required':
           setPhase('awaiting_confirmation');
           break;
@@ -251,6 +260,7 @@ export function useWorkflowChat(event: CalendarEvent) {
             hasHotelBooking,
             hasRoamingActive: !!existingRoaming,
             hasInsuranceActive: !!existingInsurance,
+            hasTransportInfo: false,
           },
         ]);
         setPhase('awaiting_confirmation');

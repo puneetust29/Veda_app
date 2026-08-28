@@ -189,9 +189,11 @@ export const api = {
       signal: params.signal,
       onFrame: (frame) => {
         try {
-          params.onEvent(JSON.parse(frame.data));
+          const event = JSON.parse(frame.data);
+          if (__DEV__) console.log('[stream] event:', event.type, JSON.stringify(event.data));
+          params.onEvent(event);
         } catch {
-          if (__DEV__) console.warn('bad frame', frame);
+          if (__DEV__) console.warn('[stream] bad frame', frame);
         }
       },
       onError: params.onError,
