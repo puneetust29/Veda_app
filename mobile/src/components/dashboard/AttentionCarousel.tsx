@@ -246,7 +246,7 @@ function AttentionCard({
         disabled={shouldDisableButton}
       >
         <Text style={[styles.ctaText, shouldDisableButton && styles.ctaTextDisabled]}>
-          {isDomestic ? 'Domestic coming soon' : completionStatus === 'both_done' ? 'All set!' : 'Review recommendation'}
+          {isDomestic ? 'Domestic coming soon' : completionStatus === 'both_done' ? 'All set! Ready to fly' : 'Review recommendation'}
         </Text>
         <View style={[styles.ctaButton, shouldDisableButton && styles.ctaButtonDisabled]}>
           <SvgXml xml={arrowWhite} width={14} height={14} />
