@@ -44,6 +44,18 @@ function cardWidth(screenWidth: number) {
   return screenWidth - BODY_SIDE_PADDING - CARD_GAP - CARD_PEEK;
 }
 
+// --------------------------------------------------
+// CAROUSEL TILT
+// --------------------------------------------------
+// Measured off the in-transit prototype capture: the card leaving to the left
+// sits at -4.1deg, the one arriving from the right at +4.3deg, and the centred
+// card is upright. Rotation is therefore a function of scroll position, not a
+// timed animation. CARD_TILT is measured; CARD_REST_SCALE is not — the
+// outgoing card was clipped by the frame, so there was no reliable width to
+// measure against. Tune the scale, leave the angle alone.
+const CARD_TILT = 4;
+const CARD_REST_SCALE = 0.94;
+
 const PINK_BODY = colors.bubbleFill; // card body fill
 const PINK_TILE = colors.pinkTile;   // category tile fill
 const PINK_BORDER = colors.pinkBorder; // card outline
@@ -406,78 +418,102 @@ function AccessCard({
   level,
   isActive,
   width,
+  index,
+  scrollX,
+  snap,
   onSelect,
 }: {
   level: AccessLevel;
   isActive: boolean;
   width: number;
+  index: number;
+  scrollX: Animated.Value;
+  snap: number;
   onSelect: (id: PlanTier) => void;
 }) {
+  // Centred at scrollX === index * snap. Scrolled past (card sits left of
+  // centre) it leans one way, still to come it leans the other.
+  const inputRange = [(index - 1) * snap, index * snap, (index + 1) * snap];
+
+  const rotate = scrollX.interpolate({
+    inputRange,
+    outputRange: [`${CARD_TILT}deg`, '0deg', `${-CARD_TILT}deg`],
+    extrapolate: 'clamp',
+  });
+
+  const scale = scrollX.interpolate({
+    inputRange,
+    outputRange: [CARD_REST_SCALE, 1, CARD_REST_SCALE],
+    extrapolate: 'clamp',
+  });
+
   return (
-    <TouchableOpacity
-      activeOpacity={0.9}
-      style={[styles.accessCard, { width }, isActive && styles.accessCardActive]}
-      onPress={() => onSelect(level.id)}
-    >
-      <LinearGradient {...CARD_HEADER_GRADIENT} style={styles.cardHeader}>
-        <View style={styles.cardHeaderLeft}>
-          <Ionicons name={level.headerIcon} size={18} color={colors.white} />
-          <Text style={styles.cardHeaderText}>{level.title}</Text>
-        </View>
-        {level.id === 'lite' ? (
-          <View style={styles.appCount}>
-            <Text style={styles.appCountText}>{level.appCount}</Text>
+    <Animated.View style={{ width, transform: [{ rotate }, { scale }] }}>
+      <TouchableOpacity
+        activeOpacity={0.9}
+        style={[styles.accessCard, isActive && styles.accessCardActive]}
+        onPress={() => onSelect(level.id)}
+      >
+        <LinearGradient {...CARD_HEADER_GRADIENT} style={styles.cardHeader}>
+          <View style={styles.cardHeaderLeft}>
+            <Ionicons name={level.headerIcon} size={18} color={colors.white} />
+            <Text style={styles.cardHeaderText}>{level.title}</Text>
           </View>
-        ) : null}
-      </LinearGradient>
-
-      <View style={styles.cardBody}>
-        <Text style={styles.cardCaption}>{level.caption}</Text>
-
-        {level.id === 'lite' ? (
-          <>
-            {level.includes ? (
-              <View style={styles.includesBox}>
-                <View style={styles.includesHeader}>
-                  <Ionicons name="layers-outline" size={13} color={colors.textPrimary} />
-                  <Text style={styles.includesLabel}>
-                    Everything in <Text style={styles.includesLabelBold}>{level.includes.label}</Text>
-                  </Text>
-                </View>
-                <View style={styles.includesRow}>
-                  <View style={styles.appIcons}>
-                    {level.includes.icons.map((icon, i) => (
-                      <IconChip key={i} index={i} icon={icon} size={14} />
-                    ))}
-                  </View>
-                  <View style={styles.morePill}>
-                    <Text style={styles.morePillText}>+{level.includes.moreCount} apps</Text>
-                  </View>
-                </View>
-              </View>
-            ) : null}
-
-            <View style={styles.categoryGrid}>
-              {level.categories.map((category) => (
-                <View key={category.title} style={styles.category}>
-                  <Text style={styles.categoryTitle}>{category.title}</Text>
-                  <View style={styles.appIcons}>
-                    {category.icons.map((icon, i) => (
-                      <IconChip key={i} index={i} icon={icon} />
-                    ))}
-                  </View>
-                </View>
-              ))}
+          {level.id === 'lite' ? (
+            <View style={styles.appCount}>
+              <Text style={styles.appCountText}>{level.appCount}</Text>
             </View>
-          </>
-        ) : (
-          <View style={styles.comingSoonBox}>
-            <Ionicons name="time-outline" size={22} color={colors.textSecondary} />
-            <Text style={styles.comingSoonText}>Coming soon</Text>
-          </View>
-        )}
-      </View>
-    </TouchableOpacity>
+          ) : null}
+        </LinearGradient>
+
+        <View style={styles.cardBody}>
+          <Text style={styles.cardCaption}>{level.caption}</Text>
+
+          {level.id === 'lite' ? (
+            <>
+              {level.includes ? (
+                <View style={styles.includesBox}>
+                  <View style={styles.includesHeader}>
+                    <Ionicons name="layers-outline" size={13} color={colors.textPrimary} />
+                    <Text style={styles.includesLabel}>
+                      Everything in <Text style={styles.includesLabelBold}>{level.includes.label}</Text>
+                    </Text>
+                  </View>
+                  <View style={styles.includesRow}>
+                    <View style={styles.appIcons}>
+                      {level.includes.icons.map((icon, i) => (
+                        <IconChip key={i} index={i} icon={icon} size={14} />
+                      ))}
+                    </View>
+                    <View style={styles.morePill}>
+                      <Text style={styles.morePillText}>+{level.includes.moreCount} apps</Text>
+                    </View>
+                  </View>
+                </View>
+              ) : null}
+
+              <View style={styles.categoryGrid}>
+                {level.categories.map((category) => (
+                  <View key={category.title} style={styles.category}>
+                    <Text style={styles.categoryTitle}>{category.title}</Text>
+                    <View style={styles.appIcons}>
+                      {category.icons.map((icon, i) => (
+                        <IconChip key={i} index={i} icon={icon} />
+                      ))}
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </>
+          ) : (
+            <View style={styles.comingSoonBox}>
+              <Ionicons name="time-outline" size={22} color={colors.textSecondary} />
+              <Text style={styles.comingSoonText}>Coming soon</Text>
+            </View>
+          )}
+        </View>
+      </TouchableOpacity>
+    </Animated.View>
   );
 }
 
@@ -491,6 +527,9 @@ export default function PlanSelectionScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
   const fade = useRef(new Animated.Value(1)).current;
+  // Drives the carousel tilt. Native-driven, so it stays smooth while the
+  // JS thread is busy committing the tier.
+  const scrollX = useRef(new Animated.Value(0)).current;
 
   const CARD_WIDTH = cardWidth(screenWidth);
   const SNAP = CARD_WIDTH + CARD_GAP;
@@ -545,25 +584,36 @@ export default function PlanSelectionScreen({ navigation }: Props) {
         <StepProgressBar step={3} totalSteps={5} />
 
         <View style={styles.cardsViewport}>
-          <ScrollView
+          {/* Animated.ScrollView so onScroll can feed scrollX natively.
+              onMomentumScrollEnd is a separate prop, so the existing snap
+              commit is untouched by the animation. */}
+          <Animated.ScrollView
             ref={scrollRef}
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.cardsContent}
             decelerationRate="fast"
             snapToInterval={SNAP}
+            scrollEventThrottle={16}
+            onScroll={Animated.event(
+              [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+              { useNativeDriver: true },
+            )}
             onMomentumScrollEnd={handleScroll}
           >
-            {ACCESS_LEVELS.map((level) => (
+            {ACCESS_LEVELS.map((level, i) => (
               <AccessCard
                 key={level.id}
                 level={level}
+                index={i}
+                scrollX={scrollX}
+                snap={SNAP}
                 width={CARD_WIDTH}
                 isActive={planTier === level.id}
                 onSelect={selectTier}
               />
             ))}
-          </ScrollView>
+          </Animated.ScrollView>
         </View>
 
         <View style={styles.selectionIndicator} pointerEvents="none">
@@ -671,8 +721,8 @@ const styles = StyleSheet.create({
   // --------------------------------------------------
   // CARDS
   // --------------------------------------------------
-  // No overflow:'hidden' — that clipped the taller cards. The header and body
-  // carry their own corner radii instead.
+  // No overflow:'hidden' — that clipped the taller cards, and now it would
+  // also clip the corners of the tilted cards mid-swipe.
 
   cardsViewport: {
     marginHorizontal: -BODY_SIDE_PADDING,
@@ -686,7 +736,9 @@ const styles = StyleSheet.create({
     marginTop: 22,
   },
 
+  // width now comes from the animated shell in AccessCard, so the card fills it.
   accessCard: {
+    width: '100%',
     minHeight: 334,
     borderRadius: radii.xl,
     borderWidth: 1,

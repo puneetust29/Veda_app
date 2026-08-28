@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useEffect, useRef, useState } from 'react';
-import { Animated, StyleSheet, Text, TouchableOpacity, View,   } from 'react-native';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Animated, Easing, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import type { FC, SVGProps } from 'react';
 
 import StepHeader from '../../components/onboarding/StepHeader';
@@ -16,6 +16,14 @@ import payAsYouGo from '../../../assets/pay-as-you-go.svg';
 
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'Welcome'>;
+
+// Where the incoming card starts, measured off the Figma prototype: it enters
+// ~16px right of centre at ~0.93 scale and eases forward into place.
+const DECK_SHIFT_X = 16;
+const DECK_SCALE = 0.93;
+const ENTER_DURATION = 520;
+const EXIT_DURATION = 180;
+const CARD_INTERVAL = 2400;
 
 // The backend only knows card ids/copy (see customers.current_plans); icons
 // stay a frontend concern mapped by id.
@@ -34,29 +42,105 @@ const FALLBACK_CARDS: CurrentPlanCard[] = [
   { id: 'lines', title: '3 connected lines', subtitle: 'Your household', bullet: 'Ready to help everyone stay connected.' },
 ];
 
-// Recommendation cards auto-cycle with a crossfade, with the next two cards
-// gently peeking from behind — matches the "Nice to meet you" screen where
-// cards swap on their own while the user reads the greeting.
+function CardFace({ card }: { card: CurrentPlanCard }) {
+  const CardIcon = CARD_ICONS[card.id];
+
+  return (
+    <>
+      <View style={styles.imageCard}>
+        <View>
+          {CardIcon && <CardIcon />}
+        </View>
+      </View>
+
+      <View>
+        <Text style={styles.cardTitle}>{card.title}</Text>
+        <Text style={styles.cardSubtitle}>{card.subtitle}</Text>
+        <View style={styles.bulletRow}>
+          <View style={styles.checkmarkCircle}>
+            <Ionicons name="checkmark" size={14} color={colors.white} />
+          </View>
+          <Text style={styles.bulletText}>{card.bullet}</Text>
+        </View>
+      </View>
+    </>
+  );
+}
+
+// Recommendation cards auto-cycle: the outgoing card fades in place while the
+// next one eases forward from the deck position behind it.
 export default function WelcomeScreen({ navigation }: Props) {
   const { customer } = useAuth();
   const [index, setIndex] = useState(0);
-  const fade = useRef(new Animated.Value(1)).current;
+  // Held only for the length of a swap so the outgoing card can fade out and
+  // cover the content change.
+  const [outgoing, setOutgoing] = useState<number | null>(null);
+
+  // 0 = incoming card still sits back in the deck, 1 = settled at the front.
+  const enter = useRef(new Animated.Value(1)).current;
+  // Opacity of the card on its way out.
+  const exit = useRef(new Animated.Value(0)).current;
+  // Interpolations built once — they're driven natively and don't depend on props.
+  const translateX = useRef(enter.interpolate({ inputRange: [0, 1], outputRange: [DECK_SHIFT_X, 0] })).current;
+  const scale = useRef(enter.interpolate({ inputRange: [0, 1], outputRange: [DECK_SCALE, 1] })).current;
+
+  const indexRef = useRef(0);
+  const isFirstRender = useRef(true);
 
   const cards = customer?.current_plans?.length ? customer.current_plans : FALLBACK_CARDS;
 
+  // The tick ONLY advances state. It must not touch the animated values:
+  // setValue is synchronous while setIndex is not, so resetting here would
+  // move the still-rendered previous card and show it easing forward before
+  // React committed the new one.
   useEffect(() => {
     const interval = setInterval(() => {
-      Animated.sequence([
-        Animated.timing(fade, { toValue: 0, duration: 250, useNativeDriver: true }),
-        Animated.timing(fade, { toValue: 1, duration: 250, useNativeDriver: true }),
-      ]).start();
-      setTimeout(() => setIndex((prev) => (prev + 1) % cards.length), 250);
-    }, 2200);
+      const prev = indexRef.current;
+      const next = (prev + 1) % cards.length;
+      indexRef.current = next;
+      setOutgoing(prev);
+      setIndex(next);
+    }, CARD_INTERVAL);
+
     return () => clearInterval(interval);
-  }, [fade, cards.length]);
+  }, [cards.length]);
+
+  // Runs in the same commit that renders the new card, before paint — so the
+  // first frame the user sees already has the incoming card back in the deck.
+  useLayoutEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+
+    enter.setValue(0);
+    exit.setValue(1);
+
+    const animation = Animated.parallel([
+      Animated.timing(enter, {
+        toValue: 1,
+        duration: ENTER_DURATION,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(exit, {
+        toValue: 0,
+        duration: EXIT_DURATION,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      }),
+    ]);
+
+    animation.start(({ finished }) => {
+      // Drop the outgoing layer once it's fully invisible.
+      if (finished) setOutgoing(null);
+    });
+
+    return () => animation.stop();
+  }, [index, enter, exit]);
 
   const card = cards[index % cards.length];
-  const CardIcon = CARD_ICONS[card.id];
+  const outgoingCard = outgoing === null ? null : cards[outgoing % cards.length];
 
   return (
     <View style={styles.container}>
@@ -66,26 +150,31 @@ export default function WelcomeScreen({ navigation }: Props) {
         <StepProgressBar step={2} totalSteps={5} />
         <Text style={styles.title}>Nice to meet you,{'\n'}{customer?.full_name?.split(' ')[0] || 'there'}.</Text>
         <Text style={styles.subtitle}>Your Vodafone number helps Veda understand your world, so it can start helping from day one.</Text>
-        <View style={styles.viewContainer}>
-        <View style={styles.contentWrapper}>
-          
-          <Animated.View style={[styles.imageCard, { opacity: fade }]}>
-            <View>
-              {CardIcon && <CardIcon />}
-            </View>
-          </Animated.View>
 
-          
-          <View>
-            <Text style={styles.cardTitle}>{card.title}</Text>
-            <Text style={styles.cardSubtitle}>{card.subtitle}</Text>
-            <View style={styles.bulletRow}>
-              <View style={styles.checkmarkCircle}>
-                <Ionicons name="checkmark" size={14} color={colors.white} />
-              </View>
-              <Text style={styles.bulletText}>{card.bullet}</Text>
-            </View>
-          </View>
+        <View style={styles.viewContainer}>
+          {/* Card deck — two ghost cards sit behind the real one and peek out to the right */}
+          <View style={styles.cardStack}>
+            <View style={[styles.ghostCard, styles.ghostCardBack]} />
+            <View style={[styles.ghostCard, styles.ghostCardMid]} />
+
+            {/* Incoming card. Stays in normal flow so it defines the deck height. */}
+            <Animated.View
+              style={[styles.contentWrapper, { transform: [{ translateX }, { scale }] }]}
+            >
+              <CardFace card={card} />
+            </Animated.View>
+
+            {/* Outgoing card, stacked on top at the front position so it fades
+                away to reveal the one arriving behind it. Without this layer
+                the content change is a visible cut. */}
+            {outgoingCard && (
+              <Animated.View
+                pointerEvents="none"
+                style={[styles.contentWrapper, styles.outgoingCard, { opacity: exit }]}
+              >
+                <CardFace card={outgoingCard} />
+              </Animated.View>
+            )}
           </View>
 
           {/* Bottom Section - Dots and CTA */}
@@ -100,9 +189,9 @@ export default function WelcomeScreen({ navigation }: Props) {
               <Text style={styles.ctaText}>Continue</Text>
             </TouchableOpacity>
           </View>
-          </View>
         </View>
       </View>
+    </View>
   );
 }
 
@@ -111,16 +200,66 @@ const styles = StyleSheet.create({
   body: { paddingHorizontal: spacing.xl, flex: 1, flexDirection: 'column' },
   title: { fontSize: 32, fontWeight: '700', fontFamily: fonts.bold, color: colors.textPrimary, marginBottom: spacing.sm, lineHeight: 40 },
   subtitle: { fontSize: 14, fontWeight: '400', fontFamily: fonts.body, color: '#6b7280', marginBottom: spacing.lg, lineHeight: 21 },
-  viewContainer: {flex: 1, justifyContent: 'space-between',},
+  viewContainer: { flex: 1, justifyContent: 'space-between' },
+
+  // Holds the deck. Owns the width/offset that contentWrapper used to own,
+  // so the ghost cards can be positioned relative to it.
+  cardStack: {
+    width: 260,
+    alignSelf: 'center',
+    marginTop: spacing.xxxl,
+  },
+
   contentWrapper: {
     borderWidth: 1,
     padding: spacing.lg,
-    width: 260,
-    alignSelf: 'center',
+    width: '100%',
+    // Floor height keeps the shell from jumping when copy lengths differ.
+    minHeight: 340,
+    // Opaque background is required, otherwise the ghost cards show through
+    // and the two card layers bleed into each other mid-swap.
+    backgroundColor: colors.background,
     borderColor: colors.borderMuted,
     borderRadius: radii.xxl,
     overflow: 'hidden',
-    marginTop: spacing.xxxl
+  },
+
+  outgoingCard: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+
+  // The ghosts sit flush to the right edge; the small rotation is what swings
+  // their top-right corner clear of the front card. The bottom-left corner
+  // swings the other way and hides behind it, so no outline shows at the
+  // bottom. `left`/`bottom` must stay larger than halfHeight*sin(angle) and
+  // halfWidth*sin(angle) respectively, or the ghost pokes out on those sides.
+  ghostCard: {
+    position: 'absolute',
+    right: 0,
+    borderWidth: 1,
+    borderColor: colors.borderMuted,
+    borderRadius: radii.xxl,
+    backgroundColor: colors.background,
+  },
+
+  ghostCardMid: {
+    top: 10,
+    bottom: 22,
+    left: 18,
+    opacity: 0.7,
+    transform: [{ rotate: '3deg' }],
+  },
+
+  ghostCardBack: {
+    top: 14,
+    bottom: 34,
+    left: 30,
+    opacity: 0.45,
+    transform: [{ rotate: '6deg' }],
   },
 
   imageCard: {
@@ -139,7 +278,7 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     marginBottom: spacing.xs,
     marginTop: spacing.xl,
-    lineHeight: 20
+    lineHeight: 20,
   },
 
   cardSubtitle: {
@@ -148,7 +287,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     color: '#6b7280',
     marginBottom: spacing.lg,
-    lineHeight: 19
+    lineHeight: 19,
   },
 
   bulletRow: {
@@ -174,7 +313,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.semiBold,
     color: '#6b7280',
     flex: 1,
-    lineHeight: 21
+    lineHeight: 21,
   },
 
   bottomSection: {
@@ -187,23 +326,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     gap: spacing.xs,
-    marginBottom: spacing.lg
+    marginBottom: spacing.lg,
   },
 
   dot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: colors.border
+    backgroundColor: colors.border,
   },
 
   dotActive: {
     backgroundColor: colors.brandBackGround,
-    width: 24
+    width: 24,
   },
 
   cta: {
-    backgroundColor: '#f00405',
+    backgroundColor: colors.brandBackGround,
     borderRadius: 24,
     paddingVertical: 18,
     paddingHorizontal: spacing.xl,
@@ -212,7 +351,7 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 366,
     elevation: 3,
-    shadowColor: '#f00405',
+    shadowColor: colors.brandBackGround,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
