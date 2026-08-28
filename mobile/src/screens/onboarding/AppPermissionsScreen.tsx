@@ -379,7 +379,7 @@ export default function AppPermissionsScreen({ navigation }: Props) {
         <StepProgressBar step={4} totalSteps={5}/>
 
         <Text style={styles.title}>
-          Choose apps for{'\n'}
+          Choose permissions for{'\n'}
           <Text style={styles.titleAccent}>{TIER_LABEL[planTier]}</Text>.
         </Text>
         <Text style={styles.subtitle}>
@@ -508,7 +508,7 @@ const styles = StyleSheet.create({
   },
 
   title: {
-    fontSize: 38,
+    fontSize: 34,
     fontWeight: '600',
     fontFamily: fonts.semiBold,
     color: colors.textPrimary,
