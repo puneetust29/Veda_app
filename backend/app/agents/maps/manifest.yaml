@@ -1,0 +1,25 @@
+name: maps_agent
+version: 0.1.0
+description: Geocodes flight origin/destination and fetches ETA + route via Google Maps.
+enabled: true
+priority: 20
+
+capabilities:
+  - geocoding
+  - routing
+  - eta
+
+triggers:
+  rules:
+    - key: calendar_event.event_type
+      op: eq
+      value: flight
+
+required_context:
+  - customer
+  - calendar_event
+
+tools: []
+actions: []
+
+output_schema: app.agents.maps.schemas:MapsResult
