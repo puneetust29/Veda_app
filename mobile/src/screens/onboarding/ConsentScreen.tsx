@@ -114,7 +114,7 @@ export default function ConsentScreen({ navigation }: Props) {
         </View>
       <View style={styles.footer}>
         <TouchableOpacity disabled={!allOpened} onPress={() => navigation.navigate('Success')}>
-          <Animated.View style={styles.cta}>
+          <Animated.View style={[styles.cta, { opacity: ctaAnim.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] }) }]}>
             <Animated.Text style={styles.ctaText}>Agree & Continue</Animated.Text>
           </Animated.View>
         </TouchableOpacity>

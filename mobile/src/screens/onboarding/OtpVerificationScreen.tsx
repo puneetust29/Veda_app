@@ -48,6 +48,7 @@ export default function OtpVerificationScreen({ navigation }: Props) {
   }, [code]);
 
   const handleCodeChange = (newCode: string) => {
+    if (status === 'verifying' || status === 'verified') return;
     setCode(newCode);
     if (status === 'error') {
       setStatus('idle');
@@ -128,6 +129,7 @@ export default function OtpVerificationScreen({ navigation }: Props) {
             styles.cta,
             !isComplete && status !== 'verified' && styles.ctaDisabled,
             status === 'error' && styles.ctaError,
+            status === 'verified' && styles.ctaSuccess,
           ]}
           disabled={!isComplete && status !== 'verified'}
           onPress={status === 'verified' ? () => navigation.navigate('Welcome') : handleVerify}
@@ -161,6 +163,7 @@ const styles = StyleSheet.create({
   },
   ctaDisabled: { backgroundColor: colors.textDisabled },
   ctaError: { backgroundColor: colors.brandBackGround },
+  ctaSuccess: { backgroundColor: colors.success },
   ctaText: { ...typography.bodyBold, color: colors.white, fontSize: 16 },
   ctaTextDisabled: { color: colors.white },
 });

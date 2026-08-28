@@ -25,6 +25,17 @@ export default function OtpInput({ length = 6, value, onChange, disabled, varian
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    // Blur explicitly rather than relying on `editable` to drop focus — on
+    // Android, flipping `editable` false while the input is focused makes
+    // the OS jump focus (with its default highlight) to the next focusable
+    // view, e.g. the "Resend code" button below. Touch input is blocked via
+    // `pointerEvents` instead, so `editable` never has to change here.
+    if (disabled) {
+      inputRef.current?.blur();
+    }
+  }, [disabled]);
+
   const activeIndex = Math.min(value.length, length - 1);
 
   return (
@@ -52,7 +63,7 @@ export default function OtpInput({ length = 6, value, onChange, disabled, varian
         onChangeText={(text) => onChange(text.replace(/\D/g, '').slice(0, length))}
         keyboardType="number-pad"
         maxLength={length}
-        editable={!disabled}
+        pointerEvents={disabled ? 'none' : 'auto'}
         caretHidden
         contextMenuHidden
       />

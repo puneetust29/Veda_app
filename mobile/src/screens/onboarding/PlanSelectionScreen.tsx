@@ -424,47 +424,58 @@ function AccessCard({
           <Ionicons name={level.headerIcon} size={18} color={colors.white} />
           <Text style={styles.cardHeaderText}>{level.title}</Text>
         </View>
-        <View style={styles.appCount}>
-          <Text style={styles.appCountText}>{level.appCount}</Text>
-        </View>
+        {level.id === 'lite' ? (
+          <View style={styles.appCount}>
+            <Text style={styles.appCountText}>{level.appCount}</Text>
+          </View>
+        ) : null}
       </LinearGradient>
 
       <View style={styles.cardBody}>
         <Text style={styles.cardCaption}>{level.caption}</Text>
 
-        {level.includes ? (
-          <View style={styles.includesBox}>
-            <View style={styles.includesHeader}>
-              <Ionicons name="layers-outline" size={13} color={colors.textPrimary} />
-              <Text style={styles.includesLabel}>
-                Everything in <Text style={styles.includesLabelBold}>{level.includes.label}</Text>
-              </Text>
-            </View>
-            <View style={styles.includesRow}>
-              <View style={styles.appIcons}>
-                {level.includes.icons.map((icon, i) => (
-                  <IconChip key={i} index={i} icon={icon} size={14} />
-                ))}
+        {level.id === 'lite' ? (
+          <>
+            {level.includes ? (
+              <View style={styles.includesBox}>
+                <View style={styles.includesHeader}>
+                  <Ionicons name="layers-outline" size={13} color={colors.textPrimary} />
+                  <Text style={styles.includesLabel}>
+                    Everything in <Text style={styles.includesLabelBold}>{level.includes.label}</Text>
+                  </Text>
+                </View>
+                <View style={styles.includesRow}>
+                  <View style={styles.appIcons}>
+                    {level.includes.icons.map((icon, i) => (
+                      <IconChip key={i} index={i} icon={icon} size={14} />
+                    ))}
+                  </View>
+                  <View style={styles.morePill}>
+                    <Text style={styles.morePillText}>+{level.includes.moreCount} apps</Text>
+                  </View>
+                </View>
               </View>
-              <View style={styles.morePill}>
-                <Text style={styles.morePillText}>+{level.includes.moreCount} apps</Text>
-              </View>
-            </View>
-          </View>
-        ) : null}
+            ) : null}
 
-        <View style={styles.categoryGrid}>
-          {level.categories.map((category) => (
-            <View key={category.title} style={styles.category}>
-              <Text style={styles.categoryTitle}>{category.title}</Text>
-              <View style={styles.appIcons}>
-                {category.icons.map((icon, i) => (
-                  <IconChip key={i} index={i} icon={icon} />
-                ))}
-              </View>
+            <View style={styles.categoryGrid}>
+              {level.categories.map((category) => (
+                <View key={category.title} style={styles.category}>
+                  <Text style={styles.categoryTitle}>{category.title}</Text>
+                  <View style={styles.appIcons}>
+                    {category.icons.map((icon, i) => (
+                      <IconChip key={i} index={i} icon={icon} />
+                    ))}
+                  </View>
+                </View>
+              ))}
             </View>
-          ))}
-        </View>
+          </>
+        ) : (
+          <View style={styles.comingSoonBox}>
+            <Ionicons name="time-outline" size={22} color={colors.textSecondary} />
+            <Text style={styles.comingSoonText}>Coming soon</Text>
+          </View>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -763,6 +774,16 @@ const styles = StyleSheet.create({
   // 48.8%. 48.7% is used so rounding can never push the pair over and wrap.
 
   categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
+
+  comingSoonBox: {
+    flex: 1,
+    minHeight: 120,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+  },
+
+  comingSoonText: { ...typography.bodyBold, color: colors.textSecondary, fontSize: 14 },
 
   category: {
     width: '48.7%',
