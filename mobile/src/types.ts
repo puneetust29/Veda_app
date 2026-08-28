@@ -178,8 +178,26 @@ export type OnboardingStackParamList = {
 
 // --- Chat / streaming agent contract ---
 
+export type UberAirportOption = {
+  label: string;
+  uber_app_url: string;
+  deep_link_url: string;
+};
+
 export type RecommendationCardPayload =
-  | { kind: 'roaming_plan'; plan: RoamingPlan; reasoning: string; judge_approved: boolean; judge_feedback: string };
+  | { kind: 'roaming_plan'; plan: RoamingPlan; reasoning: string; judge_approved: boolean; judge_feedback: string }
+  | {
+      kind: 'uber_ride';
+      origin_type: string;
+      reasoning: string;
+      suggested_message: string;
+      pickup_label: string | null;
+      dropoff_label: string | null;
+      uber_app_url: string | null;
+      deep_link_url: string | null;
+      airport_options: UberAirportOption[];
+      alternative_options: UberAirportOption[];
+    };
 
 export type HotelBooking = {
   found: boolean;

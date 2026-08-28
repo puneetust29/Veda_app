@@ -17,7 +17,3 @@ mobile/test-results/
 
 # OS
 .DS_Store
-
-# Local research notes (API docs, test results, credentials)
-research/
-mobile/test-results/

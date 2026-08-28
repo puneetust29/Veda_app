@@ -1,6 +1,7 @@
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import type { RecommendationCardPayload, ChatItem } from '../../types';
+import { openUber } from '../../lib/uberDeeplink';
 
 type ConfirmationItem = Extract<ChatItem, { kind: 'confirmation' }>;
 
@@ -112,6 +113,89 @@ export default function RecommendationCard({ card, confirmation, onConfirm, onDe
                   </TouchableOpacity>
                 </View>
               )}
+            </>
+          )}
+        </View>
+      );
+    }
+    case 'uber_ride': {
+      const hasDirectLink = card.uber_app_url || card.deep_link_url;
+      const hasAirportOptions = card.airport_options.length > 0;
+
+      const handleOpenUber = async (uber_app_url?: string | null, deep_link_url?: string | null) => {
+        try {
+          await openUber({ uber_app_url, deep_link_url });
+        } catch {
+          Alert.alert('Uber not available', 'Could not open Uber. Please install the Uber app or try again.');
+        }
+      };
+
+      return (
+        <View style={styles.planCard}>
+          <View style={styles.providerSection}>
+            <View style={[styles.providerBadge, styles.uberBadge]}>
+              <Text style={styles.providerBadgeText}>🚗</Text>
+            </View>
+            <Text style={styles.providerName}>Uber</Text>
+          </View>
+
+          <Text style={styles.planName}>{card.suggested_message}</Text>
+
+          {card.dropoff_label && (
+            <>
+              <View style={styles.divider} />
+              <View style={styles.tripRow}>
+                <Text style={styles.tripLabel}>To</Text>
+                <Text style={styles.tripValue}>{card.dropoff_label}</Text>
+              </View>
+            </>
+          )}
+
+          <View style={styles.divider} />
+
+          {hasDirectLink && !hasAirportOptions && (
+            <TouchableOpacity
+              style={styles.primaryButton}
+              onPress={() => handleOpenUber(card.uber_app_url, card.deep_link_url)}
+            >
+              <Text style={styles.primaryButtonText}>Book with Uber</Text>
+            </TouchableOpacity>
+          )}
+
+          {hasAirportOptions && (
+            <>
+              <Text style={styles.sectionHeader}>Choose your airport</Text>
+              <View style={styles.reasoningList}>
+                {card.airport_options.map((opt) => (
+                  <TouchableOpacity
+                    key={opt.label}
+                    style={styles.airportOption}
+                    onPress={() => handleOpenUber(opt.uber_app_url, opt.deep_link_url)}
+                  >
+                    <Text style={styles.airportOptionText}>{opt.label}</Text>
+                    <Text style={styles.airportOptionCta}>Open Uber →</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </>
+          )}
+
+          {card.alternative_options.length > 0 && (
+            <>
+              <View style={styles.divider} />
+              <Text style={styles.sectionHeader}>Nearest airports instead</Text>
+              <View style={styles.reasoningList}>
+                {card.alternative_options.map((opt) => (
+                  <TouchableOpacity
+                    key={opt.label}
+                    style={styles.airportOption}
+                    onPress={() => handleOpenUber(opt.uber_app_url, opt.deep_link_url)}
+                  >
+                    <Text style={styles.airportOptionText}>{opt.label}</Text>
+                    <Text style={styles.airportOptionCta}>Open Uber →</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
             </>
           )}
         </View>
@@ -272,5 +356,46 @@ const styles = StyleSheet.create({
     color: '#D32F2F',
     fontSize: 16,
     fontWeight: '600',
+  },
+  uberBadge: {
+    backgroundColor: '#000000',
+  },
+  tripRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
+  tripLabel: {
+    fontSize: 13,
+    color: '#999999',
+    width: 28,
+  },
+  tripValue: {
+    fontSize: 14,
+    color: '#1F1F1F',
+    fontWeight: '500',
+    flex: 1,
+  },
+  airportOption: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    backgroundColor: '#F5F5F5',
+  },
+  airportOptionText: {
+    fontSize: 14,
+    color: '#1F1F1F',
+    fontWeight: '500',
+    flex: 1,
+  },
+  airportOptionCta: {
+    fontSize: 13,
+    color: '#D32F2F',
+    fontWeight: '600',
+    marginLeft: 8,
   },
 });
