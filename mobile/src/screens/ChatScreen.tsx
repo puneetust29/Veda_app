@@ -1,5 +1,5 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -15,6 +15,15 @@ export default function ChatScreen({ route, navigation }: Props) {
   const { items, phase, confirm, decline, retry, sendMessage, handleInsurancePurchased, workflowState, continueWorkflow } = useWorkflowChat(event);
   const scrollViewRef = useRef<ScrollView>(null);
   const [draft, setDraft] = useState('');
+  const itemCountRef = useRef(0);
+
+  // Only auto-scroll when new items are added, not when existing items expand/collapse
+  useEffect(() => {
+    if (items.length > itemCountRef.current) {
+      itemCountRef.current = items.length;
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }
+  }, [items]);
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
@@ -33,7 +42,6 @@ export default function ChatScreen({ route, navigation }: Props) {
         ref={scrollViewRef}
         style={styles.thread}
         contentContainerStyle={styles.threadContent}
-        onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
       >
         {items.map((item, idx) => {
           // Skip hotel booking component
