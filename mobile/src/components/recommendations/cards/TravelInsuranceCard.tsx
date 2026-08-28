@@ -1,13 +1,12 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Pressable } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, typography } from '../../../theme';
+import { colors, fonts, spacing, typography } from '../../../theme';
 import type { TravelInsurancePlan } from '../../../types';
-
-const PROVIDER_LOGO_COLORS: Record<string, string> = {
-  Allianz: '#1E3A8A',
-  default: '#1E40AF',
-};
+import AllianzMarkIcon from '../../icons/AllianzMarkIcon';
+import BenefitsIcon from '../../icons/BenefitsIcon';
+import CheckIcon from '../../icons/CheckIcon';
+import CoverageDurationIcon from '../../icons/CoverageDurationIcon';
+import InfoIcon from '../../icons/InfoIcon';
 
 type Props = {
   plan: TravelInsurancePlan;
@@ -22,22 +21,22 @@ export default function TravelInsuranceCard({ plan, onViewDetails, onProceed }: 
     <View style={styles.card}>
       {/* Header */}
       <View style={styles.header}>
-        <View style={[styles.providerLogo, { backgroundColor: PROVIDER_LOGO_COLORS[plan.provider] || PROVIDER_LOGO_COLORS.default }]}>
-          <Ionicons name="shield-checkmark" size={24} color="#FFFFFF" />
-        </View>
-        <View style={styles.headerText}>
+        <View style={styles.providerRow}>
+          <View style={styles.providerMark}>
+            <AllianzMarkIcon size={20} />
+          </View>
           <Text style={styles.provider}>{plan.provider}</Text>
-          <Text style={styles.planName}>{plan.planName}</Text>
         </View>
+        <Text style={styles.planName}>{plan.planName}</Text>
       </View>
 
       {/* Plan Type */}
-      <View style={styles.section}>
+      <View style={styles.planTypeSection}>
         <Text style={styles.planType}>{plan.planType}</Text>
       </View>
 
       {/* Why This One */}
-      <View style={styles.section}>
+      <View style={styles.whySection}>
         <Text style={styles.sectionTitle}>Why this one</Text>
         {plan.whyThisOne.map((reason, i) => (
           <ChecklistItem key={i} text={reason} />
@@ -45,12 +44,12 @@ export default function TravelInsuranceCard({ plan, onViewDetails, onProceed }: 
       </View>
 
       {/* Coverage Details */}
-      <View style={styles.section}>
+      <View style={styles.coverageSection}>
         <Text style={styles.sectionTitle}>Coverage includes</Text>
 
         <View style={styles.coverageItem}>
           <View style={styles.coverageIconBadge}>
-            <Text style={styles.coverageIcon}>📅</Text>
+            <CoverageDurationIcon size={16} />
           </View>
           <View style={styles.coverageContent}>
             <Text style={styles.coverageItemLabel}>Coverage duration</Text>
@@ -62,16 +61,16 @@ export default function TravelInsuranceCard({ plan, onViewDetails, onProceed }: 
 
         <View style={styles.coverageItem}>
           <View style={styles.coverageIconBadge}>
-            <Text style={styles.coverageIcon}>🛡️</Text>
+            <BenefitsIcon size={16} />
           </View>
           <View style={[styles.coverageContent, { flex: 1 }]}>
-            <View style={styles.benefitsHeader}>
-              <Text style={styles.coverageItemLabel}>Benefits</Text>
-              <Pressable onPress={() => console.log('info pressed')}>
-                <Ionicons name="information-circle" size={18} color="#D32F2F" />
+            <Text style={styles.coverageItemLabel}>Benefits</Text>
+            <View style={styles.benefitsValueRow}>
+              <Text style={styles.coverageItemValue}>{plan.benefitsSummary}</Text>
+              <Pressable accessibilityLabel="More information about benefits">
+                <InfoIcon size={16} />
               </Pressable>
             </View>
-            <Text style={styles.coverageItemValue}>{plan.benefitsSummary}</Text>
           </View>
         </View>
       </View>
@@ -112,7 +111,7 @@ export default function TravelInsuranceCard({ plan, onViewDetails, onProceed }: 
 function ChecklistItem({ text }: { text: string }) {
   return (
     <View style={styles.checklistItem}>
-      <Text style={styles.checkmarkIcon}>✓</Text>
+      <CheckIcon size={12} />
       <Text style={styles.checklistText}>{text}</Text>
     </View>
   );
@@ -120,9 +119,9 @@ function ChecklistItem({ text }: { text: string }) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: 'white',
-    borderRadius: 16,
-    padding: spacing.lg,
+    backgroundColor: colors.white,
+    borderRadius: 24,
+    padding: 16,
     marginBottom: spacing.lg,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -131,69 +130,69 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   header: {
+    alignItems: 'flex-start',
+    gap: 12,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  providerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
-    marginBottom: spacing.lg,
-    paddingBottom: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E8E8E8',
+    gap: 4,
   },
-  providerLogo: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F5DEDE',
+  providerMark: {
+    width: 20,
+    height: 20,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  headerText: {
-    flex: 1,
-  },
   provider: {
-    ...typography.small,
-    fontWeight: '600',
-    color: colors.textSecondary,
+    fontFamily: fonts.bold,
+    fontSize: 17,
+    color: colors.textPrimary,
   },
   planName: {
-    ...typography.sectionTitle,
+    fontFamily: fonts.semiBold,
+    fontSize: 20,
+    lineHeight: 22,
     color: colors.textPrimary,
-    marginTop: spacing.xs,
   },
+  planTypeSection: { paddingTop: 16 },
   planType: {
-    ...typography.small,
+    ...typography.caption,
     color: colors.textSecondary,
-    fontStyle: 'italic',
   },
-  section: {
-    marginBottom: spacing.lg,
+  whySection: {
+    paddingTop: 18,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  coverageSection: {
+    paddingTop: 18,
+    paddingBottom: 2,
   },
   sectionTitle: {
-    ...typography.small,
-    fontWeight: '600',
-    color: colors.textSecondary,
-    marginBottom: spacing.md,
+    fontFamily: fonts.semiBold,
+    fontSize: 16,
+    color: colors.textPrimary,
+    marginBottom: 18,
   },
   checklistItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: spacing.md,
-    marginBottom: spacing.sm,
-  },
-  checkmarkIcon: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#D32F2F',
-    marginTop: 2,
+    marginBottom: 12,
   },
   checklistText: {
-    ...typography.body,
+    ...typography.caption,
     color: colors.textPrimary,
     flex: 1,
-    lineHeight: 22,
+    lineHeight: 16,
   },
   detailRow: {
-    marginBottom: spacing.md,
+    marginBottom: 20,
   },
   detailLabel: {
     ...typography.small,
@@ -212,41 +211,38 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   coverageIconBadge: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    backgroundColor: '#FFE0E0',
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: 'rgba(230, 0, 0, 0.08)',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  coverageIcon: {
-    fontSize: 20,
   },
   coverageContent: {
     flex: 1,
   },
   coverageItemLabel: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#666666',
-    marginBottom: spacing.xs,
+    fontFamily: fonts.bodyLight,
+    fontSize: 12,
+    color: colors.textPrimary,
+    marginBottom: 4,
   },
   coverageItemValue: {
-    fontSize: 15,
-    fontWeight: '500',
+    fontFamily: fonts.semiBold,
+    fontSize: 14,
     color: colors.textPrimary,
-    lineHeight: 22,
+    lineHeight: 17,
+    flex: 1,
   },
-  benefitsHeader: {
+  benefitsValueRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: spacing.xs,
+    alignItems: 'flex-start',
+    gap: 10,
   },
   divider: {
     height: 1,
-    backgroundColor: '#E8E8E8',
-    marginVertical: spacing.md,
+    backgroundColor: colors.border,
+    marginVertical: 8,
   },
   premiumRow: {
     flexDirection: 'row',
@@ -254,24 +250,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   premiumLabel: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontFamily: fonts.semiBold,
+    fontSize: 14,
     color: colors.textPrimary,
   },
   premiumPrice: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontFamily: fonts.bold,
+    fontSize: 16,
     color: colors.textPrimary,
   },
   buttonContainer: {
     flexDirection: 'row',
-    gap:12,
+    gap: 10,
     alignItems: 'center',
+    paddingTop: 8,
   },
   viewDetailsButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    borderRadius: 24,
+    height: 49,
+    width: '47%',
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
@@ -279,22 +276,21 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   viewDetailsText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#D32F2F',
+    fontFamily: fonts.semiBold,
+    fontSize: 13.5,
+    color: colors.accentButton,
   },
   proceedButton: {
     flex: 1,
-    backgroundColor: '#F00405',
-    borderRadius: 24,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
+    height: 49,
+    backgroundColor: colors.accentCta,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
   proceedButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontFamily: fonts.bold,
+    fontSize: 14,
     color: 'white',
   },
 });
