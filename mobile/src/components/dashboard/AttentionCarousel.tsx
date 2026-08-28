@@ -162,6 +162,20 @@ export default function AttentionCarousel({ flights, activeRoamingEventIds, acti
   );
 }
 
+// Local fallback images (guaranteed to show)
+const FALLBACK_IMAGE_SOURCES = [
+  require('../../../assets/fallback-beach.jpg'),
+  require('../../../assets/fallback-mountain.jpg'),
+  require('../../../assets/fallback-sunset.jpg'),
+  require('../../../assets/fallback-city.jpg'),
+  require('../../../assets/fallback-adventure.jpg'),
+];
+
+function getRandomFallbackImage(seed: string): number {
+  const hash = seed.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  return FALLBACK_IMAGE_SOURCES[hash % FALLBACK_IMAGE_SOURCES.length];
+}
+
 function AttentionCard({
   flight,
   index,
@@ -181,6 +195,7 @@ function AttentionCard({
   onToggleTag: (tag: TagKey) => void;
   onPress: () => void;
 }) {
+  const [imageLoadFailed, setImageLoadFailed] = useState(false);
   const { subscriptions, activeInsurance } = useSubscriptionInsurance();
   const inputRange = [
     (index - 1) * SNAP_INTERVAL,
@@ -204,9 +219,14 @@ function AttentionCard({
     <Animated.View style={[styles.card, { transform: [{ scale }] }]}>
       <View style={styles.banner}>
         <Image
-          source={{ uri: `https://picsum.photos/seed/${encodeURIComponent(flight.id)}/600/300` }}
+          source={
+            imageLoadFailed
+              ? getRandomFallbackImage(flight.id)
+              : { uri: `https://picsum.photos/seed/${encodeURIComponent(flight.id)}/600/300` }
+          }
           style={StyleSheet.absoluteFill}
           resizeMode="cover"
+          onError={() => setImageLoadFailed(true)}
         />
         <View style={styles.badgeRow}>
           <SourceBadge source={flight.source} />
