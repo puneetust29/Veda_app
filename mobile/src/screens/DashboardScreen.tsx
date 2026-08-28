@@ -12,6 +12,7 @@ import DashboardHeader from '../components/dashboard/DashboardHeader';
 import GreetingWeather from '../components/dashboard/GreetingWeather';
 import SuggestionGrid, { type Suggestion } from '../components/dashboard/SuggestionGrid';
 import { useAuth } from '../context/AuthContext';
+import { useSubscriptionInsurance } from '../context/SubscriptionInsuranceContext';
 import { api } from '../lib/api';
 import { readDeviceCalendarEvents } from '../lib/deviceCalendar';
 import { FALLBACK_WEATHER, getDeviceWeatherSummary } from '../lib/weather';
@@ -72,9 +73,8 @@ async function silentlySyncCalendars(): Promise<void> {
 
 export default function DashboardScreen({ navigation }: Props) {
   const { customer, signOut } = useAuth();
+  const { subscriptions, activeInsurance } = useSubscriptionInsurance();
   const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [activeRoamingEventIds, setActiveRoamingEventIds] = useState<Set<string>>(new Set());
-  const [activeInsuranceEventIds, setActiveInsuranceEventIds] = useState<Set<string>>(new Set());
   const [weather, setWeather] = useState<WeatherSummary>(PLACEHOLDER_WEATHER);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
@@ -82,22 +82,8 @@ export default function DashboardScreen({ navigation }: Props) {
   const autoSyncIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const loadEvents = useCallback(async () => {
-    const [calendarEvents, subscriptions, insuranceStatus] = await Promise.all([
-      api.listCalendarEvents(),
-      api.listSubscriptions(),
-      api.getActiveInsurance().catch(() => ({ purchases: [] })),
-    ]);
+    const calendarEvents = await api.listCalendarEvents();
     setEvents(calendarEvents);
-    setActiveRoamingEventIds(
-      new Set(
-        subscriptions
-          .filter((subscription) => subscription.status === 'active')
-          .map((subscription) => subscription.calendar_event_id),
-      ),
-    );
-    setActiveInsuranceEventIds(
-      new Set(insuranceStatus.purchases.map((p) => p.calendar_event_id))
-    );
   }, []);
 
   const loadWeather = useCallback(async () => {
@@ -238,8 +224,16 @@ export default function DashboardScreen({ navigation }: Props) {
 
             <AttentionCarousel
               flights={upcomingFlights}
-              activeRoamingEventIds={activeRoamingEventIds}
-              activeInsuranceEventIds={activeInsuranceEventIds}
+              activeRoamingEventIds={
+                new Set(
+                  (subscriptions ?? [])
+                    .filter((sub) => sub.status === 'active')
+                    .map((sub) => sub.calendar_event_id),
+                )
+              }
+              activeInsuranceEventIds={
+                new Set((activeInsurance?.purchases ?? []).map((p) => p.calendar_event_id))
+              }
               onPressFlight={(event) => navigation.navigate('Chat', { event })}
             />
 

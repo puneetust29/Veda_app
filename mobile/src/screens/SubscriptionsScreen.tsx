@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 
+import { useSubscriptionInsurance } from '../context/SubscriptionInsuranceContext';
 import { api } from '../lib/api';
 import type { CalendarEvent, Subscription } from '../types';
 
@@ -13,23 +14,17 @@ type FlightPlan = {
 };
 
 export default function SubscriptionsScreen() {
+  const { subscriptions, activeInsurance, refresh: refreshContext, loading: contextLoading } = useSubscriptionInsurance();
   const [flightPlans, setFlightPlans] = useState<FlightPlan[]>([]);
-  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const load = useCallback(async () => {
+  const buildPlans = useCallback(async () => {
     try {
-      const [subscriptions, events, insuranceStatus] = await Promise.all([
-        api.listSubscriptions(),
-        api.listCalendarEvents(),
-        api.getActiveInsurance(),
-      ]);
-
-      // Group by calendar event
+      const events = await api.listCalendarEvents();
       const plansMap = new Map<string, FlightPlan>();
 
       // Add roaming subscriptions
-      subscriptions.forEach((sub) => {
+      (subscriptions ?? []).forEach((sub) => {
         if (sub.status === 'active' && sub.calendar_events) {
           const eventId = sub.calendar_event_id;
           if (!plansMap.has(eventId)) {
@@ -47,7 +42,7 @@ export default function SubscriptionsScreen() {
       });
 
       // Add insurance purchases
-      insuranceStatus.purchases.forEach((insurance) => {
+      (activeInsurance?.purchases ?? []).forEach((insurance) => {
         const eventId = insurance.calendar_event_id;
         const event = events.find((e) => e.id === eventId);
         if (event) {
@@ -69,25 +64,24 @@ export default function SubscriptionsScreen() {
     } catch (err) {
       console.warn('Failed to load plans', err);
     }
-  }, []);
+  }, [subscriptions, activeInsurance]);
 
   useFocusEffect(
     useCallback(() => {
-      setLoading(true);
-      load().finally(() => setLoading(false));
-    }, [load]),
+      buildPlans();
+    }, [buildPlans]),
   );
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await load();
+    await refreshContext();
     setRefreshing(false);
   };
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>My plans</Text>
-      {loading ? (
+      {contextLoading ? (
         <ActivityIndicator style={styles.loading} />
       ) : (
         <FlatList

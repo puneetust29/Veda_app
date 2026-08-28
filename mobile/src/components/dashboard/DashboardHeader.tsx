@@ -15,9 +15,12 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const RINGS_WIDTH = 775.552;
 const RINGS_HEIGHT = 1035.95;
 
+const closeIcon = `<svg viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6L18 18" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>`;
+
 type Props = {
   avatarInitial: string;
   onPressHistory?: () => void;
+  onPressClose?: () => void;
   /** Profile menu items (All plans, My plans, Device Calendar, Sign out,
    * etc.). No dedicated profile screen exists in the design yet, so tapping
    * the avatar opens this dropdown instead of navigating anywhere. */
@@ -29,7 +32,7 @@ type Props = {
 // content sheet below overlaps this header with a 24px top radius, so the
 // gradient gets extra bottom padding. The avatar opens a profile dropdown
 // menu (see DropdownMenu in common/).
-export default function DashboardHeader({ avatarInitial, onPressHistory, menuItems }: Props) {
+export default function DashboardHeader({ avatarInitial, onPressHistory, onPressClose, menuItems }: Props) {
   const [menuVisible, setMenuVisible] = useState(false);
   const insets = useSafeAreaInsets();
 
@@ -54,9 +57,15 @@ export default function DashboardHeader({ avatarInitial, onPressHistory, menuIte
 
       <SvgXml xml={logoXml} width={33.35} height={22.16} />
 
-      <TouchableOpacity style={styles.avatar} onPress={() => setMenuVisible(true)}>
-        <Text style={styles.avatarText}>{avatarInitial}</Text>
-      </TouchableOpacity>
+      {onPressClose ? (
+        <TouchableOpacity style={styles.iconButton} onPress={onPressClose}>
+          <SvgXml xml={closeIcon} width={24} height={24} />
+        </TouchableOpacity>
+      ) : (
+        <TouchableOpacity style={styles.avatar} onPress={() => setMenuVisible(true)}>
+          <Text style={styles.avatarText}>{avatarInitial}</Text>
+        </TouchableOpacity>
+      )}
 
       <DropdownMenu
         visible={menuVisible}

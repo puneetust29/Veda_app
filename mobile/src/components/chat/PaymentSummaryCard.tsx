@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { useStripe } from '@stripe/stripe-react-native';
 import { colors, spacing, typography } from '../../theme';
+import { useSubscriptionInsurance } from '../../context/SubscriptionInsuranceContext';
 import { api } from '../../lib/api';
 import type { TravelInsurancePlan, RoamingPlan } from '../../types';
 
@@ -31,6 +32,7 @@ export default function PaymentSummaryCard({
   const [state, setState] = useState<State>('idle');
   const [errorMessage, setErrorMessage] = useState('');
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
+  const { refreshInsurance } = useSubscriptionInsurance();
 
   const handlePayment = async () => {
     try {
@@ -71,6 +73,9 @@ export default function PaymentSummaryCard({
         calendarEventId,
       );
 
+      // Refresh insurance data in context so other screens update
+      await refreshInsurance();
+
       setState('success');
       setTimeout(() => {
         onSuccess(purchaseData);
@@ -106,9 +111,6 @@ export default function PaymentSummaryCard({
           <Text style={styles.successTitle}>✓ Payment Successful</Text>
           <Text style={styles.label}>Insurance cover activated</Text>
         </View>
-        <TouchableOpacity style={styles.payButton} onPress={() => onSuccess(null)}>
-          <Text style={styles.payButtonText}>Done</Text>
-        </TouchableOpacity>
       </View>
     );
   }
@@ -227,7 +229,7 @@ export default function PaymentSummaryCard({
           onPress={handlePayment}
         >
           <Text style={styles.payButtonText}>
-            Pay with {paymentMethodBrand ? paymentMethodBrand.charAt(0).toUpperCase() + paymentMethodBrand.slice(1) : ''} card
+            Pay with {paymentMethodBrand ? paymentMethodBrand.charAt(0).toUpperCase() + paymentMethodBrand.slice(1) : ''}
           </Text>
         </TouchableOpacity>
       </View>
@@ -361,12 +363,14 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   secondaryButton: {
-    flex: 1,
-    borderWidth: 2,
-    borderColor: colors.brand,
-    paddingVertical: spacing.md,
-    borderRadius: 50,
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderRadius: 24,
     alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: 'rgba(230, 0, 0, 0.07)',
+    backgroundColor: '#FFFFFF',
   },
   secondaryButtonText: {
     ...typography.body,
@@ -375,10 +379,12 @@ const styles = StyleSheet.create({
   },
   payButton: {
     flex: 1,
-    backgroundColor: colors.brand,
-    paddingVertical: spacing.md,
-    borderRadius: 50,
+    backgroundColor: '#F00405',
+    borderRadius: 24,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   payButtonText: {
     ...typography.body,

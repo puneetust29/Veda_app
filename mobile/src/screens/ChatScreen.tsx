@@ -4,6 +4,8 @@ import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import ChatItemView from '../components/chat/ChatItemView';
+import DashboardHeader from '../components/dashboard/DashboardHeader';
+import { useAuth } from '../context/AuthContext';
 import { useWorkflowChat } from '../hooks/useWorkflowChat';
 import type { RootStackParamList } from '../types';
 
@@ -21,13 +23,23 @@ function isInsuranceAlreadyPurchased(items: any[], currentIdx: number): boolean 
 
 export default function ChatScreen({ route, navigation }: Props) {
   const { event } = route.params;
+  const { customer } = useAuth();
   const { items, phase, confirm, decline, retry, sendMessage, handleInsurancePurchased, workflowState, continueWorkflow } = useWorkflowChat(event);
   const scrollViewRef = useRef<ScrollView>(null);
   const [draft, setDraft] = useState('');
   const [continueClicked, setContinueClicked] = useState(false);
 
+  const firstName = customer?.full_name?.split(' ')[0] ?? 'User';
+
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <View style={styles.container}>
+      <DashboardHeader
+        avatarInitial={firstName.charAt(0).toUpperCase()}
+        onPressHistory={() => navigation.goBack()}
+        onPressClose={() => navigation.goBack()}
+        menuItems={[]}
+      />
+      <SafeAreaView style={styles.content} edges={['bottom']}>
       {/* <View style={styles.tripHeader}>
         <Text style={styles.title}>{event.title}</Text>
         <Text style={styles.subtitle}>
@@ -123,12 +135,14 @@ export default function ChatScreen({ route, navigation }: Props) {
           <Text style={styles.sendButtonText}>Send</Text>
         </TouchableOpacity>
       </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFFFFF' },
+  content: { flex: 1, backgroundColor: '#FFFFFF' },
   tripHeader: {
     paddingHorizontal: 20,
     paddingTop: 16,

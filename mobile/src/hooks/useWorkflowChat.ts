@@ -13,6 +13,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { applyStreamEvent, nextId } from '../lib/chatThread';
+import { useSubscriptionInsurance } from '../context/SubscriptionInsuranceContext';
 import { api } from '../lib/api';
 import type { AgentStreamEvent, CalendarEvent, ChatItem, RoamingPlan } from '../types';
 
@@ -60,6 +61,8 @@ function greetingText(
 }
 
 export function useWorkflowChat(event: CalendarEvent) {
+  const { subscriptions, activeInsurance, refreshSubscriptions, refreshInsurance } = useSubscriptionInsurance();
+
   const [workflowState, setWorkflowState] = useState<WorkflowState>({
     currentStep: 'roaming',
     completedSteps: [],
@@ -218,14 +221,10 @@ export function useWorkflowChat(event: CalendarEvent) {
 
     (async () => {
       try {
-        const [subscriptions, insuranceStatus] = await Promise.all([
-          api.listSubscriptions(),
-          api.getActiveInsurance(),
-        ]);
         if (cancelled) return;
 
-        const existingRoaming = subscriptions.find((s) => s.calendar_event_id === event.id && s.status === 'active');
-        const existingInsurance = insuranceStatus.purchases.find(
+        const existingRoaming = (subscriptions ?? []).find((s) => s.calendar_event_id === event.id && s.status === 'active');
+        const existingInsurance = (activeInsurance?.purchases ?? []).find(
           (p) => p.calendar_event_id === event.id && p.status === 'active'
         );
 
@@ -272,8 +271,8 @@ export function useWorkflowChat(event: CalendarEvent) {
       clearWatchdog();
       abortControllerRef.current?.abort();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally mount-once
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally mount-once, but depend on context data
+  }, [subscriptions, activeInsurance]);
 
   const confirm = useCallback(
     (actionId: string) => {
@@ -296,8 +295,10 @@ export function useWorkflowChat(event: CalendarEvent) {
           reasoning,
           judgeFeedback,
         })
-        .then((subscription) => {
+        .then(async (subscription) => {
           updateConfirmationItem(actionId, { state: 'confirmed' });
+          // Refresh subscriptions in context immediately after purchase
+          await refreshSubscriptions();
           // Check if insurance is already active
           const hasInsuranceReceipt = itemsRef.current.some((item) => {
             if (item.kind !== 'receipt' || !('planName' in item)) return false;
@@ -390,7 +391,7 @@ export function useWorkflowChat(event: CalendarEvent) {
           });
         });
     },
-    [appendItems, updateConfirmationItem, event.id],
+    [appendItems, updateConfirmationItem, event.id, refreshSubscriptions],
   );
 
   const decline = useCallback(

@@ -65,7 +65,6 @@ export default function RecommendationCard({ card, confirmation, onConfirm, onDe
             <Text style={styles.providerName}>{card.plan.plan_name}</Text>
           </View>
           {/* Plan Name */}
-          <Text style={styles.planName}>{card.plan.description}</Text>
 
           {/* Divider */}
           <View style={styles.divider} />
@@ -148,7 +147,6 @@ const styles = StyleSheet.create({
   providerSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
   },
   providerBadge: {
     width: 21,
@@ -168,6 +166,7 @@ const styles = StyleSheet.create({
   providerInfo: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: 8,
   },
   providerName: {
     fontSize: 17,
@@ -237,7 +236,7 @@ const styles = StyleSheet.create({
   primaryButton: {
     flex: 1,
     backgroundColor: '#F00405',
-    borderRadius: 16,
+    borderRadius: 24,
     paddingVertical: 16,
     paddingHorizontal: 20,
     alignItems: 'center',
@@ -251,7 +250,7 @@ const styles = StyleSheet.create({
   secondaryButton: {
     paddingHorizontal: 24,
     paddingVertical: 16,
-    borderRadius: 12,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
