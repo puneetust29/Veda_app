@@ -37,7 +37,7 @@ export default function RootNavigator() {
 
   return (
     <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Navigator screenOptions={{ headerShown: false, headerBackTitleVisible: false }}>
         {showOnboarding ? (
           <Stack.Screen name="Onboarding" component={OnboardingNavigator} />
         ) : (
@@ -49,7 +49,7 @@ export default function RootNavigator() {
               options={({ route }) => ({
                 headerShown: true,
                 title: route.params.event.destination ?? '',
-              })}
+                             })}
             />
             <Stack.Screen
               name="VedaChat"
@@ -57,32 +57,32 @@ export default function RootNavigator() {
               options={{
                 headerShown: true,
                 title: 'Ask Veda',
-              }}
+                             }}
             />
             <Stack.Screen
               name="FlightDetail"
               component={FlightDetailScreen}
-              options={{ headerShown: true, title: '' }}
+              options={{ headerShown: true, title: '', headerBackTitle: '' }}
             />
             <Stack.Screen
               name="Subscriptions"
               component={SubscriptionsScreen}
-              options={{ headerShown: true, title: '' }}
+              options={{ headerShown: true, title: '', headerBackTitle: '' }}
             />
             <Stack.Screen
               name="RoamingPlans"
               component={RoamingPlansScreen}
-              options={{ headerShown: true, title: 'Available Plans' }}
+              options={{ headerShown: true, title: 'Available Plans', headerBackTitle: '' }}
             />
             <Stack.Screen
               name="DeviceCalendar"
               component={DeviceCalendarScreen}
-              options={{ headerShown: true, title: 'Calendars' }}
+              options={{ headerShown: true, title: 'Calendars', headerBackTitle: '' }}
             />
             <Stack.Screen
               name="Gmail"
               component={GmailScreen}
-              options={{ headerShown: true, title: 'Gmail' }}
+              options={{ headerShown: true, title: 'Gmail', headerBackTitle: '' }}
             />
             <Stack.Screen name="Dev" component={DevNavigator} />
           </>

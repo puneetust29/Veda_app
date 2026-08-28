@@ -36,6 +36,36 @@ def geocode(address: str, api_key: str) -> Optional[dict]:
         return None
 
 
+def reverse_geocode(lat: float, lng: float, api_key: str) -> Optional[str]:
+    """Return a short human-readable label like 'Shoreditch, London' for lat/lng, or None."""
+    try:
+        r = httpx.get(
+            _GEOCODE_URL,
+            params={"latlng": f"{lat},{lng}", "key": api_key, "result_type": "neighborhood|sublocality|locality"},
+            timeout=6,
+        )
+        r.raise_for_status()
+        data = r.json()
+        results = data.get("results", [])
+        if not results:
+            return None
+        components = results[0].get("address_components", [])
+        neighborhood = next(
+            (c["long_name"] for c in components if "neighborhood" in c["types"] or "sublocality" in c["types"]),
+            None,
+        )
+        city = next(
+            (c["long_name"] for c in components if "locality" in c["types"]),
+            None,
+        )
+        if neighborhood and city:
+            return f"{neighborhood}, {city}"
+        return city or results[0].get("formatted_address", "").split(",")[0]
+    except Exception as exc:
+        logger.warning("    reverse_geocode exception for (%.4f, %.4f): %s", lat, lng, exc)
+        return None
+
+
 def get_route(origin: str, destination: str, api_key: str, mode: str = "DRIVE") -> Optional[dict]:
     """
     Call Routes API (POST) for a given travel mode.

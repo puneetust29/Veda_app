@@ -163,6 +163,18 @@ export default function RecommendationCard({ card, confirmation, onConfirm, onDe
             </View>
           </View>
 
+          {/* Drive time estimate */}
+          {card.drive_mins_to_airport != null && (
+            <View style={uberStyles.etaRow}>
+              <Text style={uberStyles.etaValue}>
+                ~{card.drive_mins_to_airport < 60
+                  ? `${card.drive_mins_to_airport} min`
+                  : `${Math.floor(card.drive_mins_to_airport / 60)}h ${card.drive_mins_to_airport % 60}m`}
+              </Text>
+              <Text style={uberStyles.etaLabel}> to airport</Text>
+            </View>
+          )}
+
           {/* Direct book CTA */}
           {hasDirectLink && !hasAirportOptions && (
             <TouchableOpacity
@@ -500,6 +512,22 @@ const uberStyles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: '#1F1F1F',
+  },
+  etaRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+  },
+  etaValue: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#1F1F1F',
+  },
+  etaLabel: {
+    fontSize: 13,
+    color: '#9E9E9E',
+    fontWeight: '400',
   },
   ctaButton: {
     marginHorizontal: 20,

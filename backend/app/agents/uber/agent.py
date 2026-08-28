@@ -63,6 +63,7 @@ class UberAgent(BaseAgent):
             deep_link_url=final_state.get("deep_link_url"),
             airport_options=final_state.get("airport_options", []),
             alternative_options=final_state.get("alternative_options", []),
+            drive_mins_to_airport=final_state.get("drive_mins_to_airport"),
         ).model_dump()
 
         logger.info(

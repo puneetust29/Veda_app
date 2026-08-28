@@ -197,6 +197,7 @@ export type RecommendationCardPayload =
       deep_link_url: string | null;
       airport_options: UberAirportOption[];
       alternative_options: UberAirportOption[];
+      drive_mins_to_airport: number | null;
     };
 
 export type HotelBooking = {

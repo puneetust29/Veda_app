@@ -21,3 +21,4 @@ class UberAgentState(AgentState, total=False):
     deep_link_url: Optional[str]
     airport_options: list[dict]
     alternative_options: list[dict]
+    drive_mins_to_airport: Optional[int]
