@@ -335,8 +335,20 @@ export function useWorkflowChat(event: CalendarEvent) {
                 id: nextId(),
                 createdAt: Date.now(),
                 kind: 'payment_complete',
-                roamingSubscription: subscription,
                 insuranceId: 'insurance-active',
+                destination: event.destination ?? 'your destination',
+              },
+              {
+                id: nextId(),
+                createdAt: Date.now(),
+                kind: 'text',
+                role: 'agent',
+                text: `Everything's taken care of — you're all set for ${event.destination ?? 'your destination'}.`,
+              },
+              {
+                id: nextId(),
+                createdAt: Date.now(),
+                kind: 'trip_checklist',
                 destination: event.destination ?? 'your destination',
               },
             ]);
@@ -554,14 +566,32 @@ export function useWorkflowChat(event: CalendarEvent) {
 
       // If both roaming and insurance are active, show payment complete
       if (hasRoamingActive) {
-        newItems.push({
-          id: nextId(),
-          createdAt: Date.now(),
-          kind: 'payment_complete',
-          roamingSubscription,
-          insuranceId: purchaseData.id || 'insurance-' + Date.now(),
-          destination: event.destination ?? 'your destination',
-        });
+        newItems.push(
+          {
+            id: nextId(),
+            createdAt: Date.now(),
+            kind: 'payment_complete',
+            insuranceId: purchaseData.id || 'insurance-' + Date.now(),
+            insuranceAmount: purchaseData.insuranceAmount,
+            insuranceCurrency: purchaseData.insuranceCurrency,
+            destination: event.destination ?? 'your destination',
+            cardBrand: purchaseData.cardBrand,
+            cardLast4: purchaseData.cardLast4,
+          },
+          {
+            id: nextId(),
+            createdAt: Date.now(),
+            kind: 'text',
+            role: 'agent',
+            text: `Everything's taken care of — you're all set for ${event.destination ?? 'your destination'}.`,
+          },
+          {
+            id: nextId(),
+            createdAt: Date.now(),
+            kind: 'trip_checklist',
+            destination: event.destination ?? 'your destination',
+          }
+        );
       } else {
         // Only insurance purchased
         newItems.push({

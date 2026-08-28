@@ -6,11 +6,11 @@ import ConfirmationSuccessCard from './ConfirmationSuccessCard';
 import HotelBookingCard from '../common/HotelBookingCard';
 import MessageBubble from './MessageBubble';
 import PaymentCompleteCard from './PaymentCompleteCard';
-import ReceiptCard from './ReceiptCard';
 import RecommendationCard from './RecommendationCard';
 import StatusLine from './StatusLine';
 import TravelInsuranceCardChat from './TravelInsuranceCardChat';
 import TripPreparationCard from './TripPreparationCard';
+import TripChecklistCard from './TripChecklistCard';
 
 type Props = {
   item: ChatItem;
@@ -72,10 +72,16 @@ function ChatItemViewImpl({ item, onConfirm, onDecline, onInsurancePurchased, on
     case 'payment_complete':
       return (
         <PaymentCompleteCard
-          roamingSubscription={item.roamingSubscription}
+          insuranceId={item.insuranceId}
+          insuranceAmount={item.insuranceAmount}
+          insuranceCurrency={item.insuranceCurrency}
           destination={item.destination}
+          cardBrand={item.cardBrand}
+          cardLast4={item.cardLast4}
         />
       );
+    case 'trip_checklist':
+      return <TripChecklistCard destination={item.destination} />;
     case 'error':
       return <MessageBubble text={item.message} tone="error" />;
     default: {

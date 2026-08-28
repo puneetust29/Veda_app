@@ -248,8 +248,15 @@ export type ChatItem =
     })
   | (ChatItemBase & {
       kind: 'payment_complete';
-      roamingSubscription?: Subscription;
       insuranceId?: string;
+      insuranceAmount?: number;
+      insuranceCurrency?: string;
+      destination: string;
+      cardBrand?: string;
+      cardLast4?: string;
+    })
+  | (ChatItemBase & {
+      kind: 'trip_checklist';
       destination: string;
     })
   | (ChatItemBase & { kind: 'error'; message: string; retryable: boolean });

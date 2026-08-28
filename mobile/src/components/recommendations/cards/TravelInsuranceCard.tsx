@@ -5,8 +5,9 @@ import type { TravelInsurancePlan } from '../../../types';
 import AllianzMarkIcon from '../../icons/AllianzMarkIcon';
 import BenefitsIcon from '../../icons/BenefitsIcon';
 import CheckIcon from '../../icons/CheckIcon';
-import CoverageDurationIcon from '../../icons/CoverageDurationIcon';
 import InfoIcon from '../../icons/InfoIcon';
+import CalendarIcon from '../../icons/CalendarIcon';
+import Feather from '@expo/vector-icons/Feather';
 
 type Props = {
   plan: TravelInsurancePlan;
@@ -49,7 +50,7 @@ export default function TravelInsuranceCard({ plan, onViewDetails, onProceed }: 
 
         <View style={styles.coverageItem}>
           <View style={styles.coverageIconBadge}>
-            <CoverageDurationIcon size={16} />
+            <CalendarIcon size={20} color="#E60000" />
           </View>
           <View style={styles.coverageContent}>
             <Text style={styles.coverageItemLabel}>Coverage duration</Text>
@@ -61,7 +62,7 @@ export default function TravelInsuranceCard({ plan, onViewDetails, onProceed }: 
 
         <View style={styles.coverageItem}>
           <View style={styles.coverageIconBadge}>
-            <BenefitsIcon size={16} />
+            <Feather name="shield" size={20} color="#E60000" />
           </View>
           <View style={[styles.coverageContent, { flex: 1 }]}>
             <Text style={styles.coverageItemLabel}>Benefits</Text>

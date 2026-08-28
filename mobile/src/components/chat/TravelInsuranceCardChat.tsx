@@ -70,7 +70,13 @@ export default function TravelInsuranceCardChat({
   const handlePaymentSuccess = (purchaseData: any) => {
     setShowPaymentSummary(false);
     if (onInsurancePurchased) {
-      onInsurancePurchased(purchaseData);
+      onInsurancePurchased({
+        ...purchaseData,
+        cardBrand: paymentMethodBrand,
+        cardLast4: paymentMethodLast4,
+        insuranceAmount: plan.premiumAmount,
+        insuranceCurrency: plan.currency,
+      });
     }
   };
 

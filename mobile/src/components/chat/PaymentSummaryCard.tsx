@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Image } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useStripe } from '@stripe/stripe-react-native';
 import { colors, fonts, spacing, typography } from '../../theme';
@@ -7,6 +7,7 @@ import { useSubscriptionInsurance } from '../../context/SubscriptionInsuranceCon
 import { api } from '../../lib/api';
 import CalendarIcon from '../icons/CalendarIcon';
 import CoverageDurationIcon from '../icons/CoverageDurationIcon';
+import PaymentProcessingCard from './PaymentProcessingCard';
 import type { TravelInsurancePlan, RoamingPlan } from '../../types';
 
 type State = 'idle' | 'processing' | 'success' | 'error';
@@ -98,25 +99,7 @@ export default function PaymentSummaryCard({
   const totalAmount = (roamingPlan?.price || 0) + insurancePlan.premiumAmount;
 
   if (state === 'processing') {
-    return (
-      <View style={styles.card}>
-        <View style={styles.centerContent}>
-          <ActivityIndicator size="large" color={colors.brand} />
-          <Text style={styles.label}>Processing payment...</Text>
-        </View>
-      </View>
-    );
-  }
-
-  if (state === 'success') {
-    return (
-      <View style={styles.card}>
-        <View style={styles.centerContent}>
-          <Text style={styles.successTitle}>✓ Payment Successful</Text>
-          <Text style={styles.label}>Insurance cover activated</Text>
-        </View>
-      </View>
-    );
+    return <PaymentProcessingCard />;
   }
 
   if (state === 'error') {

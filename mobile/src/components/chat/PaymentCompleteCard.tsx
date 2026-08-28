@@ -1,78 +1,64 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing } from '../../theme';
-import type { Subscription } from '../../types';
+import CheckmarkIcon from '../icons/CheckmarkIcon';
+import HeaderBackground from '../icons/HeaderBackground';
+
+
 
 type Props = {
-  roamingSubscription?: Subscription;
+  insuranceId?: string;
+  insuranceAmount?: number;
+  insuranceCurrency?: string;
   destination: string;
+  cardLast4?: string;
+  cardBrand?: string;
 };
 
-export default function PaymentCompleteCard({ roamingSubscription, destination }: Props) {
-  const totalAmount = roamingSubscription?.roaming_plans?.price || 0;
-  const currency = roamingSubscription?.roaming_plans?.currency || '£';
-  const transactionId = roamingSubscription?.id || 'N/A';
-  const cardLast4 = '4471';
-  const cardBrand = 'Visa';
+export default function PaymentCompleteCard({ insuranceId, insuranceAmount, insuranceCurrency, destination, cardLast4, cardBrand }: Props) {
+  const totalAmount = insuranceAmount || 0;
+  const currency = insuranceCurrency || '£';
+  const transactionId = insuranceId || 'N/A';
 
   return (
-    <View style={styles.card}>
-      <View style={styles.headerSection}>
-        <View style={styles.checkmarkIcon}>
-          <Ionicons name="checkmark" size={32} color={colors.white} />
-        </View>
-        <Text style={styles.headerTitle}>Payment Complete</Text>
-      </View>
-
-      <View style={styles.divider} />
-
-      <View style={styles.detailsSection}>
-        <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Payment method</Text>
-          <Text style={styles.detailValue}>
-            {cardBrand} •••• {cardLast4}
-          </Text>
+    <View>
+      <View style={styles.card}>
+        <View style={styles.pattern} pointerEvents="none">
+          <HeaderBackground width={366} height={141} />
         </View>
 
-        <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Transaction ID</Text>
-          <Text style={styles.detailValue}>{transactionId}</Text>
+        <View style={styles.headerSection}>
+          <View style={styles.iconContainer}>
+            <CheckmarkIcon size={24} color={colors.brand} />
+          </View>
+          <Text style={styles.headerTitle}>Payment Complete</Text>
         </View>
 
         <View style={styles.divider} />
 
-        <View style={styles.totalRow}>
-          <Text style={styles.totalLabel}>Total</Text>
-          <Text style={styles.totalValue}>
-            {currency}{totalAmount.toFixed(2)}
-          </Text>
-        </View>
-      </View>
+        <View style={styles.detailsSection}>
+          {cardBrand && cardLast4 && (
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Payment method</Text>
+              <Text style={styles.detailValue}>
+                {cardBrand.charAt(0).toUpperCase() + cardBrand.slice(1)} •••• {cardLast4}
+              </Text>
+            </View>
+          )}
 
-      <View style={styles.confirmationSection}>
-        <Text style={styles.confirmationText}>
-          Everything's taken care of — you're all set for {destination}.
-        </Text>
-      </View>
-
-      <View style={styles.checklistSection}>
-        <Text style={styles.checklistTitle}>
-          You are all set for your {destination} Trip!
-        </Text>
-
-        <View style={styles.checklistItem}>
-          <View style={styles.checkmark}>
-            <Ionicons name="checkmark" size={16} color={colors.white} />
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Transaction ID</Text>
+            <Text style={styles.detailValue}>{transactionId}</Text>
           </View>
-          <Text style={styles.checklistLabel}>Roaming</Text>
-        </View>
 
-        <View style={styles.checklistItem}>
-          <View style={styles.checkmark}>
-            <Ionicons name="checkmark" size={16} color={colors.white} />
+          <View style={styles.divider} />
+
+          <View style={styles.totalRow}>
+            <Text style={styles.totalLabel}>Total</Text>
+            <Text style={styles.totalValue}>
+              {currency}{totalAmount.toFixed(2)}
+            </Text>
           </View>
-          <Text style={styles.checklistLabel}>Travel Insurance</Text>
         </View>
       </View>
     </View>
@@ -83,74 +69,94 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.white,
     borderRadius: 24,
-    padding: 20,
+    padding: 16,
     marginBottom: spacing.lg,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  pattern: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 141,
+    opacity: 0.16,
   },
   headerSection: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
+    gap: 12,
+    height: 40,
   },
-  checkmarkIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.brand,
+  iconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(230, 0, 0, 0.08)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
   },
   headerTitle: {
-    fontFamily: fonts.bold,
-    fontSize: 24,
-    lineHeight: 29,
-    fontWeight: '700',
+    fontFamily: fonts.semiBold,
+    fontSize: 20,
+    lineHeight: 24,
+    fontWeight: '600',
     color: '#000000',
   },
   divider: {
     height: 1,
     backgroundColor: '#eeeeee',
-    marginVertical: 16,
+    marginTop: 16,
+    marginBottom: 0,
   },
   detailsSection: {
-    marginBottom: 20,
+    marginBottom: 0,
   },
   detailRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 8,
+    minHeight: 24,
+    marginTop: 16,
   },
   detailLabel: {
     fontFamily: fonts.body,
-    fontSize: 14,
-    lineHeight: 17,
+    fontSize: 11,
+    lineHeight: 13,
     fontWeight: '400',
-    color: '#999999',
+    color: '#000000',
   },
   detailValue: {
     fontFamily: fonts.semiBold,
-    fontSize: 14,
-    lineHeight: 17,
+    fontSize: 11,
+    lineHeight: 13,
     fontWeight: '600',
-    color: '#1a1a1a',
+    color: '#000000',
+  },
+  paymentMethod: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  applePayIcon: {
+    width: 31,
+    height: 31,
   },
   totalRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
-    marginTop: 8,
+    paddingVertical: 0,
+    marginTop: 12,
   },
   totalLabel: {
-    fontFamily: fonts.bold,
-    fontSize: 16,
-    lineHeight: 19,
-    fontWeight: '700',
+    fontFamily: fonts.semiBold,
+    fontSize: 14,
+    lineHeight: 17,
+    fontWeight: '600',
     color: '#1a1a1a',
   },
   totalValue: {
@@ -158,55 +164,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 19,
     fontWeight: '700',
-    color: '#1a1a1a',
-  },
-  confirmationSection: {
-    backgroundColor: 'rgba(230, 0, 0, 0.05)',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    marginBottom: 20,
-  },
-  confirmationText: {
-    fontFamily: fonts.body,
-    fontSize: 16,
-    lineHeight: 24,
-    fontWeight: '400',
-    color: '#1a1a1a',
-  },
-  checklistSection: {
-    backgroundColor: 'rgba(230, 0, 0, 0.03)',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-  },
-  checklistTitle: {
-    fontFamily: fonts.bold,
-    fontSize: 16,
-    lineHeight: 19,
-    fontWeight: '700',
-    color: '#1a1a1a',
-    marginBottom: 12,
-  },
-  checklistItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  checkmark: {
-    width: 24,
-    height: 24,
-    borderRadius: 8,
-    backgroundColor: colors.brand,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  checklistLabel: {
-    fontFamily: fonts.semiBold,
-    fontSize: 14,
-    lineHeight: 17,
-    fontWeight: '600',
     color: '#1a1a1a',
   },
 });
