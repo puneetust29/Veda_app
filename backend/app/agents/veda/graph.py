@@ -11,14 +11,11 @@ from app.config import get_settings
 
 def _llm():
     settings = get_settings()
-    provider = (settings.llm_provider or "anthropic").strip().lower()
-    if provider == "openai":
-        if not settings.openai_api_key:
-            raise RuntimeError("LLM_PROVIDER=openai but OPENAI_API_KEY is not set")
+    if settings.anthropic_api_key:
+        return ChatAnthropic(model=settings.anthropic_model, api_key=settings.anthropic_api_key, temperature=0)
+    if settings.openai_api_key:
         return ChatOpenAI(model=settings.openai_model, api_key=settings.openai_api_key, temperature=0)
-    if settings.openai_api_key and not settings.anthropic_api_key:
-        return ChatOpenAI(model=settings.openai_model, api_key=settings.openai_api_key, temperature=0)
-    return ChatAnthropic(model=settings.anthropic_model, api_key=settings.anthropic_api_key)
+    raise RuntimeError("No LLM key configured — set ANTHROPIC_API_KEY or OPENAI_API_KEY in backend/.env")
 
 
 def node_veda_reply(state: VedaAgentState, writer: StreamWriter) -> dict:
