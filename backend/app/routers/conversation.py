@@ -11,6 +11,7 @@ EventStream (a thread-safe asyncio.Queue) that this route's generator reads from
 from __future__ import annotations
 
 import asyncio
+import logging
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Request
@@ -24,6 +25,7 @@ from app.orchestration.orchestrator import get_orchestrator
 from app.orchestration.streaming import HEARTBEAT, EventStream, sse_format
 from app.routers._shared import get_owned_calendar_event
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/chat", tags=["chat"])
 
 
@@ -66,6 +68,9 @@ async def chat_stream(
         import uuid
         conversation_id = str(uuid.uuid4())
 
+    logger.info("[chat/stream] customer=%s event_id=%s capability=%s message=%r",
+                customer.get("id"), body.calendar_event_id, body.capability, body.message)
+
     stream = EventStream(conversation_id=conversation_id)
 
     orchestrator_request = OrchestratorRequest(
@@ -81,7 +86,11 @@ async def chat_stream(
 
     async def _drive() -> None:
         try:
+            logger.info("[chat/stream] orchestrator starting run_id=%s", conversation_id)
             await asyncio.to_thread(orchestrator.run, orchestrator_request, stream.emit)
+            logger.info("[chat/stream] orchestrator finished run_id=%s", conversation_id)
+        except Exception as exc:
+            logger.exception("[chat/stream] orchestrator crashed run_id=%s: %s", conversation_id, exc)
         finally:
             stream.close()
 
