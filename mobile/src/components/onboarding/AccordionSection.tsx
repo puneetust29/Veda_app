@@ -28,9 +28,10 @@ export default function AccordionSection({ title, children, defaultExpanded = fa
 
   const toggle = () => {
     const nextExpanded = !expanded;
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut, () => onToggle?.(nextExpanded));
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     Animated.timing(rotation, { toValue: nextExpanded ? 1 : 0, duration: 220, useNativeDriver: true }).start();
     setExpanded(nextExpanded);
+    onToggle?.(nextExpanded);
   };
 
   const rotate = rotation.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '180deg'] });
@@ -54,7 +55,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.xxl,
   },
   title: { ...typography.bodyBold, color: colors.textPrimary, flex: 1 },
   body: { paddingBottom: spacing.md },

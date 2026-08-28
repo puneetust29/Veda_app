@@ -55,5 +55,5 @@ const styles = StyleSheet.create({
   // Dark translucent (not white-on-white) so the chevron stays visible
   // regardless of what's behind it — the banner's light "swoosh" graphic
   // made a white-tinted circle nearly invisible.
-  circleOverlay: { backgroundColor: 'rgba(0,0,0,0.28)' },
+  circleOverlay: { backgroundColor: colors.overlay },
 });

@@ -22,7 +22,7 @@ export default function StepProgressBar({ step, totalSteps = 4 }: Props) {
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', gap: spacing.sm, paddingHorizontal: spacing.xl, marginBottom: spacing.lg },
-  segment: { flex: 1, height: 3, borderRadius: radii.sm, backgroundColor: colors.border },
-  segmentActive: { backgroundColor: colors.brand },
+  row: { flexDirection: 'row', gap: spacing.xs, marginBottom: spacing.xxxl },
+  segment: { flex: 1, height: spacing.xs, borderRadius: radii.xs, backgroundColor: colors.border },
+  segmentActive: { backgroundColor: colors.brandText },
 });

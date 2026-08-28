@@ -44,15 +44,13 @@ export default function ConsentScreen({ navigation }: Props) {
     Animated.timing(ctaAnim, { toValue: allOpened ? 1 : 0, duration: 300, useNativeDriver: false }).start();
   }, [allOpened, ctaAnim]);
 
-  const ctaBackground = ctaAnim.interpolate({ inputRange: [0, 1], outputRange: [colors.brandTint, colors.brand] });
-  const ctaTextColor = ctaAnim.interpolate({ inputRange: [0, 1], outputRange: [colors.brand, colors.white] });
 
   return (
     <View style={styles.container}>
       <StepHeader onBack={() => navigation.goBack()} />
 
       <Animated.ScrollView contentContainerStyle={styles.body}>
-        <StepProgressBar step={4} />
+        <StepProgressBar step={5} totalSteps={5}/>
         <Text style={styles.title}>Your data belongs to you.</Text>
         <Text style={styles.subtitle}>
           Veda only accesses information you've approved, and you can change or remove permissions anytime.
@@ -100,21 +98,24 @@ export default function ConsentScreen({ navigation }: Props) {
           </Text>
         </AccordionSection>
 
-        <Text style={styles.agreement}>
+        
+        
+      </Animated.ScrollView>
+      <View style={styles.policyContainer}>
+      <Text style={styles.agreement}>
           By selecting <Text style={styles.agreementBold}>Agree & Continue</Text>, you agree to Veda's terms and
           privacy policy.
         </Text>
-        <View style={styles.legalLinks}>
+      <View style={styles.legalLinks}>
           <Text style={styles.link}>Privacy Notice</Text>
           <Text style={styles.legalDivider}>·</Text>
           <Text style={styles.link}>Terms of Use</Text>
         </View>
-      </Animated.ScrollView>
-
+        </View>
       <View style={styles.footer}>
         <TouchableOpacity disabled={!allOpened} onPress={() => navigation.navigate('Success')}>
-          <Animated.View style={[styles.cta, { backgroundColor: ctaBackground }]}>
-            <Animated.Text style={[styles.ctaText, { color: ctaTextColor }]}>Agree & Continue</Animated.Text>
+          <Animated.View style={[styles.cta, { opacity: ctaAnim.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] }) }]}>
+            <Animated.Text style={styles.ctaText}>Agree & Continue</Animated.Text>
           </Animated.View>
         </TouchableOpacity>
         <Text style={styles.counterText}>{openedCount}/3 Terms read.</Text>
@@ -126,7 +127,7 @@ export default function ConsentScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   body: { paddingHorizontal: spacing.xl, paddingBottom: spacing.xl },
-  title: { ...typography.title, color: colors.textPrimary, marginBottom: spacing.sm },
+  title: { ...typography.title, color: colors.textPrimary, marginBottom: spacing.sm, fontSize: 38 },
   subtitle: { ...typography.caption, color: colors.textSecondary, marginBottom: spacing.lg },
   sectionIntro: { ...typography.caption, color: colors.textSecondary, marginBottom: spacing.sm },
   bulletRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, marginBottom: spacing.xs },
@@ -135,11 +136,12 @@ const styles = StyleSheet.create({
   sectionExtra: { ...typography.caption, color: colors.textSecondary, marginTop: spacing.sm, lineHeight: 18 },
   agreement: { ...typography.small, color: colors.textMuted, marginTop: spacing.lg, lineHeight: 16 },
   agreementBold: { color: colors.textPrimary, fontWeight: '700' },
-  legalLinks: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
-  link: { ...typography.small, color: colors.brand, fontWeight: '700' },
+  policyContainer: { paddingHorizontal: spacing.xl, paddingBottom: spacing.xl, borderTopColor: colors.border, borderTopWidth: 1},
+  legalLinks: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
+  link: { ...typography.small, color: colors.brandText, fontWeight: '700' },
   legalDivider: { ...typography.small, color: colors.textMuted },
   footer: { paddingHorizontal: spacing.xl, paddingBottom: spacing.xl, paddingTop: spacing.sm },
-  cta: { borderRadius: radii.pill, paddingVertical: spacing.lg, alignItems: 'center' },
-  ctaText: { ...typography.bodyBold, fontSize: 16 },
+  cta: { backgroundColor: colors.brandBackGround,borderRadius: radii.pill, paddingVertical: spacing.lg, alignItems: 'center' },
+  ctaText: { ...typography.bodyBold, color: colors.white, fontSize: 16 },
   counterText: { ...typography.small, color: colors.textMuted, textAlign: 'center', marginTop: spacing.sm },
 });

@@ -1,13 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 import OnboardingBanner from '../../components/onboarding/OnboardingBanner';
 import StepHeader from '../../components/onboarding/StepHeader';
 import StepProgressBar from '../../components/onboarding/StepProgressBar';
 import { useOnboarding } from '../../context/OnboardingContext';
-import { colors, radii, spacing, typography } from '../../theme';
+import { colors, fonts, radii, spacing, typography } from '../../theme';
 import type { OnboardingStackParamList } from '../../types';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'PhoneEntry'>;
@@ -43,6 +44,13 @@ export default function PhoneEntryScreen({ navigation }: Props) {
   const [localNumber, setLocalNumber] = useState(phoneNumber.replace(/^\+\d+/, ''));
   const [helpVisible, setHelpVisible] = useState(false);
   const [countryPickerVisible, setCountryPickerVisible] = useState(false);
+  const phoneInputRef = useRef<TextInput>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      phoneInputRef.current?.focus();
+    }, [])
+  );
 
   const isValid = localNumber.replace(/\s/g, '').length >= 10;
 
@@ -56,8 +64,9 @@ export default function PhoneEntryScreen({ navigation }: Props) {
       <OnboardingBanner />
       <StepHeader onBack={() => navigation.goBack()} overlay />
 
-      <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
-        <StepProgressBar step={1} />
+      <View style={styles.cardWrapper}>
+        <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+        <StepProgressBar step={1} totalSteps={5} />
         <Text style={styles.title}>Let's get to know{'\n'}each other.</Text>
         <Text style={styles.subtitle}>Your Vodafone number is the quickest way to personalise Veda.</Text>
 
@@ -69,21 +78,27 @@ export default function PhoneEntryScreen({ navigation }: Props) {
           >
             <Text style={styles.flag}>{selectedCountry.flag}</Text>
             <Text style={styles.countryCode}>{selectedCountry.code}</Text>
-            <Ionicons name="chevron-down" size={16} color={colors.textSecondary} />
           </TouchableOpacity>
           <TextInput
+            ref={phoneInputRef}
             style={styles.input}
             placeholder="Mobile number"
             placeholderTextColor={colors.textMuted}
             keyboardType="phone-pad"
             autoComplete="tel"
             value={localNumber}
-            onChangeText={setLocalNumber}
+            onChangeText={(text) => {
+              const digitsOnly = text.replace(/\D/g, '');
+              if (digitsOnly.length <= 13) {
+                setLocalNumber(digitsOnly);
+              }
+            }}
+            maxLength={13}
           />
         </View>
 
         <TouchableOpacity style={styles.helpLink} onPress={() => setHelpVisible(true)}>
-          <Ionicons name="heart-outline" size={14} color={colors.brand} />
+          <Ionicons name="shield-checkmark-outline" size={14} color={colors.brandText} />
           <Text style={styles.helper}>How your number helps</Text>
         </TouchableOpacity>
 
@@ -101,7 +116,7 @@ export default function PhoneEntryScreen({ navigation }: Props) {
               <Text style={styles.footerCaption}>Need a new line?</Text>
               <Text style={styles.footerLinkText}>Get a Vodafone number</Text>
             </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.brand} />
+            <Ionicons name="chevron-forward" size={18} color={colors.brandText} />
           </TouchableOpacity>
           <View style={styles.footerDivider} />
           <TouchableOpacity style={styles.footerRow}>
@@ -109,10 +124,11 @@ export default function PhoneEntryScreen({ navigation }: Props) {
               <Text style={styles.footerCaption}>Already with another network?</Text>
               <Text style={styles.footerLinkText}>Switch to Vodafone</Text>
             </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.brand} />
+            <Ionicons name="chevron-forward" size={18} color={colors.brandText} />
           </TouchableOpacity>
         </View>
-      </ScrollView>
+        </ScrollView>
+      </View>
 
       {/* Bottom-sheet-style modal reproducing the Figma tooltip shown when
           tapping "How your number helps". */}
@@ -124,7 +140,7 @@ export default function PhoneEntryScreen({ navigation }: Props) {
             <Text style={styles.sheetSubIntro}>It helps Veda:</Text>
             {HELP_BULLETS.map((bullet) => (
               <View key={bullet} style={styles.sheetBulletRow}>
-                <Ionicons name="checkmark" size={16} color={colors.brand} />
+                <Ionicons name="checkmark" size={16} color={colors.brandText} />
                 <Text style={styles.sheetBulletText}>{bullet}</Text>
               </View>
             ))}
@@ -169,7 +185,7 @@ export default function PhoneEntryScreen({ navigation }: Props) {
                     <Text style={styles.countryItemCode}>{item.code}</Text>
                   </View>
                   {selectedCountry.code === item.code && (
-                    <Ionicons name="checkmark" size={20} color={colors.brand} />
+                    <Ionicons name="checkmark" size={20} color={colors.brandText} />
                   )}
                 </TouchableOpacity>
               )}
@@ -182,45 +198,54 @@ export default function PhoneEntryScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  body: { paddingHorizontal: spacing.xl, paddingTop: spacing.xl, paddingBottom: spacing.xl },
-  title: { ...typography.headline, color: colors.textPrimary, marginBottom: spacing.sm },
-  subtitle: { ...typography.body, color: colors.textSecondary, marginBottom: spacing.xl },
+  container: { flex: 1 },
+  cardWrapper: { flex: 1, backgroundColor: colors.background, borderTopLeftRadius: radii.xl, borderTopRightRadius: radii.xl, overflow: 'hidden', position: 'relative', marginTop: -35, padding: spacing.xxl },
+  body: { flex: 1 },
+  title: { fontSize: 38, fontWeight: '600', fontFamily: fonts.semiBold, color: colors.textPrimary, marginBottom: spacing.sm, lineHeight: 46 },
+  subtitle: { fontSize: 14, fontWeight: '300', fontFamily: fonts.bodyLight, color: '#6b7280', marginBottom: spacing.xxl, lineHeight: 21 },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: radii.md,
-    backgroundColor: colors.surface,
-    paddingHorizontal: spacing.lg,
-    gap: spacing.sm,
+    borderRadius: 14,
+    backgroundColor: '#f4f4f4',
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    gap: 0,
+    borderWidth: 0,
+    minHeight: 52,
   },
   countrySelector: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
-    paddingVertical: spacing.sm,
+    gap: spacing.sm,
+    paddingRight: spacing.md,
+    borderRightWidth: 1,
+    borderRightColor: colors.border,
   },
   flag: { fontSize: 20 },
-  countryCode: { ...typography.bodyBold, color: colors.textPrimary, minWidth: 40 },
-  input: { flex: 1, paddingVertical: spacing.md, fontSize: 16, color: colors.textPrimary },
-  helpLink: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: spacing.sm },
-  helper: { ...typography.caption, color: colors.brand },
+  countryCode: { color: '#111', fontSize: 14, fontWeight: '600', fontFamily: fonts.semiBold },
+  input: { flex: 1, paddingVertical: 0, fontSize: 14, color: colors.textPrimary, fontWeight: '400', fontFamily: fonts.body, paddingHorizontal: spacing.md, placeholderTextColor: '#808080' },
+  helpLink: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.md },
+  helper: { color: colors.brandText, fontWeight: '600', fontFamily: fonts.semiBold, fontSize: 14, lineHeight: 16 },
   cta: {
-    backgroundColor: colors.brand,
-    borderRadius: radii.pill,
-    paddingVertical: spacing.lg,
+    backgroundColor: '#f00405',
+    borderRadius: 24,
+    paddingVertical: 18,
     alignItems: 'center',
+    justifyContent: 'center',
     marginTop: spacing.xxl,
+    marginBottom: spacing.xxxl,
+    opacity: 1,
   },
-  ctaDisabled: { backgroundColor: colors.border },
-  ctaText: { ...typography.bodyBold, color: colors.white, fontSize: 16 },
-  ctaTextDisabled: { color: colors.textDisabled },
-  footerLinks: { marginTop: spacing.xxl },
-  footerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.md },
-  footerCaption: { ...typography.caption, color: colors.textMuted },
-  footerLinkText: { ...typography.bodyBold, color: colors.textPrimary },
+  ctaDisabled: { backgroundColor: '#d0d0d0', opacity: 1 },
+  ctaText: { color: colors.white, fontSize: 16, fontWeight: '700', fontFamily: fonts.bold },
+  ctaTextDisabled: { color: colors.white },
+  footerLinks: { position: 'absolute', bottom: spacing.xxxl, right: spacing.lg, left: spacing.lg },
+  footerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14 },
+  footerCaption: { color: '#6b7280', fontSize: 12, lineHeight: 14, fontWeight: '400', fontFamily: fonts.body, marginBottom: spacing.xs },
+  footerLinkText: { color: '#111', fontSize: 16, fontWeight: '600', fontFamily: fonts.semiBold, lineHeight: 20 },
   footerDivider: { height: 1, backgroundColor: colors.border },
-  sheetBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'flex-end' },
+  sheetBackdrop: { flex: 1, backgroundColor: colors.backdrop, justifyContent: 'flex-end' },
   sheet: {
     backgroundColor: colors.white,
     borderTopLeftRadius: radii.lg,
@@ -231,12 +256,12 @@ const styles = StyleSheet.create({
   sheetTitle: { ...typography.title, color: colors.textPrimary, marginBottom: spacing.sm },
   sheetIntro: { ...typography.body, color: colors.textSecondary, marginBottom: spacing.md },
   sheetSubIntro: { ...typography.bodyBold, color: colors.textPrimary, marginBottom: spacing.sm },
-  sheetBulletRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, marginBottom: spacing.sm },
+  sheetBulletRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
   sheetBulletText: { ...typography.body, color: colors.textSecondary, flex: 1 },
   sheetFooter: { ...typography.caption, color: colors.textMuted, marginTop: spacing.md, marginBottom: spacing.xl },
-  sheetCta: { backgroundColor: colors.brand, borderRadius: radii.pill, paddingVertical: spacing.lg, alignItems: 'center' },
+  sheetCta: { backgroundColor: colors.brandBackGround, borderRadius: radii.pill, paddingVertical: spacing.lg, alignItems: 'center' },
   sheetCtaText: { ...typography.bodyBold, color: colors.white, fontSize: 16 },
-  pickerBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'flex-end' },
+  pickerBackdrop: { flex: 1, backgroundColor: colors.backdrop, justifyContent: 'flex-end' },
   pickerContainer: {
     backgroundColor: colors.white,
     borderTopLeftRadius: radii.lg,
