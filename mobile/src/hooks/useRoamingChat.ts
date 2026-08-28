@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { applyStreamEvent, nextId } from '../lib/chatThread';
+import { useSubscriptionInsurance } from '../context/SubscriptionInsuranceContext';
 import { api } from '../lib/api';
 import type { AgentStreamEvent, CalendarEvent, ChatItem, RoamingPlan } from '../types';
 
@@ -33,6 +34,8 @@ function greetingText(event: CalendarEvent, state: PlanState): string {
 }
 
 export function useRoamingChat(event: CalendarEvent, onInsurancePurchased?: (data: any) => void) {
+  const { subscriptions, activeInsurance, refreshSubscriptions, refreshInsurance } = useSubscriptionInsurance();
+
   const [planState, setPlanState] = useState<PlanState>({ hasRoaming: false, hasInsurance: false, showToggle: false });
   const [currentView, setCurrentView] = useState<ViewMode>('roaming');
   const [cachedInsurancePlan, setCachedInsurancePlan] = useState<any>(null);
@@ -189,16 +192,12 @@ export function useRoamingChat(event: CalendarEvent, onInsurancePurchased?: (dat
 
     (async () => {
       try {
-        const [subscriptions, insuranceStatus] = await Promise.all([
-          api.listSubscriptions(),
-          api.getActiveInsurance(),
-        ]);
         if (cancelled) return;
 
-        const existingInsurance = insuranceStatus.purchases.find(
+        const existingInsurance = (activeInsurance?.purchases ?? []).find(
           (p) => p.calendar_event_id === event.id && p.status === 'active'
         );
-        const existingRoaming = subscriptions.find((s) => s.calendar_event_id === event.id && s.status === 'active');
+        const existingRoaming = (subscriptions ?? []).find((s) => s.calendar_event_id === event.id && s.status === 'active');
 
         // CASE 1: Both roaming AND insurance exist
         if (existingRoaming && existingInsurance) {
@@ -362,7 +361,7 @@ export function useRoamingChat(event: CalendarEvent, onInsurancePurchased?: (dat
       abortControllerRef.current?.abort();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally mount-once; guarded by startedRef
-  }, []);
+  }, [subscriptions, activeInsurance]);
 
   const switchView = useCallback(
     async (view: ViewMode) => {
@@ -438,8 +437,10 @@ export function useRoamingChat(event: CalendarEvent, onInsurancePurchased?: (dat
           reasoning,
           judgeFeedback,
         })
-        .then((subscription) => {
+        .then(async (subscription) => {
           updateConfirmationItem(actionId, { state: 'confirmed' });
+          // Refresh subscriptions in context immediately after purchase
+          await refreshSubscriptions();
           appendItems([
             {
               id: nextId(),
@@ -532,7 +533,7 @@ export function useRoamingChat(event: CalendarEvent, onInsurancePurchased?: (dat
           });
         });
     },
-    [appendItems, updateConfirmationItem, event.id, initialInsuranceExists, commitItems, setCachedInsurancePlan, setCurrentView, setPhase],
+    [appendItems, updateConfirmationItem, event.id, initialInsuranceExists, commitItems, setCachedInsurancePlan, setCurrentView, setPhase, refreshSubscriptions],
   );
 
   const decline = useCallback(

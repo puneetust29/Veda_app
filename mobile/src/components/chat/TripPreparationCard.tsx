@@ -160,7 +160,8 @@ const styles = StyleSheet.create({
   },
   section: {
     paddingHorizontal: 16,
-    marginBottom: 8,
+    marginBottom: 16,
+
   },
   sectionLabel: {
     fontSize: 12,
@@ -221,7 +222,7 @@ const styles = StyleSheet.create({
   },
   continueButton: {
     backgroundColor: '#f00405',
-    borderRadius: 16,
+    borderRadius: 24,
     marginHorizontal: 16,
     marginTop: 16,
     marginBottom: 16,
