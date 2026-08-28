@@ -20,10 +20,11 @@ type Props = {
   onDecline?: (actionId: string) => void;
   onInsurancePurchased?: (data: any) => void;
   onContinuePrep?: () => void;
+  continuePrepLoading?: boolean;
   nextItem?: ChatItem;
 };
 
-function ChatItemViewImpl({ item, onConfirm, onDecline, onInsurancePurchased, onContinuePrep, nextItem }: Props) {
+function ChatItemViewImpl({ item, onConfirm, onDecline, onInsurancePurchased, onContinuePrep, continuePrepLoading, nextItem }: Props) {
   switch (item.kind) {
     case 'text':
       return <MessageBubble text={item.text} tone={item.role} />;
@@ -38,6 +39,7 @@ function ChatItemViewImpl({ item, onConfirm, onDecline, onInsurancePurchased, on
           hasRoamingActive={item.hasRoamingActive}
           hasInsuranceActive={item.hasInsuranceActive}
           hasTransportInfo={item.hasTransportInfo}
+          loading={continuePrepLoading}
           onContinue={() => onContinuePrep?.()}
         />
       );

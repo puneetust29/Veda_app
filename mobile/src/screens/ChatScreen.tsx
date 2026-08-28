@@ -17,6 +17,7 @@ export default function ChatScreen({ route, navigation }: Props) {
   const [draft, setDraft] = useState('');
   const itemCountRef = useRef(0);
 
+
   // Only auto-scroll when new items are added, not when existing items expand/collapse
   useEffect(() => {
     if (items.length > itemCountRef.current) {
@@ -45,9 +46,8 @@ export default function ChatScreen({ route, navigation }: Props) {
       >
         {items.map((item, idx) => {
           // Skip hotel booking component
-          if (item.kind === 'hotel') {
-            return null;
-          }
+          if (item.kind === 'hotel') return null;
+
 
           // Skip rendering confirmation items for roaming plans - they're combined with the card
           if (item.kind === 'confirmation' && item.risk === 'commit') {
@@ -65,6 +65,7 @@ export default function ChatScreen({ route, navigation }: Props) {
               onDecline={decline}
               onInsurancePurchased={handleInsurancePurchased}
               onContinuePrep={continueWorkflow}
+              continuePrepLoading={phase === 'streaming'}
               // Pass the next item if it's a confirmation for a roaming card
               nextItem={
                 item.kind === 'card' && item.card.kind === 'roaming_plan' && items[idx + 1]?.kind === 'confirmation'

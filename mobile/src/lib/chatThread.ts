@@ -48,6 +48,11 @@ function removeAllStatuses(items: ChatItem[]): ChatItem[] {
   return filtered.length < items.length ? filtered : items;
 }
 
+function removeTransient(items: ChatItem[]): ChatItem[] {
+  const filtered = items.filter((item) => !(item.kind === 'text' && item.transient));
+  return filtered.length < items.length ? filtered : items;
+}
+
 function replaceActiveStatus(items: ChatItem[], newStatus: ChatItem): ChatItem[] {
   // Remove the last active status item and add the new one
   const filtered = items.filter(
@@ -101,26 +106,26 @@ export function applyStreamEvent(items: ChatItem[], event: AgentStreamEvent): Ch
       ];
 
     case 'recommendation_ready': {
-      const withoutStatus = removeAllStatuses(items);
-      return [...withoutStatus, { id: nextId(), createdAt: Date.now(), kind: 'card', card: event.data.card }];
+      const clean = removeTransient(removeAllStatuses(items));
+      return [...clean, { id: nextId(), createdAt: Date.now(), kind: 'card', card: event.data.card }];
     }
 
     case 'hotel_result': {
-      const withoutStatus = removeAllStatuses(items);
-      return [...withoutStatus, { id: nextId(), createdAt: Date.now(), kind: 'hotel', hotel: event.data }];
+      const clean = removeTransient(removeAllStatuses(items));
+      return [...clean, { id: nextId(), createdAt: Date.now(), kind: 'hotel', hotel: event.data }];
     }
 
     case 'transport_result': {
-      const withoutStatus = removeAllStatuses(items);
+      const clean = removeTransient(removeAllStatuses(items));
       return [
-        ...withoutStatus,
+        ...clean,
         { id: nextId(), createdAt: Date.now(), kind: 'transport', transport: event.data },
       ];
     }
 
     case 'maps_result': {
-      const withoutStatus = removeAllStatuses(items);
-      return [...withoutStatus, { id: nextId(), createdAt: Date.now(), kind: 'maps', maps: event.data }];
+      const clean = removeTransient(removeAllStatuses(items));
+      return [...clean, { id: nextId(), createdAt: Date.now(), kind: 'maps', maps: event.data }];
     }
 
     case 'share_draft': {

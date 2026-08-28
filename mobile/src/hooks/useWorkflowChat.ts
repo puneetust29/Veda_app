@@ -11,6 +11,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import * as Location from 'expo-location';
 
 import { applyStreamEvent, nextId } from '../lib/chatThread';
 import { api } from '../lib/api';
@@ -76,6 +77,7 @@ export function useWorkflowChat(event: CalendarEvent) {
   const abortControllerRef = useRef<AbortController | null>(null);
   const watchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const startedRef = useRef(false);
+  const deviceLocationRef = useRef<{ latitude: number; longitude: number; label?: string } | null>(null);
   const lastRequestParamsRef = useRef<{
     message?: string;
     priorPlan?: RoamingPlan;
@@ -208,6 +210,7 @@ export function useWorkflowChat(event: CalendarEvent) {
             console.log('[startStream] SSE closed event_id=%s', event.id);
             clearWatchdog();
           },
+          deviceLocation: deviceLocationRef.current,
           ...params,
         })
         .catch((err) => {
@@ -229,6 +232,17 @@ export function useWorkflowChat(event: CalendarEvent) {
     let cancelled = false;
 
     (async () => {
+      // Fetch device location in parallel — used by Uber agent for pickup coordinates
+      Location.getForegroundPermissionsAsync().then((perm) => {
+        if (perm.status === Location.PermissionStatus.GRANTED) {
+          Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced })
+            .then((pos) => {
+              deviceLocationRef.current = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
+            })
+            .catch(() => {});
+        }
+      }).catch(() => {});
+
       try {
         const [subscriptions, insuranceStatus] = await Promise.all([
           api.listSubscriptions(),
@@ -766,6 +780,16 @@ export function useWorkflowChat(event: CalendarEvent) {
       console.warn('[useWorkflowChat] No trip prep card found');
       return;
     }
+
+    // Immediately show a placeholder — removed automatically when real results arrive
+    appendItems([{
+      id: nextId(),
+      createdAt: Date.now(),
+      kind: 'text',
+      role: 'agent',
+      text: 'On it! Getting your trip recommendations ready…',
+      transient: true,
+    }]);
 
     const { hasRoamingActive, hasInsuranceActive } = tripPrepCard;
 

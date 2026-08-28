@@ -131,71 +131,85 @@ export default function RecommendationCard({ card, confirmation, onConfirm, onDe
       };
 
       return (
-        <View style={styles.planCard}>
-          <View style={styles.providerSection}>
-            <View style={[styles.providerBadge, styles.uberBadge]}>
-              <Text style={styles.providerBadgeText}>🚗</Text>
+        <View style={uberStyles.card}>
+          {/* Header */}
+          <View style={uberStyles.header}>
+            <View style={uberStyles.wordmark}>
+              <Text style={uberStyles.wordmarkText}>UBER</Text>
             </View>
-            <Text style={styles.providerName}>Uber</Text>
+            <Text style={uberStyles.tagline}>{card.suggested_message}</Text>
           </View>
 
-          <Text style={styles.planName}>{card.suggested_message}</Text>
-
-          {card.dropoff_label && (
-            <>
-              <View style={styles.divider} />
-              <View style={styles.tripRow}>
-                <Text style={styles.tripLabel}>To</Text>
-                <Text style={styles.tripValue}>{card.dropoff_label}</Text>
+          {/* Route */}
+          <View style={uberStyles.route}>
+            <View style={uberStyles.routeTimeline}>
+              <View style={uberStyles.dotPickup} />
+              <View style={uberStyles.routeConnector} />
+              <View style={uberStyles.dotDropoff} />
+            </View>
+            <View style={uberStyles.routeLabels}>
+              <View style={uberStyles.routeStop}>
+                <Text style={uberStyles.routeStopLabel}>Pickup</Text>
+                <Text style={uberStyles.routeStopValue} numberOfLines={1}>
+                  {card.pickup_label || 'Current location'}
+                </Text>
               </View>
-            </>
-          )}
+              <View style={uberStyles.routeStop}>
+                <Text style={uberStyles.routeStopLabel}>Drop-off</Text>
+                <Text style={uberStyles.routeStopValue} numberOfLines={1}>
+                  {card.dropoff_label || 'Destination'}
+                </Text>
+              </View>
+            </View>
+          </View>
 
-          <View style={styles.divider} />
-
+          {/* Direct book CTA */}
           {hasDirectLink && !hasAirportOptions && (
             <TouchableOpacity
-              style={styles.primaryButton}
+              style={uberStyles.ctaButton}
               onPress={() => handleOpenUber(card.uber_app_url, card.deep_link_url)}
+              activeOpacity={0.85}
             >
-              <Text style={styles.primaryButtonText}>Book with Uber</Text>
+              <Text style={uberStyles.ctaButtonText}>Open in Uber</Text>
             </TouchableOpacity>
           )}
 
+          {/* Airport options */}
           {hasAirportOptions && (
             <>
-              <Text style={styles.sectionHeader}>Choose your airport</Text>
-              <View style={styles.reasoningList}>
-                {card.airport_options.map((opt) => (
-                  <TouchableOpacity
-                    key={opt.label}
-                    style={styles.airportOption}
-                    onPress={() => handleOpenUber(opt.uber_app_url, opt.deep_link_url)}
-                  >
-                    <Text style={styles.airportOptionText}>{opt.label}</Text>
-                    <Text style={styles.airportOptionCta}>Open Uber →</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+              <Text style={uberStyles.optionsLabel}>Choose your airport</Text>
+              {card.airport_options.map((opt, i) => (
+                <TouchableOpacity
+                  key={opt.label}
+                  style={[uberStyles.airportRow, i < card.airport_options.length - 1 && uberStyles.airportRowBorder]}
+                  onPress={() => handleOpenUber(opt.uber_app_url, opt.deep_link_url)}
+                  activeOpacity={0.7}
+                >
+                  <View style={uberStyles.airportDot} />
+                  <Text style={uberStyles.airportRowText}>{opt.label}</Text>
+                  <Text style={uberStyles.airportRowArrow}>›</Text>
+                </TouchableOpacity>
+              ))}
             </>
           )}
 
+          {/* Alternative airports */}
           {card.alternative_options.length > 0 && (
             <>
-              <View style={styles.divider} />
-              <Text style={styles.sectionHeader}>Nearest airports instead</Text>
-              <View style={styles.reasoningList}>
-                {card.alternative_options.map((opt) => (
-                  <TouchableOpacity
-                    key={opt.label}
-                    style={styles.airportOption}
-                    onPress={() => handleOpenUber(opt.uber_app_url, opt.deep_link_url)}
-                  >
-                    <Text style={styles.airportOptionText}>{opt.label}</Text>
-                    <Text style={styles.airportOptionCta}>Open Uber →</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+              <View style={uberStyles.separator} />
+              <Text style={uberStyles.optionsLabel}>Nearest airports</Text>
+              {card.alternative_options.map((opt, i) => (
+                <TouchableOpacity
+                  key={opt.label}
+                  style={[uberStyles.airportRow, i < card.alternative_options.length - 1 && uberStyles.airportRowBorder]}
+                  onPress={() => handleOpenUber(opt.uber_app_url, opt.deep_link_url)}
+                  activeOpacity={0.7}
+                >
+                  <View style={uberStyles.airportDot} />
+                  <Text style={uberStyles.airportRowText}>{opt.label}</Text>
+                  <Text style={uberStyles.airportRowArrow}>›</Text>
+                </TouchableOpacity>
+              ))}
             </>
           )}
         </View>
@@ -397,5 +411,151 @@ const styles = StyleSheet.create({
     color: '#D32F2F',
     fontWeight: '600',
     marginLeft: 8,
+  },
+});
+
+const uberStyles = StyleSheet.create({
+  card: {
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    marginBottom: 12,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#E8E8E8',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  header: {
+    backgroundColor: '#000000',
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 20,
+    gap: 6,
+  },
+  wordmark: {
+    alignSelf: 'flex-start',
+  },
+  wordmarkText: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    letterSpacing: 2,
+  },
+  tagline: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.7)',
+    fontWeight: '400',
+    lineHeight: 20,
+  },
+  route: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    gap: 16,
+    alignItems: 'stretch',
+  },
+  routeTimeline: {
+    alignItems: 'center',
+    paddingTop: 6,
+    paddingBottom: 6,
+    width: 12,
+  },
+  dotPickup: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#9E9E9E',
+  },
+  routeConnector: {
+    flex: 1,
+    width: 2,
+    backgroundColor: '#E0E0E0',
+    marginVertical: 4,
+    minHeight: 20,
+  },
+  dotDropoff: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#000000',
+  },
+  routeLabels: {
+    flex: 1,
+    gap: 16,
+  },
+  routeStop: {
+    gap: 2,
+  },
+  routeStopLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#9E9E9E',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  routeStopValue: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1F1F1F',
+  },
+  ctaButton: {
+    marginHorizontal: 20,
+    marginBottom: 20,
+    backgroundColor: '#000000',
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  ctaButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 0.3,
+  },
+  optionsLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#9E9E9E',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    paddingHorizontal: 20,
+    paddingBottom: 8,
+  },
+  airportRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    gap: 12,
+  },
+  airportRowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  airportDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#000000',
+    flexShrink: 0,
+  },
+  airportRowText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#1F1F1F',
+  },
+  airportRowArrow: {
+    fontSize: 20,
+    color: '#9E9E9E',
+    fontWeight: '300',
+  },
+  separator: {
+    height: 1,
+    backgroundColor: '#F0F0F0',
+    marginBottom: 16,
   },
 });

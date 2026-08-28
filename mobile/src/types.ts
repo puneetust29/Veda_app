@@ -303,7 +303,7 @@ export type AgentStreamEvent =
 type ChatItemBase = { id: string; createdAt: number };
 
 export type ChatItem =
-  | (ChatItemBase & { kind: 'text'; role: 'agent' | 'user'; text: string })
+  | (ChatItemBase & { kind: 'text'; role: 'agent' | 'user'; text: string; transient?: boolean })
   | (ChatItemBase & { kind: 'status'; tool?: string; label: string; state: 'active' | 'done' })
   | (ChatItemBase & { kind: 'card'; card: RecommendationCardPayload })
   | (ChatItemBase & { kind: 'hotel'; hotel: HotelDetectionResultPayload })

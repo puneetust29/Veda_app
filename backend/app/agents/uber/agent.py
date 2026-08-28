@@ -33,7 +33,7 @@ class UberAgent(BaseAgent):
             "context": ctx.context,
             "customer": customer,
             "calendar_event": calendar_event,
-            "device_location": None,
+            "device_location": ctx.context.get("device_location"),
         }
         return state
 

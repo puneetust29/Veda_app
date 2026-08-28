@@ -29,6 +29,12 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/chat", tags=["chat"])
 
 
+class DeviceLocation(BaseModel):
+    latitude: float
+    longitude: float
+    label: Optional[str] = None
+
+
 class ChatStreamRequest(BaseModel):
     calendar_event_id: Optional[str] = None
     message: Optional[str] = None
@@ -37,6 +43,7 @@ class ChatStreamRequest(BaseModel):
     prior_judge_feedback: Optional[str] = None
     capability: Optional[str] = None
     history: Optional[list[dict]] = None
+    device_location: Optional[DeviceLocation] = None
 
 
 @router.post("/stream")
@@ -60,6 +67,8 @@ async def chat_stream(
         subject["prior_judge_feedback"] = body.prior_judge_feedback
     if body.history is not None:
         subject["history"] = body.history
+    if body.device_location is not None:
+        subject["device_location"] = body.device_location.model_dump()
 
     # Generate conversation_id: use calendar_event_id if available, else a uuid
     if body.calendar_event_id:

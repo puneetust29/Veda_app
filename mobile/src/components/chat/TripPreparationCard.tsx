@@ -1,4 +1,4 @@
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import type { CalendarEvent } from '../../types';
 
 type Props = {
@@ -8,6 +8,7 @@ type Props = {
   hasRoamingActive: boolean;
   hasInsuranceActive: boolean;
   hasTransportInfo?: boolean;
+  loading?: boolean;
   onContinue: () => void;
 };
 
@@ -18,6 +19,7 @@ export default function TripPreparationCard({
   hasRoamingActive,
   hasInsuranceActive,
   hasTransportInfo = false,
+  loading = false,
   onContinue,
 }: Props) {
   const startDate = new Date(event.start_datetime).toLocaleDateString('en-US', {
@@ -94,11 +96,16 @@ export default function TripPreparationCard({
 
       {/* Continue Button */}
       <TouchableOpacity
-        style={styles.continueButton}
+        style={[styles.continueButton, (loading || !anyPending) && styles.continueButtonDisabled]}
         onPress={onContinue}
-        disabled={!anyPending}
+        disabled={loading || !anyPending}
+        activeOpacity={0.8}
       >
-        <Text style={styles.continueButtonText}>Continue</Text>
+        {loading ? (
+          <ActivityIndicator color="#FFFFFF" size="small" />
+        ) : (
+          <Text style={styles.continueButtonText}>Continue</Text>
+        )}
       </TouchableOpacity>
     </View>
   );
@@ -205,6 +212,9 @@ const styles = StyleSheet.create({
     padding: 16,
     alignItems: 'center',
     marginTop: 8,
+  },
+  continueButtonDisabled: {
+    opacity: 0.6,
   },
   continueButtonText: {
     color: '#FFFFFF',

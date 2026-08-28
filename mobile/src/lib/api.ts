@@ -159,6 +159,7 @@ export const api = {
     priorPlan?: RoamingPlan;
     priorReasoning?: string;
     priorJudgeFeedback?: string;
+    deviceLocation?: { latitude: number; longitude: number; label?: string } | null;
   }): Promise<void> => {
     if (process.env.EXPO_PUBLIC_CHAT_MOCK === '1') {
       return mockStreamRoamingConversation(params);
@@ -175,6 +176,9 @@ export const api = {
       body.prior_plan = params.priorPlan;
       body.prior_reasoning = params.priorReasoning;
       body.prior_judge_feedback = params.priorJudgeFeedback;
+    }
+    if (params.deviceLocation) {
+      body.device_location = params.deviceLocation;
     }
 
     return streamSse({
