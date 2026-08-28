@@ -40,6 +40,8 @@ class Settings(BaseSettings):
     environment: str = "development"
     cors_origins: str = "*"
 
+    uber_client_id: str = ""
+
     max_commit_amount_eur: float = 200.0
     stream_heartbeat_seconds: int = 15
 
