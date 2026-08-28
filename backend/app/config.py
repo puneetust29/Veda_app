@@ -46,6 +46,12 @@ class Settings(BaseSettings):
     max_commit_amount_eur: float = 200.0
     stream_heartbeat_seconds: int = 15
 
+    # TfL Open Data API (optional — app boots without it)
+    tfl_api_key: str = ""
+
+    # Google Maps Platform (optional — maps agent skips if absent)
+    google_maps_api_key: str = ""
+
     @property
     def google_calendar_configured(self) -> bool:
         return bool(self.google_client_id and self.google_client_secret)

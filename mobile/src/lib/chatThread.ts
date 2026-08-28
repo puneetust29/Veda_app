@@ -118,6 +118,11 @@ export function applyStreamEvent(items: ChatItem[], event: AgentStreamEvent): Ch
       ];
     }
 
+    case 'maps_result': {
+      const withoutStatus = removeAllStatuses(items);
+      return [...withoutStatus, { id: nextId(), createdAt: Date.now(), kind: 'maps', maps: event.data }];
+    }
+
     case 'share_draft': {
       const withDone = markActiveStatusesDone(items);
       return [...withDone, { id: nextId(), createdAt: Date.now(), kind: 'whatsapp_share', text: event.data.text }];

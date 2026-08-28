@@ -224,6 +224,24 @@ export type TransportResultPayload = {
   summary: string;
 };
 
+export type MapsLatLng = {
+  lat: number;
+  lng: number;
+};
+
+export type MapsResultPayload = {
+  origin: string;
+  destination: string;
+  origin_latlng: MapsLatLng | null;
+  destination_latlng: MapsLatLng | null;
+  distance_km: number | null;
+  duration_mins: number | null;
+  encoded_polyline: string | null;
+  summary: string;
+  geocode_ok: boolean;
+  route_ok: boolean;
+};
+
 // The wire event contract emitted by `POST /chat/stream`. This is the backend's
 // still-being-finalized shape — only `chatThread.ts` should need to know both this
 // and `ChatItem` below; everything else in the app works off the stable render model.
@@ -236,6 +254,7 @@ export type AgentStreamEvent =
   | { type: 'recommendation_ready'; data: { card: RecommendationCardPayload } }
   | { type: 'hotel_result'; data: HotelDetectionResultPayload }
   | { type: 'transport_result'; data: TransportResultPayload }
+  | { type: 'maps_result'; data: MapsResultPayload }
   | { type: 'share_draft'; data: { text: string } }
   | {
       type: 'confirmation_required';
@@ -254,6 +273,7 @@ export type ChatItem =
   | (ChatItemBase & { kind: 'status'; tool?: string; label: string; state: 'active' | 'done' })
   | (ChatItemBase & { kind: 'card'; card: RecommendationCardPayload })
   | (ChatItemBase & { kind: 'hotel'; hotel: HotelDetectionResultPayload })
+  | (ChatItemBase & { kind: 'maps'; maps: MapsResultPayload })
   | (ChatItemBase & { kind: 'whatsapp_share'; text: string })
   | (ChatItemBase & { kind: 'travel_insurance'; plan: TravelInsurancePlan; calendarEventId: string })
   | (ChatItemBase & {

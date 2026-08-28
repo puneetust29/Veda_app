@@ -4,6 +4,7 @@ import type { ChatItem } from '../../types';
 import ConfirmationPrompt from './ConfirmationPrompt';
 import ConfirmationSuccessCard from './ConfirmationSuccessCard';
 import HotelBookingCard from '../common/HotelBookingCard';
+import MapsCard from '../common/MapsCard';
 import MessageBubble from './MessageBubble';
 import ReceiptCard from './ReceiptCard';
 import RecommendationCard from './RecommendationCard';
@@ -59,6 +60,8 @@ function ChatItemViewImpl({ item, onConfirm, onDecline, onInsurancePurchased, on
       );
     case 'transport':
       return <TransportStatusCard transport={item.transport} />;
+    case 'maps':
+      return <MapsCard maps={item.maps} />;
     case 'whatsapp_share':
       return <WhatsAppShareCard text={item.text} />;
     case 'travel_insurance':

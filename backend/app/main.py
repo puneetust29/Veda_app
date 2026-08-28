@@ -8,6 +8,18 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(messag
 
 from app.config import get_settings
 from app.orchestration.orchestrator import get_orchestrator
+
+# Attach a dedicated StreamHandler to the "app" logger so INFO lines always
+# reach the console. uvicorn's root handler runs at WARNING level, so setting
+# the logger level alone isn't enough — the handler must also accept INFO.
+_app_log = logging.getLogger("app")
+_app_log.setLevel(logging.INFO)
+if not _app_log.handlers:
+    _h = logging.StreamHandler()
+    _h.setLevel(logging.DEBUG)
+    _h.setFormatter(logging.Formatter("%(levelname)s %(name)s: %(message)s"))
+    _app_log.addHandler(_h)
+    _app_log.propagate = False  # avoid double-printing via uvicorn's root handler
 from app.routers import auth, calendar, conversation, gmail, google_auth, roaming, subscriptions, insurance, payments
 
 settings = get_settings()
