@@ -31,6 +31,7 @@ function ChatItemViewImpl({ item, onConfirm, onDecline, onInsurancePurchased, on
       return (
         <TripPreparationCard
           event={item.event}
+          returnFlightDate={item.returnFlightDate}
           hasFlightBooking={item.hasFlightBooking}
           hasHotelBooking={item.hasHotelBooking}
           hasRoamingActive={item.hasRoamingActive}

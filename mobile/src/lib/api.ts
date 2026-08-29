@@ -63,6 +63,10 @@ export const api = {
     }),
   getMe: () => authedFetch<Customer>('/me'),
   listCalendarEvents: () => authedFetch<CalendarEvent[]>('/calendar/events'),
+  listCalendarTrips: () =>
+    authedFetch<{ trips: any[]; total_trips: number; total_round_trips: number }>('/calendar/trips').then(
+      (res) => res.trips
+    ),
   listRoamingPlans: () => authedFetch<RoamingPlan[]>('/roaming/plans'),
   recommendRoaming: (calendarEventId: string) =>
     authedFetch<RecommendResponse>('/roaming/recommend', {

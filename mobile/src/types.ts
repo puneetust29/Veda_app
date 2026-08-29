@@ -244,6 +244,7 @@ export type ChatItem =
   | (ChatItemBase & {
       kind: 'trip_preparation';
       event: CalendarEvent;
+      returnFlightDate?: string;
       hasFlightBooking: boolean;
       hasHotelBooking: boolean;
       hasRoamingActive: boolean;
