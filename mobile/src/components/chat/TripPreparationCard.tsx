@@ -8,6 +8,7 @@ import CheckIcon from '../icons/CheckIcon';
 
 type Props = {
   event: CalendarEvent;
+  returnFlightDate?: string;
   hasFlightBooking: boolean;
   hasHotelBooking: boolean;
   hasRoamingActive: boolean;
@@ -17,6 +18,7 @@ type Props = {
 
 export default function TripPreparationCard({
   event,
+  returnFlightDate,
   hasFlightBooking,
   hasHotelBooking,
   hasRoamingActive,
@@ -31,6 +33,10 @@ export default function TripPreparationCard({
     day: 'numeric',
     month: 'short',
   });
+  const returnDate = returnFlightDate ? new Date(returnFlightDate).toLocaleDateString('en-US', {
+    day: 'numeric',
+    month: 'short',
+  }) : null;
 
   const statusItems = [
     { label: 'Flight bookings', active: hasFlightBooking },
@@ -56,7 +62,7 @@ export default function TripPreparationCard({
             <CalendarIcon size={20} color="#E60000" />
           </View>
           <Text style={styles.tripDates}>
-            {startDate}-{endDate}, {event.destination}
+            {returnDate ? `${startDate} - ${returnDate}` : startDate}, {event.destination}
           </Text>
         </View>
 

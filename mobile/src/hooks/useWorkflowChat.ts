@@ -228,13 +228,51 @@ export function useWorkflowChat(event: CalendarEvent) {
           (p) => p.calendar_event_id === event.id && p.status === 'active'
         );
 
-        // Check for hotel booking in raw event details
-        const hasHotelBooking = !!(
-          event.raw_details &&
-          typeof event.raw_details === 'object' &&
-          'hotel_name' in event.raw_details &&
-          event.raw_details.hotel_name
-        );
+        // Check for hotel bookings from Gmail or calendar
+        let hasHotelBooking = false;
+        try {
+          const allEvents = await api.listCalendarEvents();
+          const flightStartDate = new Date(event.start_datetime);
+          const flightEndDate = new Date(event.end_datetime);
+
+          // Look for hotel events that overlap with the flight dates (±1 day)
+          hasHotelBooking = allEvents.some((e: any) => {
+            if (e.event_type !== 'hotel') return false;
+            const hotelStart = new Date(e.start_datetime);
+            const hotelEnd = new Date(e.end_datetime);
+            // Check if hotel check-in is within 1 day of flight arrival
+            return Math.abs(hotelStart.getTime() - flightStartDate.getTime()) < 24 * 60 * 60 * 1000;
+          });
+        } catch (err) {
+          if (__DEV__) console.warn('[useWorkflowChat] failed to check for hotel bookings', err);
+        }
+
+        // Fetch round trip info to get return flight date
+        let returnFlightDate: string | undefined;
+        try {
+          const trips = await api.listCalendarTrips();
+          // Match trip by comparing departure date and checking for return flight
+          const tripStartDate = new Date(event.start_datetime);
+          const trip = trips.find((t: any) => {
+            const tripDepartureDate = new Date(t.departure_date);
+            return (
+              t.type === 'round_trip' &&
+              t.return_date &&
+              tripDepartureDate.toDateString() === tripStartDate.toDateString()
+            );
+          });
+          if (trip?.return_date) {
+            returnFlightDate = trip.return_date;
+          }
+          if (__DEV__) {
+            console.log('[useWorkflowChat] trips:', trips);
+            console.log('[useWorkflowChat] event:', { id: event.id, destination: event.destination, start_datetime: event.start_datetime });
+            console.log('[useWorkflowChat] matching trip:', trip);
+            console.log('[useWorkflowChat] returnFlightDate:', returnFlightDate);
+          }
+        } catch (err) {
+          if (__DEV__) console.warn('[useWorkflowChat] failed to fetch round trips', err);
+        }
 
         // Show greeting message and trip preparation card
         commitItems([
@@ -250,6 +288,7 @@ export function useWorkflowChat(event: CalendarEvent) {
             createdAt: Date.now(),
             kind: 'trip_preparation',
             event,
+            returnFlightDate,
             hasFlightBooking: true, // Always assume flight is booked
             hasHotelBooking,
             hasRoamingActive: !!existingRoaming,

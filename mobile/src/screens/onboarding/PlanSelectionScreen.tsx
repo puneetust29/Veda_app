@@ -35,7 +35,7 @@ type Props = NativeStackScreenProps<OnboardingStackParamList, 'PlanSelection'>;
 const REF_WIDTH = 375;
 const BODY_SIDE_PADDING = 20; // card left edge in the reference
 const CARD_GAP = 12;          // must match styles.cardsContent.gap
-const CARD_PEEK = 12;
+const CARD_PEEK = 30;         // Show next card peek
 
 // The reference shows no next-card sliver at all (card right edge 351, then
 // white to the frame). CARD_GAP + CARD_PEEK = 24 reproduces its 331pt card
@@ -45,21 +45,17 @@ function cardWidth(screenWidth: number) {
 }
 
 // --------------------------------------------------
-// CAROUSEL TILT
+// CAROUSEL ANIMATION
 // --------------------------------------------------
-// Measured off the in-transit prototype capture: the card leaving to the left
-// sits at -4.1deg, the one arriving from the right at +4.3deg, and the centred
-// card is upright. Rotation is therefore a function of scroll position, not a
-// timed animation. CARD_TILT is measured; CARD_REST_SCALE is not — the
-// outgoing card was clipped by the frame, so there was no reliable width to
-// measure against. Tune the scale, leave the angle alone.
-const CARD_TILT = 4;
+// COMMENTED OUT: Old fan-style tilt animation
+// const CARD_TILT = 4;
 const CARD_REST_SCALE = 0.94;
 
 const PINK_BODY = colors.bubbleFill; // card body fill
 const PINK_TILE = colors.pinkTile;   // category tile fill
-const PINK_BORDER = colors.pinkBorder; // card outline
-const CTA_RED = colors.brandBackGround;
+// COMMENTED OUT: No longer used — card has no border in new carousel style
+// const PINK_BORDER = colors.pinkBorder; // card outline
+// const CTA_RED = colors.brandBackGround;
 
 // --------------------------------------------------
 // GRADIENTS
@@ -214,7 +210,8 @@ function TierHero({ topInset }: { topInset: number }) {
 // circular fan looks nothing like it. Rays are SVG; the disc is a real View on
 // top, because an SVG <Circle> leaves nowhere to put the checkmark.
 
-const FAN_DISC = 26;
+// COMMENTED OUT: Old selection fan component — replaced with progress dots
+/* const FAN_DISC = 26;
 const FAN_RAYS = 17;
 const FAN_RX = 88;          // horizontal reach
 const FAN_RY = 40;          // vertical reach
@@ -227,8 +224,8 @@ function SelectionFan({ width }: { width: number }) {
 
   return (
     <View style={{ width, height: FAN_HEIGHT }}>
-      {/* <Svg width={width} height={FAN_HEIGHT} style={StyleSheet.absoluteFill}> */}
-        {/* {Array.from({ length: FAN_RAYS }, (_, i) => {
+      <Svg width={width} height={FAN_HEIGHT} style={StyleSheet.absoluteFill}>
+        {Array.from({ length: FAN_RAYS }, (_, i) => {
           const deg = 20 + (140 * i) / (FAN_RAYS - 1);
           const cos = Math.cos((deg * Math.PI) / 180);
           const sin = Math.sin((deg * Math.PI) / 180);
@@ -244,9 +241,8 @@ function SelectionFan({ width }: { width: number }) {
               strokeLinecap="round"
             />
           );
-        })} */}
-        {/* The stem is shorter and more saturated than the rays. */}
-        {/* <Line
+        })}
+        <Line
           x1={cx}
           y1={cy + 1}
           x2={cx}
@@ -254,13 +250,13 @@ function SelectionFan({ width }: { width: number }) {
           stroke={withOpacity(colors.accentRed, 0.45)}
           strokeWidth={1.2}
         />
-      </Svg> */}
+      </Svg>
       <View style={[styles.indicatorCircle, { left: cx - FAN_DISC / 2 }]}>
         <Ionicons name="checkmark" size={15} color={colors.white} />
       </View>
     </View>
   );
-}
+} */
 
 // --------------------------------------------------
 // ACCESS-LEVEL CARDS
@@ -306,7 +302,7 @@ const ACCESS_LEVELS: AccessLevel[] = [
           { name: 'mail', color: brandIcons.gmailRed },
         ],
       },
-      { title: 'Health', icons: [{ name: 'heart', color: brandIcons.healthSlate }] },
+      { title: 'Travel', icons: [{ name: 'car-outline', color: brandIcons.carPink }] },
     ],
   },
   {
@@ -416,7 +412,7 @@ function IconChip({ icon, index, size = 15 }: { icon: IconSpec; index: number; s
 
 function AccessCard({
   level,
-  isActive,
+  // isActive, // COMMENTED OUT: No longer used in new carousel style
   width,
   index,
   scrollX,
@@ -424,22 +420,23 @@ function AccessCard({
   onSelect,
 }: {
   level: AccessLevel;
-  isActive: boolean;
+  // isActive: boolean; // COMMENTED OUT: No longer used in new carousel style
   width: number;
   index: number;
   scrollX: Animated.Value;
   snap: number;
   onSelect: (id: PlanTier) => void;
 }) {
-  // Centred at scrollX === index * snap. Scrolled past (card sits left of
-  // centre) it leans one way, still to come it leans the other.
-  const inputRange = [(index - 1) * snap, index * snap, (index + 1) * snap];
+  // Centred at scrollX === index * snap. Standard carousel scale animation
+  // COMMENTED OUT: Old fan-style tilt animation
+  // const inputRange = [(index - 1) * snap, index * snap, (index + 1) * snap];
+  // const rotate = scrollX.interpolate({
+  //   inputRange,
+  //   outputRange: [`${CARD_TILT}deg`, '0deg', `${-CARD_TILT}deg`],
+  //   extrapolate: 'clamp',
+  // });
 
-  const rotate = scrollX.interpolate({
-    inputRange,
-    outputRange: [`${CARD_TILT}deg`, '0deg', `${-CARD_TILT}deg`],
-    extrapolate: 'clamp',
-  });
+  const inputRange = [(index - 1) * snap, index * snap, (index + 1) * snap];
 
   const scale = scrollX.interpolate({
     inputRange,
@@ -448,10 +445,10 @@ function AccessCard({
   });
 
   return (
-    <Animated.View style={{ width, transform: [{ rotate }, { scale }] }}>
+    <Animated.View style={{ width, transform: [{ scale }] }}>
       <TouchableOpacity
         activeOpacity={0.9}
-        style={[styles.accessCard, isActive && styles.accessCardActive]}
+        style={styles.accessCard}
         onPress={() => onSelect(level.id)}
       >
         <LinearGradient {...CARD_HEADER_GRADIENT} style={styles.cardHeader}>
@@ -469,49 +466,47 @@ function AccessCard({
         <View style={styles.cardBody}>
           <Text style={styles.cardCaption}>{level.caption}</Text>
 
-          {level.id === 'lite' ? (
-            <>
-              {level.includes ? (
-                <View style={styles.includesBox}>
-                  <View style={styles.includesHeader}>
-                    <Ionicons name="layers-outline" size={13} color={colors.textPrimary} />
-                    <Text style={styles.includesLabel}>
-                      Everything in <Text style={styles.includesLabelBold}>{level.includes.label}</Text>
-                    </Text>
-                  </View>
-                  <View style={styles.includesRow}>
-                    <View style={styles.appIcons}>
-                      {level.includes.icons.map((icon, i) => (
-                        <IconChip key={i} index={i} icon={icon} size={14} />
-                      ))}
-                    </View>
-                    <View style={styles.morePill}>
-                      <Text style={styles.morePillText}>+{level.includes.moreCount} apps</Text>
-                    </View>
-                  </View>
-                </View>
-              ) : null}
-
-              <View style={styles.categoryGrid}>
-                {level.categories.map((category) => (
-                  <View key={category.title} style={styles.category}>
-                    <Text style={styles.categoryTitle}>{category.title}</Text>
-                    <View style={styles.appIcons}>
-                      {category.icons.map((icon, i) => (
-                        <IconChip key={i} index={i} icon={icon} />
-                      ))}
-                    </View>
-                  </View>
-                ))}
+          {level.includes ? (
+            <View style={styles.includesBox}>
+              <View style={styles.includesHeader}>
+                <Ionicons name="layers-outline" size={13} color={colors.textPrimary} />
+                <Text style={styles.includesLabel}>
+                  Everything in <Text style={styles.includesLabelBold}>{level.includes.label}</Text>
+                </Text>
               </View>
-            </>
-          ) : (
-            <View style={styles.comingSoonBox}>
-              <Ionicons name="time-outline" size={22} color={colors.textSecondary} />
-              <Text style={styles.comingSoonText}>Coming soon</Text>
+              <View style={styles.includesRow}>
+                <View style={styles.appIcons}>
+                  {level.includes.icons.map((icon, i) => (
+                    <IconChip key={i} index={i} icon={icon} size={14} />
+                  ))}
+                </View>
+                <View style={styles.morePill}>
+                  <Text style={styles.morePillText}>+{level.includes.moreCount} apps</Text>
+                </View>
+              </View>
             </View>
-          )}
+          ) : null}
+
+          <View style={styles.categoryGrid}>
+            {level.categories.map((category) => (
+              <View key={category.title} style={styles.category}>
+                <Text style={styles.categoryTitle}>{category.title}</Text>
+                <View style={styles.appIcons}>
+                  {category.icons.map((icon, i) => (
+                    <IconChip key={i} index={i} icon={icon} />
+                  ))}
+                </View>
+              </View>
+            ))}
+          </View>
         </View>
+
+        {level.id !== 'lite' && (
+          <View style={styles.cardOverlay} pointerEvents="none">
+            <Ionicons name="time-outline" size={24} color={colors.textSecondary} />
+            <Text style={styles.cardOverlayText}>Coming soon</Text>
+          </View>
+        )}
       </TouchableOpacity>
     </Animated.View>
   );
@@ -609,16 +604,27 @@ export default function PlanSelectionScreen({ navigation }: Props) {
                 scrollX={scrollX}
                 snap={SNAP}
                 width={CARD_WIDTH}
-                isActive={planTier === level.id}
+                // isActive={planTier === level.id} // COMMENTED OUT: No longer used
                 onSelect={selectTier}
               />
             ))}
           </Animated.ScrollView>
         </View>
 
+        {/* Progress dots indicator — similar to AttentionCarousel pattern */}
+        {ACCESS_LEVELS.length > 1 ? (
+          <View style={styles.dotsContainer}>
+            {ACCESS_LEVELS.map((level, index) => (
+              <View key={level.id} style={[styles.dot, planTier === level.id && styles.dotActive]} />
+            ))}
+          </View>
+        ) : null}
+
+        {/* COMMENTED OUT: Old selection fan indicator
         <View style={styles.selectionIndicator} pointerEvents="none">
           <SelectionFan width={screenWidth - BODY_SIDE_PADDING * 2} />
         </View>
+        */}
       </ScrollView>
 
       <View style={[styles.actions, { paddingBottom: Math.max(insets.bottom, 10) }]}>
@@ -642,8 +648,9 @@ const styles = StyleSheet.create({
   // No backgroundColor — the LinearGradient supplies the fill.
   heroBanner: {
     paddingBottom: spacing.md,
-    borderBottomLeftRadius: radii.xxl,
-    borderBottomRightRadius: radii.xxl,
+    // COMMENTED OUT: Removed border-radius for sharp bottom corners
+    // borderBottomLeftRadius: radii.xxl,
+    // borderBottomRightRadius: radii.xxl,
     position: 'relative',
     zIndex: 1,
   },
@@ -715,7 +722,7 @@ const styles = StyleSheet.create({
   bodyContent: {
     paddingTop: spacing.xl,
     paddingHorizontal: BODY_SIDE_PADDING,
-    paddingBottom: 150, // clears the absolutely-positioned actions block
+    paddingBottom: 160, // clears the absolutely-positioned actions block
   },
 
   // --------------------------------------------------
@@ -733,29 +740,36 @@ const styles = StyleSheet.create({
     paddingLeft: BODY_SIDE_PADDING,
     paddingRight: BODY_SIDE_PADDING,
     gap: CARD_GAP,
-    marginTop: 22,
+    marginTop: spacing.lg,
+    paddingBottom: spacing.xxl,
   },
 
   // width now comes from the animated shell in AccessCard, so the card fills it.
+  // Updated to match AttentionCarousel aesthetic: 24px radius, soft shadow, red border
   accessCard: {
     width: '100%',
     minHeight: 334,
-    borderRadius: radii.xl,
-    borderWidth: 1,
-    borderColor: PINK_BORDER,
+    borderRadius: 24,
+    borderWidth: 2,
+    borderColor: colors.accentRed,
     backgroundColor: colors.white,
+    overflow: 'hidden',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 3,
   },
 
-  // isActive was accepted and never used — the selected card had no visual
-  // state at all.
-  accessCardActive: {
+  // COMMENTED OUT: Old active state styling — no longer used with new carousel style
+  /* accessCardActive: {
     borderColor: withOpacity(colors.accentRed, 0.55),
     shadowColor: colors.accentRed,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.16,
     shadowRadius: 10,
     elevation: 4,
-  },
+  }, */
 
   cardHeader: {
     height: 59,
@@ -763,8 +777,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 18,
-    borderTopLeftRadius: 23,
-    borderTopRightRadius: 23,
   },
 
   cardHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 9 },
@@ -783,16 +795,15 @@ const styles = StyleSheet.create({
   appCountText: { ...typography.small, color: colors.white, fontSize: 11, lineHeight: 14 },
 
   // flex:1 absorbs the stretch a horizontal ScrollView applies to match the
-  // tallest card. That filler is pink in the reference too — the Essential card
-  // genuinely ends in ~80pt of empty body, not in white.
+  // tallest card. Updated with cleaner styling to match AttentionCarousel
   cardBody: {
     flex: 1,
     backgroundColor: PINK_BODY,
     paddingHorizontal: 18,
     paddingTop: spacing.lg,
     paddingBottom: 18,
-    borderBottomLeftRadius: 23,
-    borderBottomRightRadius: 23,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
   },
 
   cardCaption: { ...typography.small, color: colors.textPrimary, fontSize: 13, marginBottom: 14 },
@@ -827,7 +838,20 @@ const styles = StyleSheet.create({
 
   categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
 
-  comingSoonBox: {
+  cardOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: withOpacity(colors.white, 0.8),
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    borderRadius: 22,
+    zIndex: 999,
+  },
+
+  cardOverlayText: { ...typography.bodyBold, color: colors.textSecondary, fontSize: 14 },
+
+  // COMMENTED OUT: Old coming soon box styling — replaced with cardOverlay
+  /* comingSoonBox: {
     flex: 1,
     minHeight: 120,
     alignItems: 'center',
@@ -835,7 +859,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
 
-  comingSoonText: { ...typography.bodyBold, color: colors.textSecondary, fontSize: 14 },
+  comingSoonText: { ...typography.bodyBold, color: colors.textSecondary, fontSize: 14 }, */
 
   category: {
     width: '48.7%',
@@ -866,12 +890,41 @@ const styles = StyleSheet.create({
   appIconFirst: { marginLeft: 0 },
 
   // --------------------------------------------------
-  // SELECTION FAN
+  // PROGRESS DOTS (AttentionCarousel style)
+  // --------------------------------------------------
+  dotsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 4,
+    marginTop: spacing.xs,
+    marginBottom: spacing.xxl,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#eeeeee',
+  },
+
+  dotActive: {
+    backgroundColor: colors.accentRed,
+    width: 24,
+    borderRadius: 4,
+  },
+
+  // --------------------------------------------------
+  // COMMENTED OUT: Old selection fan styling
   // --------------------------------------------------
   // marginTop 0: in the reference the disc's TOP edge sits exactly on the
   // card's bottom border, so the whole disc hangs below the card.
 
-  selectionIndicator: {
+  /* selectionIndicator: {
     height: FAN_HEIGHT,
     alignItems: 'center',
     marginTop: 0,
@@ -889,7 +942,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 2,
     borderColor: colors.white,
-  },
+  }, */
 
   // --------------------------------------------------
   // BOTTOM ACTIONS
