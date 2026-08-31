@@ -3,6 +3,9 @@ import { getDeviceLocationSample } from './lib/deviceLocation';
 import { getGmailSample } from './lib/gmail';
 import { sendGmailSample } from './lib/gmailSend';
 import { getGoogleCalendarSample } from './lib/googleCalendar';
+import { getMapsRouteSample } from './lib/maps';
+import { getTflStatusSample } from './lib/tfl';
+import { getUberDeeplinkSample } from './lib/uber';
 import { getWeatherSample } from './lib/weather';
 import { shareToWhatsApp } from './lib/whatsapp';
 import { createStripeTestPayment } from './lib/stripe';
@@ -261,9 +264,13 @@ export const INTEGRATIONS_CATALOG: IntegrationCatalogEntry[] = [
     name: 'TfL Unified API',
     purpose: 'Intelligence / Signal',
     exampleUsage: 'Tube, bus, rail status, arrivals and disruptions',
-    status: 'Not Started',
+    status: 'Done',
     priority: 'Tier 1',
-    notes: 'London journey planning, disruptions and arrivals',
+    notes: 'Live line statuses (Tube, Elizabeth line, DLR, Overground) and journey planning to/from London airports via the TfL Open Data API.',
+    action: {
+      label: 'Open Transport Card (live TfL status)',
+      run: getTflStatusSample,
+    },
   },
   {
     id: 'citymapper',
@@ -306,6 +313,10 @@ export const INTEGRATIONS_CATALOG: IntegrationCatalogEntry[] = [
     status: 'Done',
     priority: 'Tier 1',
     notes: 'Request and manage rides; validate commercial onboarding',
+    action: {
+      label: 'Open Uber Card (ride to Heathrow)',
+      run: getUberDeeplinkSample,
+    },
   },
   {
     id: 'lyft',
@@ -334,9 +345,13 @@ export const INTEGRATIONS_CATALOG: IntegrationCatalogEntry[] = [
     name: 'Google Maps',
     purpose: 'Intelligence / Signal + Action',
     exampleUsage: 'ETA, routing and places',
-    status: 'Not Started',
+    status: 'Done',
     priority: 'Tier 1',
-    notes: 'Routing, ETA, geocoding and places',
+    notes: 'Geocoding, multi-mode routing (Drive/Transit/Walk), traffic layer, nearby places (hotels/restaurants/attractions) via Google Routes API and Places API (New). Includes straight-line fallback when no polyline is returned.',
+    action: {
+      label: 'Open Maps Card (Heathrow → London Bridge)',
+      run: getMapsRouteSample,
+    },
   },
 
   // --- Weather & Environment ---

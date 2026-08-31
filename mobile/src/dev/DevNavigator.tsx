@@ -4,6 +4,9 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import IntegrationDetailScreen from './screens/IntegrationDetailScreen';
 import IntegrationsCatalogScreen from './screens/IntegrationsCatalogScreen';
 import StripePaymentScreen from './screens/StripePaymentScreen';
+import DevMapsScreen from './screens/DevMapsScreen';
+import DevTransportScreen from './screens/DevTransportScreen';
+import DevUberScreen from './screens/DevUberScreen';
 import type { DevStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<DevStackParamList>();
@@ -28,6 +31,9 @@ export default function DevNavigator() {
       />
       <Stack.Screen name="Detail" component={IntegrationDetailScreen} options={{ title: '' }} />
       <Stack.Screen name="StripePayment" component={StripePaymentScreen} options={{ title: 'Stripe Payment' }} />
+      <Stack.Screen name="DevMaps" component={DevMapsScreen} options={{ title: 'Google Maps' }} />
+      <Stack.Screen name="DevTransport" component={DevTransportScreen} options={{ title: 'TfL Transport' }} />
+      <Stack.Screen name="DevUber" component={DevUberScreen} options={{ title: 'Uber' }} />
     </Stack.Navigator>
   );
 }

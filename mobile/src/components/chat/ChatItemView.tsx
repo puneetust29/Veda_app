@@ -4,7 +4,6 @@ import type { ChatItem } from '../../types';
 import ConfirmationPrompt from './ConfirmationPrompt';
 import ConfirmationSuccessCard from './ConfirmationSuccessCard';
 import HotelBookingCard from '../common/HotelBookingCard';
-import MapsCard from '../common/MapsCard';
 import MessageBubble from './MessageBubble';
 import ReceiptCard from './ReceiptCard';
 import RecommendationCard from './RecommendationCard';
@@ -12,7 +11,7 @@ import StatusLine from './StatusLine';
 import WhatsAppShareCard from './WhatsAppShareCard';
 import TravelInsuranceCardChat from './TravelInsuranceCardChat';
 import TripPreparationCard from './TripPreparationCard';
-import TransportStatusCard from '../common/TransportStatusCard';
+
 
 type Props = {
   item: ChatItem;
@@ -38,12 +37,12 @@ function ChatItemViewImpl({ item, onConfirm, onDecline, onInsurancePurchased, on
           hasHotelBooking={item.hasHotelBooking}
           hasRoamingActive={item.hasRoamingActive}
           hasInsuranceActive={item.hasInsuranceActive}
-          hasTransportInfo={item.hasTransportInfo}
           loading={continuePrepLoading}
           onContinue={() => onContinuePrep?.()}
         />
       );
     case 'card':
+      if (item.card.kind === 'uber_ride') return null; // dev-only
       return (
         <RecommendationCard
           card={item.card}
@@ -61,9 +60,8 @@ function ChatItemViewImpl({ item, onConfirm, onDecline, onInsurancePurchased, on
         />
       );
     case 'transport':
-      return <TransportStatusCard transport={item.transport} />;
     case 'maps':
-      return <MapsCard maps={item.maps} />;
+      return null; // dev-only — rendered in Integration (Dev) screens only
     case 'whatsapp_share':
       return <WhatsAppShareCard text={item.text} />;
     case 'travel_insurance':

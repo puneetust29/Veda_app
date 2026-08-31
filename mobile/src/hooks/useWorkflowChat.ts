@@ -139,15 +139,9 @@ export function useWorkflowChat(event: CalendarEvent) {
       commitItems(next);
 
       switch (event_.type) {
-        case 'transport_result': {
-          // Mark the trip_preparation card as having transport info
-          commitItems(
-            next.map((item) =>
-              item.kind === 'trip_preparation' ? { ...item, hasTransportInfo: true } : item,
-            ),
-          );
+        case 'transport_result':
+          // dev-only — ignored in main chat flow
           break;
-        }
         case 'confirmation_required':
           setPhase('awaiting_confirmation');
           break;
@@ -281,10 +275,9 @@ export function useWorkflowChat(event: CalendarEvent) {
             hasHotelBooking,
             hasRoamingActive: !!existingRoaming,
             hasInsuranceActive: !!existingInsurance,
-            hasTransportInfo: false,
           },
         ]);
-        console.log('[useWorkflowChat] trip_preparation loaded | hasFlightBooking=true | hasHotelBooking:', hasHotelBooking, '| hasRoamingActive:', !!existingRoaming, '| hasInsuranceActive:', !!existingInsurance, '| hasTransportInfo: false');
+        console.log('[useWorkflowChat] trip_preparation loaded | hasFlightBooking=true | hasHotelBooking:', hasHotelBooking, '| hasRoamingActive:', !!existingRoaming, '| hasInsuranceActive:', !!existingInsurance);
         setPhase('awaiting_confirmation');
         return;
       } catch (err) {

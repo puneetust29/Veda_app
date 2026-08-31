@@ -1,7 +1,7 @@
 name: transport_agent
 version: 0.1.0
 description: Surfaces live TfL transport status and journey options for London trips.
-enabled: true
+enabled: false
 priority: 15
 
 capabilities:

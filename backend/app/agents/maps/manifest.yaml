@@ -1,7 +1,7 @@
 name: maps_agent
 version: 0.1.0
 description: Geocodes flight origin/destination and fetches ETA + route via Google Maps.
-enabled: true
+enabled: false
 priority: 20
 
 capabilities:

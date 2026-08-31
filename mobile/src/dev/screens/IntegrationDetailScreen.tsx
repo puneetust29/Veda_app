@@ -35,9 +35,21 @@ export default function IntegrationDetailScreen({ route, navigation }: Props) {
   const handleRun = async () => {
     if (!entry.action) return;
 
-    // Special handling for Stripe integration
+    // Integrations with full card UI screens
     if (entry.id === 'stripe') {
       navigation.navigate('StripePayment');
+      return;
+    }
+    if (entry.id === 'google-maps') {
+      navigation.navigate('DevMaps');
+      return;
+    }
+    if (entry.id === 'tfl-unified-api') {
+      navigation.navigate('DevTransport');
+      return;
+    }
+    if (entry.id === 'uber') {
+      navigation.navigate('DevUber');
       return;
     }
 

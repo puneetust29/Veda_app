@@ -106,6 +106,8 @@ export function applyStreamEvent(items: ChatItem[], event: AgentStreamEvent): Ch
       ];
 
     case 'recommendation_ready': {
+      // uber_ride is dev-only — ignore in the main chat flow
+      if (event.data.card.kind === 'uber_ride') return items;
       const clean = removeTransient(removeAllStatuses(items));
       return [...clean, { id: nextId(), createdAt: Date.now(), kind: 'card', card: event.data.card }];
     }
@@ -115,18 +117,13 @@ export function applyStreamEvent(items: ChatItem[], event: AgentStreamEvent): Ch
       return [...clean, { id: nextId(), createdAt: Date.now(), kind: 'hotel', hotel: event.data }];
     }
 
-    case 'transport_result': {
-      const clean = removeTransient(removeAllStatuses(items));
-      return [
-        ...clean,
-        { id: nextId(), createdAt: Date.now(), kind: 'transport', transport: event.data },
-      ];
-    }
+    case 'transport_result':
+      // dev-only — not shown in main chat flow
+      return items;
 
-    case 'maps_result': {
-      const clean = removeTransient(removeAllStatuses(items));
-      return [...clean, { id: nextId(), createdAt: Date.now(), kind: 'maps', maps: event.data }];
-    }
+    case 'maps_result':
+      // dev-only — not shown in main chat flow
+      return items;
 
     case 'share_draft': {
       const withDone = markActiveStatusesDone(items);

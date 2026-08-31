@@ -7,7 +7,6 @@ type Props = {
   hasHotelBooking: boolean;
   hasRoamingActive: boolean;
   hasInsuranceActive: boolean;
-  hasTransportInfo?: boolean;
   loading?: boolean;
   onContinue: () => void;
 };
@@ -18,7 +17,6 @@ export default function TripPreparationCard({
   hasHotelBooking,
   hasRoamingActive,
   hasInsuranceActive,
-  hasTransportInfo = false,
   loading = false,
   onContinue,
 }: Props) {
@@ -31,24 +29,14 @@ export default function TripPreparationCard({
     month: 'short',
   });
 
-  const isLondonTrip =
-    (event.destination?.toLowerCase().includes('london') ||
-      event.destination?.toLowerCase().includes('lhr') ||
-      event.destination?.toLowerCase().includes('gatwick') ||
-      event.destination?.toLowerCase().includes('lgw') ||
-      event.origin?.toLowerCase().includes('london') ||
-      event.origin?.toLowerCase().includes('lhr')) ?? false;
-
   const statusItems = [
     { label: 'Flight bookings', active: hasFlightBooking },
     ...(hasHotelBooking ? [{ label: 'Hotel bookings', active: hasHotelBooking }] : []),
     { label: 'Roaming', active: hasRoamingActive },
     { label: 'Travel insurance', active: hasInsuranceActive },
-    ...(isLondonTrip ? [{ label: 'London transport', active: hasTransportInfo }] : []),
   ];
 
-  const anyPending =
-    !hasRoamingActive || !hasInsuranceActive || (isLondonTrip && !hasTransportInfo);
+  const anyPending = !hasRoamingActive || !hasInsuranceActive;
 
   return (
     <View style={styles.card}>

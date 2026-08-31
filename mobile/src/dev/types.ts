@@ -5,4 +5,7 @@ export type DevStackParamList = {
   Catalog: undefined;
   Detail: { id: string };
   StripePayment: undefined;
+  DevMaps: undefined;
+  DevTransport: undefined;
+  DevUber: undefined;
 };
