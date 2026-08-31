@@ -2,7 +2,9 @@ import * as Location from 'expo-location';
 
 import type { WeatherSummary } from '../types';
 
-const FALLBACK_WEATHER: WeatherSummary = { temperatureC: 13, location: 'England, UK', weatherCode: null };
+const FALLBACK_WEATHER: WeatherSummary = { temperatureC: 13, location: '', weatherCode: null };
+
+const locationCache = new Map<string, string>();
 
 type OpenMeteoCurrentResponse = {
   current?: {
@@ -13,8 +15,8 @@ type OpenMeteoCurrentResponse = {
 
 type WttrResponse = {
   current_condition?: Array<{
-    temp_C?: number;
-    weatherCode?: number;
+    temp_C?: string | number;
+    weatherCode?: string | number;
   }>;
 };
 
@@ -28,13 +30,26 @@ function formatLocation(place: Location.LocationGeocodedAddress): string {
 }
 
 async function getReadableLocation(latitude: number, longitude: number): Promise<string> {
-  const places = await Location.reverseGeocodeAsync({ latitude, longitude });
-  if (!places.length) return FALLBACK_WEATHER.location;
-  return formatLocation(places[0]);
+  const key = `${latitude.toFixed(4)},${longitude.toFixed(4)}`;
+  console.log(`Fetching readable location for coordinates: ${locationCache.has(key) ? 'cache hit' : 'cache miss'} (${key})`);
+  if (locationCache.has(key)) return locationCache.get(key)!;
+
+  try {
+    const places = await Location.reverseGeocodeAsync({ latitude, longitude });
+
+    const location = places.length ? formatLocation(places[0]) : FALLBACK_WEATHER.location;
+    locationCache.set(key, location);
+    return location;
+  } catch (e){
+    console.warn('Failed to reverse geocode location, using fallback',);
+    locationCache.set(key, FALLBACK_WEATHER.location);
+    return FALLBACK_WEATHER.location;
+  }
 }
 
 async function getWeatherFromOpenMeteo(latitude: number, longitude: number): Promise<WeatherSummary | null> {
   try {
+    console.log(`Fetching weather from Open-Meteo for coordinates: ${latitude}, ${longitude}`);
     const weatherResponse = await fetch(
       `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,weather_code&timezone=auto`,
     );
@@ -51,7 +66,7 @@ async function getWeatherFromOpenMeteo(latitude: number, longitude: number): Pro
       location,
       weatherCode: typeof weatherCode === 'number' && !Number.isNaN(weatherCode) ? weatherCode : null,
     };
-  } catch {
+  } catch (error) {
     return null;
   }
 }
@@ -59,12 +74,13 @@ async function getWeatherFromOpenMeteo(latitude: number, longitude: number): Pro
 async function getWeatherFromWttr(latitude: number, longitude: number): Promise<WeatherSummary | null> {
   try {
     const weatherResponse = await fetch(
-      `https://wttr.in/${latitude},${longitude}?format=j1`,
+      `http://wttr.in/${latitude},${longitude}?format=j1`,
     );
     if (!weatherResponse.ok) return null;
 
     const weather = (await weatherResponse.json()) as WttrResponse;
-    const temperature = weather.current_condition?.[0]?.temp_C;
+    const tempStr = weather.current_condition?.[0]?.temp_C;
+    const temperature = typeof tempStr === 'string' ? parseFloat(tempStr) : tempStr;
     if (typeof temperature !== 'number' || Number.isNaN(temperature)) return null;
 
     const location = await getReadableLocation(latitude, longitude);
