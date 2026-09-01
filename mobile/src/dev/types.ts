@@ -8,4 +8,5 @@ export type DevStackParamList = {
   DevMaps: undefined;
   DevTransport: undefined;
   DevUber: undefined;
+  DevDeliveroo: undefined;
 };

@@ -3,12 +3,14 @@ around the underlying agent clients so each integration can be tested in isolati
 without a full calendar event / streaming session."""
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Query
+import httpx
+from fastapi import APIRouter, Depends, HTTPException, Path, Query
 
 from app.agents.maps.maps_client import geocode, get_nearby_places, get_route
 from app.agents.transport.tfl_client import LONDON_AIRPORTS, get_line_status, get_journey, CENTRAL_LONDON
 from app.config import get_settings
 from app.deps import get_current_customer
+from app.integrations.deliveroo_auth import get_auth_headers, get_deliveroo_token, token_info
 
 
 router = APIRouter(prefix="/dev", tags=["dev"])
@@ -146,3 +148,74 @@ def dev_uber_deeplink(
         "uber_app_url": app_url,
         "deep_link_url": web_url,
     }
+
+
+# ---------------------------------------------------------------------------
+# Deliveroo
+# ---------------------------------------------------------------------------
+
+@router.get("/deliveroo/auth")
+def dev_deliveroo_auth(_customer: dict = Depends(get_current_customer)):
+    """Test Deliveroo OAuth2 credentials and return token metadata."""
+    settings = get_settings()
+    if not settings.deliveroo_configured:
+        raise HTTPException(503, "Deliveroo credentials not configured")
+    try:
+        get_deliveroo_token()
+        info = token_info()
+        return {
+            "ok": True,
+            "env": settings.deliveroo_env,
+            "client_id": settings.deliveroo_client_id,
+            **info,
+        }
+    except Exception as e:
+        raise HTTPException(502, f"Deliveroo auth failed: {e}") from e
+
+
+@router.get("/deliveroo/scenarios")
+def dev_deliveroo_scenarios(
+    api: str = Query("picking", description="API name: pos_orders | signature | picking | order_status_updates"),
+    _customer: dict = Depends(get_current_customer),
+):
+    """List available sandbox test scenarios from the Deliveroo Developer Portal."""
+    settings = get_settings()
+    if not settings.deliveroo_configured:
+        raise HTTPException(503, "Deliveroo credentials not configured")
+    try:
+        resp = httpx.get(
+            f"{settings.deliveroo_api_base_url}/dev-portal/scenarios",
+            params={"api": api},
+            headers=get_auth_headers(),
+            timeout=10,
+        )
+        resp.raise_for_status()
+        return resp.json()
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(e.response.status_code, e.response.text) from e
+    except Exception as e:
+        raise HTTPException(502, str(e)) from e
+
+
+@router.post("/deliveroo/scenarios/{scenario_id}/run")
+def dev_deliveroo_trigger_scenario(
+    scenario_id: str = Path(..., description="Scenario ID from /dev/deliveroo/scenarios"),
+    _customer: dict = Depends(get_current_customer),
+):
+    """Trigger a Deliveroo sandbox scenario run."""
+    settings = get_settings()
+    if not settings.deliveroo_configured:
+        raise HTTPException(503, "Deliveroo credentials not configured")
+    try:
+        resp = httpx.post(
+            f"{settings.deliveroo_api_base_url}/dev-portal/scenarios/{scenario_id}/runs",
+            json={},
+            headers={**get_auth_headers(), "Content-Type": "application/json"},
+            timeout=10,
+        )
+        resp.raise_for_status()
+        return resp.json()
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(e.response.status_code, e.response.text) from e
+    except Exception as e:
+        raise HTTPException(502, str(e)) from e

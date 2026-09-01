@@ -59,6 +59,21 @@ class Settings(BaseSettings):
     # Google Maps Platform (optional — maps agent skips if absent)
     google_maps_api_key: str = ""
 
+    # Deliveroo (optional — deliveroo routes skips if absent)
+    deliveroo_client_id: str = ""
+    deliveroo_client_secret: str = ""
+    deliveroo_env: str = "sandbox"  # "sandbox" | "production"
+
+    @property
+    def deliveroo_configured(self) -> bool:
+        return bool(self.deliveroo_client_id and self.deliveroo_client_secret)
+
+    @property
+    def deliveroo_api_base_url(self) -> str:
+        if self.deliveroo_env == "production":
+            return "https://api.developers.deliveroo.com"
+        return "https://api-sandbox.developers.deliveroo.com"
+
     @property
     def google_calendar_configured(self) -> bool:
         return bool(self.google_client_id and self.google_client_secret)

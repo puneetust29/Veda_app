@@ -6,6 +6,7 @@ import { getGoogleCalendarSample } from './lib/googleCalendar';
 import { getMapsRouteSample } from './lib/maps';
 import { getTflStatusSample } from './lib/tfl';
 import { getUberDeeplinkSample } from './lib/uber';
+import { getDeliverooAuthSample } from './lib/deliveroo';
 import { getWeatherSample } from './lib/weather';
 import { shareToWhatsApp } from './lib/whatsapp';
 import { createStripeTestPayment } from './lib/stripe';
@@ -450,10 +451,14 @@ export const INTEGRATIONS_CATALOG: IntegrationCatalogEntry[] = [
     category: 'Food & Grocery',
     name: 'Deliveroo',
     purpose: 'Action / Execute',
-    exampleUsage: 'UK food delivery',
-    status: 'Not Started',
+    exampleUsage: 'UK food delivery and grocery ordering',
+    status: 'In Progress',
     priority: 'Tier 2',
-    notes: 'https://developers.deliveroo.com/get-started',
+    notes: 'Retail Platform suite (sandbox active): Orders, Catalogue, Menu, Picking APIs. OAuth2 client-credentials auth wired. Sandbox scenarios available via Developer Portal API.',
+    action: {
+      label: 'Test Deliveroo sandbox connection',
+      run: getDeliverooAuthSample,
+    },
   },
   {
     id: 'opentable',
