@@ -1,4 +1,5 @@
 import { getAppleCalendarSample } from './lib/appleCalendar';
+import { getContactsSample } from './lib/contacts';
 import { getDeviceLocationSample } from './lib/deviceLocation';
 import { getGmailSample } from './lib/gmail';
 import { sendGmailSample } from './lib/gmailSend';
@@ -121,9 +122,13 @@ export const INTEGRATIONS_CATALOG: IntegrationCatalogEntry[] = [
     name: 'Contacts',
     purpose: 'Sync / Read Context',
     exampleUsage: 'Context for communication and relationships',
-    status: 'Not Started',
+    status: 'In Progress',
     priority: 'Tier 2',
     notes: 'Contact context for communication and relationships',
+    action: {
+      label: 'Read contacts',
+      run: getContactsSample,
+    },
   },
   {
     id: 'vodafone-profile',
