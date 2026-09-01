@@ -7,7 +7,7 @@ import HotelBookingCard from '../common/HotelBookingCard';
 import MessageBubble from './MessageBubble';
 import PaymentCompleteCard from './PaymentCompleteCard';
 import RecommendationCard from './RecommendationCard';
-import StatusLine from './StatusLine';
+import LoadingStream from './LoadingStream';
 import WhatsAppShareCard from './WhatsAppShareCard';
 import TravelInsuranceCardChat from './TravelInsuranceCardChat';
 import TripPreparationCard from './TripPreparationCard';
@@ -29,7 +29,7 @@ function ChatItemViewImpl({ item, onConfirm, onDecline, onInsurancePurchased, on
     case 'text':
       return <MessageBubble text={item.text} tone={item.role} />;
     case 'status':
-      return <StatusLine label={item.label} state={item.state} />;
+      return <LoadingStream items={[{ text: item.label, state: item.state }]} isSingleItem />;
     case 'trip_preparation':
       return (
         <TripPreparationCard

@@ -19,7 +19,14 @@ export type MockStreamParams = {
   priorPlan?: RoamingPlan;
   priorReasoning?: string;
   priorJudgeFeedback?: string;
+  includeInitialStreams?: boolean;
 };
+
+export const INITIAL_STREAM_EVENTS: Array<{ delayMs: number; text: string }> = [
+  { delayMs: 400, text: 'Thinking' },
+  { delayMs: 500, text: 'Looking into it' },
+  { delayMs: 600, text: 'Assembling the answers' },
+];
 
 const MOCK_PLAN: RoamingPlan = {
   id: 'mock-plan-jp-7d-5gb',
