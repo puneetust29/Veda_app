@@ -63,6 +63,7 @@ class Settings(BaseSettings):
     deliveroo_client_id: str = ""
     deliveroo_client_secret: str = ""
     deliveroo_env: str = "sandbox"  # "sandbox" | "production"
+    deliveroo_webhook_secret: str = ""
 
     @property
     def deliveroo_configured(self) -> bool:
