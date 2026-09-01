@@ -1,5 +1,4 @@
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import type { CalendarEvent } from '../../types';
 import ProgressIcon from '../icons/ProgressIcon';
 import CalendarIcon from '../icons/CalendarIcon';
@@ -13,6 +12,7 @@ type Props = {
   hasHotelBooking: boolean;
   hasRoamingActive: boolean;
   hasInsuranceActive: boolean;
+  loading?: boolean;
   onContinue: () => void;
 };
 
@@ -23,6 +23,7 @@ export default function TripPreparationCard({
   hasHotelBooking,
   hasRoamingActive,
   hasInsuranceActive,
+  loading = false,
   onContinue,
 }: Props) {
   const startDate = new Date(event.start_datetime).toLocaleDateString('en-US', {
@@ -45,8 +46,7 @@ export default function TripPreparationCard({
     { label: 'Travel insurance', active: hasInsuranceActive },
   ];
 
-  const anyPending =
-    !hasRoamingActive || !hasInsuranceActive;
+  const anyPending = !hasRoamingActive || !hasInsuranceActive;
 
   return (
     <View style={styles.cardShadow}>
@@ -98,16 +98,19 @@ export default function TripPreparationCard({
           </View>
         </View>
 
-        {/* Continue Button - only show if there are pending items */}
-        {anyPending && (
-          <TouchableOpacity
-            style={[styles.continueButton, !onContinue && styles.continueButtonDisabled]}
-            onPress={onContinue}
-            disabled={!onContinue}
-          >
+        {/* Continue Button */}
+        <TouchableOpacity
+          style={[styles.continueButton, (loading || !anyPending) && styles.continueButtonDisabled]}
+          onPress={onContinue}
+          disabled={loading || !anyPending}
+          activeOpacity={0.8}
+        >
+          {loading ? (
+            <ActivityIndicator color="#FFFFFF" size="small" />
+          ) : (
             <Text style={styles.continueButtonText}>Continue</Text>
-          </TouchableOpacity>
-        )}
+          )}
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -237,7 +240,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   continueButtonDisabled: {
-    opacity: 0.5,
+    opacity: 0.6,
   },
   continueButtonText: {
     color: '#FFFFFF',

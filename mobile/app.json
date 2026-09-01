@@ -11,7 +11,8 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSCalendarsUsageDescription": "Veda reads your calendar to detect upcoming flights and suggest roaming plans before you travel.",
-        "NSLocationWhenInUseUsageDescription": "Veda uses your location to show local weather on your dashboard."
+        "NSLocationWhenInUseUsageDescription": "Veda uses your location to show local weather on your dashboard.",
+        "NSContactsUsageDescription": "Veda reads your contacts to help you message, call, and get context for your relationships."
       }
     },
     "android": {
@@ -46,7 +47,13 @@
           "merchantIdentifier": "com.veda.app"
         }
       ],
-      "expo-font"
+      "expo-font",
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "Veda reads your contacts to help you message, call, and get context for your relationships."
+        }
+      ]
     ]
   }
 }

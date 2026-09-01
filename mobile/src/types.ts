@@ -155,6 +155,7 @@ export type RootStackParamList = {
   Dashboard: undefined;
   FlightDetail: { event: CalendarEvent };
   Chat: { event: CalendarEvent };
+  VedaChat: undefined;
   Subscriptions: undefined;
   RoamingPlans: undefined;
   // Single merged calendar screen: reads every calendar expo-calendar exposes
@@ -162,6 +163,10 @@ export type RootStackParamList = {
   // those accounts in the OS Settings app) and displays them together.
   DeviceCalendar: undefined;
   Gmail: undefined;
+  // Dev-only integrations catalog (see dev/devFlags.ts and dev/DevNavigator.tsx)
+  // -- a self-contained nested navigator; its own screens/params live in
+  // dev/types.ts, not here.
+  Dev: undefined;
 };
 
 // --- Onboarding flow (pre-auth) ---
@@ -182,8 +187,27 @@ export type OnboardingStackParamList = {
 
 // --- Chat / streaming agent contract ---
 
+export type UberAirportOption = {
+  label: string;
+  uber_app_url: string;
+  deep_link_url: string;
+};
+
 export type RecommendationCardPayload =
-  | { kind: 'roaming_plan'; plan: RoamingPlan; reasoning: string; judge_approved: boolean; judge_feedback: string };
+  | { kind: 'roaming_plan'; plan: RoamingPlan; reasoning: string; judge_approved: boolean; judge_feedback: string }
+  | {
+      kind: 'uber_ride';
+      origin_type: string;
+      reasoning: string;
+      suggested_message: string;
+      pickup_label: string | null;
+      dropoff_label: string | null;
+      uber_app_url: string | null;
+      deep_link_url: string | null;
+      airport_options: UberAirportOption[];
+      alternative_options: UberAirportOption[];
+      drive_mins_to_airport: number | null;
+    };
 
 export type HotelBooking = {
   found: boolean;
@@ -201,6 +225,67 @@ export type HotelDetectionResultPayload = {
   recommendations?: Array<{ name: string; rating: number; price: number; location: string }> | null;
 };
 
+export type TransportLineStatus = {
+  line_name: string;
+  status: string;
+  severity: number;
+  disruption: string | null;
+};
+
+export type TransportJourneyLeg = {
+  mode: string;
+  instruction: string;
+  duration_mins: number;
+};
+
+export type TransportJourneyOption = {
+  duration_mins: number;
+  legs: TransportJourneyLeg[];
+};
+
+export type TransportResultPayload = {
+  has_london: boolean;
+  direction: 'from_london' | 'to_london' | null;
+  airport: string | null;
+  line_statuses: TransportLineStatus[];
+  journey_options: TransportJourneyOption[];
+  summary: string;
+};
+
+export type MapsLatLng = {
+  lat: number;
+  lng: number;
+};
+
+export type RouteOption = {
+  mode: 'DRIVE' | 'TRANSIT' | 'WALK';
+  duration_mins: number;
+  distance_km: number | null;
+  encoded_polyline: string | null;
+};
+
+export type NearbyPlace = {
+  name: string;
+  category: 'hotel' | 'restaurant' | 'attraction';
+  rating: number | null;
+  address: string | null;
+};
+
+export type MapsResultPayload = {
+  origin: string;
+  destination: string;
+  origin_latlng: MapsLatLng | null;
+  destination_latlng: MapsLatLng | null;
+  distance_km: number | null;
+  duration_mins: number | null;
+  encoded_polyline: string | null;
+  summary: string;
+  geocode_ok: boolean;
+  route_ok: boolean;
+  routes: RouteOption[];
+  nearby_places: NearbyPlace[];
+};
+
 // The wire event contract emitted by `POST /chat/stream`. This is the backend's
 // still-being-finalized shape — only `chatThread.ts` should need to know both this
 // and `ChatItem` below; everything else in the app works off the stable render model.
@@ -212,6 +297,9 @@ export type AgentStreamEvent =
   | { type: 'text'; data: { role: 'agent' | 'user'; text: string } }
   | { type: 'recommendation_ready'; data: { card: RecommendationCardPayload } }
   | { type: 'hotel_result'; data: HotelDetectionResultPayload }
+  | { type: 'transport_result'; data: TransportResultPayload }
+  | { type: 'maps_result'; data: MapsResultPayload }
+  | { type: 'share_draft'; data: { text: string } }
   | {
       type: 'confirmation_required';
       data: { action_id: string; summary: string; risk: 'commit' | 'read'; plan_id: string; calendar_event_id: string };
@@ -225,10 +313,12 @@ export type AgentStreamEvent =
 type ChatItemBase = { id: string; createdAt: number };
 
 export type ChatItem =
-  | (ChatItemBase & { kind: 'text'; role: 'agent' | 'user'; text: string })
+  | (ChatItemBase & { kind: 'text'; role: 'agent' | 'user'; text: string; transient?: boolean })
   | (ChatItemBase & { kind: 'status'; tool?: string; label: string; state: 'active' | 'done' })
   | (ChatItemBase & { kind: 'card'; card: RecommendationCardPayload })
   | (ChatItemBase & { kind: 'hotel'; hotel: HotelDetectionResultPayload })
+  | (ChatItemBase & { kind: 'maps'; maps: MapsResultPayload })
+  | (ChatItemBase & { kind: 'whatsapp_share'; text: string })
   | (ChatItemBase & { kind: 'travel_insurance'; plan: TravelInsurancePlan; calendarEventId: string })
   | (ChatItemBase & {
       kind: 'confirmation';
@@ -268,4 +358,5 @@ export type ChatItem =
       kind: 'trip_checklist';
       destination: string;
     })
+  | (ChatItemBase & { kind: 'transport'; transport: TransportResultPayload })
   | (ChatItemBase & { kind: 'error'; message: string; retryable: boolean });

@@ -1,0 +1,16 @@
+name: uber_agent
+version: 0.1.0
+description: Detects an upcoming flight and suggests an Uber ride via deep-link handoff to the native app.
+enabled: false
+priority: 20
+capabilities: [uber]
+triggers:
+  events: [trip.detected, trip.updated]
+  rules:
+    - key: calendar_event.event_type
+      op: eq
+      value: flight
+required_context: [customer, calendar_event]
+tools: []
+actions: []
+output_schema: app.agents.uber.schemas:UberRideSuggestionCard

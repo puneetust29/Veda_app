@@ -4,7 +4,7 @@
 
 insert into customers (phone_number, full_name, address, telecom_plan, account_number, otp)
 values ('+15550001111', 'Alex Morgan', '221B Baker Street, London, UK', 'Unlimited Plus', 'ACC-100234', NULL)
-on conflict (phone_number) do nothing;
+on conflict (phone_number) do update set otp = NULL;
 
 -- Test user for OTP verification testing
 insert into customers (phone_number, full_name, address, telecom_plan, account_number, otp)
