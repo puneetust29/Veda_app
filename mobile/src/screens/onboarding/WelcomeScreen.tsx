@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Animated, Easing, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import type { FC, SVGProps } from 'react';
 
 import StepHeader from '../../components/onboarding/StepHeader';
@@ -17,13 +17,27 @@ import payAsYouGo from '../../../assets/pay-as-you-go.svg';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'Welcome'>;
 
-// Where the incoming card starts, measured off the Figma prototype: it enters
-// ~16px right of centre at ~0.93 scale and eases forward into place.
-const DECK_SHIFT_X = 16;
-const DECK_SCALE = 0.93;
-const ENTER_DURATION = 520;
-const EXIT_DURATION = 180;
 const CARD_INTERVAL = 2400;
+
+// ONE spring drives the entire deck (see `progress` below), so these values
+// are matched to the reference implementation exactly.
+//
+// The rest thresholds matter more than they look. RN's defaults (0.001) are
+// ABSOLUTE, so with a spring per channel a value travelling 22px and one
+// travelling 0.1 (scale) cross the finish line at very different times —
+// that showed up as the card visibly creeping 1px at a time for ~370ms
+// AFTER it had apparently landed. Driving everything from a single 0→1
+// value makes the thresholds mean the same thing for every channel, and
+// these slightly looser numbers cut the long asymptotic tail so the deck
+// actually stops instead of crawling.
+const DECK_SPRING = {
+  stiffness: 140,
+  damping: 24,
+  mass: 1.1,
+  restDisplacementThreshold: 0.005,
+  restSpeedThreshold: 0.005,
+  useNativeDriver: true,
+} as const;
 
 // The backend only knows card ids/copy (see customers.current_plans); icons
 // stay a frontend concern mapped by id.
@@ -41,6 +55,40 @@ const FALLBACK_CARDS: CurrentPlanCard[] = [
   { id: 'phone', title: 'CMF Phone 2 Pro', subtitle: 'Primary device', bullet: 'Suggestions will adapt to your device.' },
   { id: 'lines', title: '3 connected lines', subtitle: 'Your household', bullet: 'Ready to help everyone stay connected.' },
 ];
+
+// Revolving deck slots keyed by the (non-shortest) circular distance 0..3+
+// from the active card. Slot 0 is the centred, front-facing card; 1..3 form a
+// receding fan tucked behind it to the right — a touch lower, smaller,
+// dimmer, rotated further and turned a little more on Y for depth — with a
+// lower z so each tucks behind the card ahead of it.
+//
+// Offsets are the reference's, rescaled to this card's rendered width
+// (the reference's 240px card is drawn at FRONT_SCALE 1.2 = 288px, so its
+// 24/42/56 offsets are 8.3%/14.6%/19.4% of the card — applied here to 260px).
+// Scales/opacities are the reference's normalised to a 1.0 front card.
+//
+// These pair with transformOrigin: 'center top' on the card (see below).
+// The rotations are measured about the TOP edge, not the centre, so the
+// artwork band near the top of the card barely swings and the deck reads as
+// hairline slivers up top that fan out toward the bottom.
+//
+// zIndex is a plain number applied the instant the index changes —
+// deliberately not delayed or animated. A card dropping toward the back must
+// drop immediately, or it sits on top while visibly shrinking and reads as
+// the card "going blank"; and since each slot already has a distinct z, the
+// card rising to the front is already the highest z among what's left.
+function slotFor(raw: number) {
+  switch (raw) {
+    case 0: // centre, front — flat, face-on, full size
+      return { x: 0, y: 0, rotate: 0, rotateY: 0, scale: 1, z: 40, contentOpacity: 1 };
+    case 1: // just behind — a thin sliver peeks right
+      return { x: 22, y: 7, rotate: 3, rotateY: -11, scale: 0.925, z: 30, contentOpacity: 0.7 };
+    case 2: // deeper, tucked behind slot 1
+      return { x: 38, y: 14, rotate: 6, rotateY: -15, scale: 0.858, z: 20, contentOpacity: 0.5 };
+    default: // 3+ — deepest in the deck
+      return { x: 50, y: 21, rotate: 9, rotateY: -18, scale: 0.792, z: 10, contentOpacity: 0.35 };
+  }
+}
 
 function CardFace({ card }: { card: CurrentPlanCard }) {
   const CardIcon = CARD_ICONS[card.id];
@@ -67,80 +115,60 @@ function CardFace({ card }: { card: CurrentPlanCard }) {
   );
 }
 
-// Recommendation cards auto-cycle: the outgoing card fades in place while the
-// next one eases forward from the deck position behind it.
+// Recommendation cards live in a revolving deck: every card is always
+// mounted in its own slot (front, or receding behind it), and advancing just
+// moves each card's slot target — the departing card springs to the back of
+// the deck while the next one springs to the front.
+//
+// Every transform on every card is interpolated from ONE shared `progress`
+// value that springs 0 → 1 per advance. That is deliberate: with a spring
+// per channel per card, the channels settled at different times and the deck
+// kept micro-adjusting after it had visually arrived. One driver means one
+// clock, so all cards and all channels start and stop together.
 export default function WelcomeScreen({ navigation }: Props) {
   const { customer } = useAuth();
-  const [index, setIndex] = useState(0);
-  // Held only for the length of a swap so the outgoing card can fade out and
-  // cover the content change.
-  const [outgoing, setOutgoing] = useState<number | null>(null);
 
-  // 0 = incoming card still sits back in the deck, 1 = settled at the front.
-  const enter = useRef(new Animated.Value(1)).current;
-  // Opacity of the card on its way out.
-  const exit = useRef(new Animated.Value(0)).current;
-  // Interpolations built once — they're driven natively and don't depend on props.
-  const translateX = useRef(enter.interpolate({ inputRange: [0, 1], outputRange: [DECK_SHIFT_X, 0] })).current;
-  const scale = useRef(enter.interpolate({ inputRange: [0, 1], outputRange: [DECK_SCALE, 1] })).current;
-
-  const indexRef = useRef(0);
-  const isFirstRender = useRef(true);
+  // `prev` is the slot arrangement we're animating FROM, `current` the one
+  // we're animating TO. Kept together in one state so a render never sees a
+  // mismatched pair mid-update.
+  const [deck, setDeck] = useState({ prev: 0, current: 0 });
 
   const cards = customer?.current_plans?.length ? customer.current_plans : FALLBACK_CARDS;
 
-  // The tick ONLY advances state. It must not touch the animated values:
-  // setValue is synchronous while setIndex is not, so resetting here would
-  // move the still-rendered previous card and show it easing forward before
-  // React committed the new one.
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const prev = indexRef.current;
-      const next = (prev + 1) % cards.length;
-      indexRef.current = next;
-      setOutgoing(prev);
-      setIndex(next);
-    }, CARD_INTERVAL);
+  // The single driver for the whole deck. Recreated only if the card list
+  // changes shape (e.g. fallback → real customer data).
+  const progress = useMemo(
+    () => new Animated.Value(1),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [cards.length]
+  );
 
-    return () => clearInterval(interval);
+  // Reset to a settled, un-animating state whenever the card list changes
+  // shape, so a data swap never animates from a stale arrangement.
+  useLayoutEffect(() => {
+    setDeck({ prev: 0, current: 0 });
+    progress.setValue(1);
+  }, [progress]);
+
+  // Auto-advance one card at a time; the timer restarts whenever the card
+  // list changes shape.
+  useEffect(() => {
+    const id = setInterval(() => {
+      setDeck((d) => ({ prev: d.current, current: (d.current + 1) % cards.length }));
+    }, CARD_INTERVAL);
+    return () => clearInterval(id);
   }, [cards.length]);
 
-  // Runs in the same commit that renders the new card, before paint — so the
-  // first frame the user sees already has the incoming card back in the deck.
+  // Runs the one spring for this advance. Before paint, so the reset case
+  // (prev === current) never flashes a half-animated pose.
   useLayoutEffect(() => {
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
+    if (deck.prev === deck.current) {
+      progress.setValue(1);
       return;
     }
-
-    enter.setValue(0);
-    exit.setValue(1);
-
-    const animation = Animated.parallel([
-      Animated.timing(enter, {
-        toValue: 1,
-        duration: ENTER_DURATION,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.timing(exit, {
-        toValue: 0,
-        duration: EXIT_DURATION,
-        easing: Easing.linear,
-        useNativeDriver: true,
-      }),
-    ]);
-
-    animation.start(({ finished }) => {
-      // Drop the outgoing layer once it's fully invisible.
-      if (finished) setOutgoing(null);
-    });
-
-    return () => animation.stop();
-  }, [index, enter, exit]);
-
-  const card = cards[index % cards.length];
-  const outgoingCard = outgoing === null ? null : cards[outgoing % cards.length];
+    progress.setValue(0);
+    Animated.spring(progress, { toValue: 1, ...DECK_SPRING }).start();
+  }, [deck, progress]);
 
   return (
     <View style={styles.container}>
@@ -152,36 +180,55 @@ export default function WelcomeScreen({ navigation }: Props) {
         <Text style={styles.subtitle}>Your Vodafone number helps Veda understand your world, so it can start helping from day one.</Text>
 
         <View style={styles.viewContainer}>
-          {/* Card deck — two ghost cards sit behind the real one and peek out to the right */}
+          {/* Card deck — every card is always mounted, positioned in its own
+              revolving slot (front, or receding behind it). Advancing moves
+              each card from its old slot to its new one along the shared
+              `progress` spring. */}
           <View style={styles.cardStack}>
-            <View style={[styles.ghostCard, styles.ghostCardBack]} />
-            <View style={[styles.ghostCard, styles.ghostCardMid]} />
+            {cards.map((c, i) => {
+              const n = cards.length;
+              const from = slotFor((i - deck.prev + n) % n);
+              const to = slotFor((i - deck.current + n) % n);
 
-            {/* Incoming card. Stays in normal flow so it defines the deck height. */}
-            <Animated.View
-              style={[styles.contentWrapper, { transform: [{ translateX }, { scale }] }]}
-            >
-              <CardFace card={card} />
-            </Animated.View>
+              // Every channel interpolated off the same driver, so they are
+              // incapable of settling at different times.
+              const lerp = (a: number, b: number) =>
+                progress.interpolate({ inputRange: [0, 1], outputRange: [a, b] });
+              const lerpDeg = (a: number, b: number) =>
+                progress.interpolate({ inputRange: [0, 1], outputRange: [`${a}deg`, `${b}deg`] });
 
-            {/* Outgoing card, stacked on top at the front position so it fades
-                away to reveal the one arriving behind it. Without this layer
-                the content change is a visible cut. */}
-            {outgoingCard && (
-              <Animated.View
-                pointerEvents="none"
-                style={[styles.contentWrapper, styles.outgoingCard, { opacity: exit }]}
-              >
-                <CardFace card={outgoingCard} />
-              </Animated.View>
-            )}
+              return (
+                <Animated.View
+                  key={c.id}
+                  style={[
+                    styles.contentWrapper,
+                    styles.deckCard,
+                    {
+                      zIndex: to.z,
+                      transform: [
+                        { perspective: 800 },
+                        { translateX: lerp(from.x, to.x) },
+                        { translateY: lerp(from.y, to.y) },
+                        { rotate: lerpDeg(from.rotate, to.rotate) },
+                        { rotateY: lerpDeg(from.rotateY, to.rotateY) },
+                        { scale: lerp(from.scale, to.scale) },
+                      ],
+                    },
+                  ]}
+                >
+                  <Animated.View style={{ opacity: lerp(from.contentOpacity, to.contentOpacity) }}>
+                    <CardFace card={c} />
+                  </Animated.View>
+                </Animated.View>
+              );
+            })}
           </View>
 
           {/* Bottom Section - Dots and CTA */}
           <View style={styles.bottomSection}>
             <View style={styles.dots}>
               {cards.map((c, i) => (
-                <View key={c.id} style={[styles.dot, i === index % cards.length && styles.dotActive]} />
+                <View key={c.id} style={[styles.dot, i === deck.current && styles.dotActive]} />
               ))}
             </View>
 
@@ -202,10 +249,11 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 14, fontWeight: '400', fontFamily: fonts.body, color: '#6b7280', marginBottom: spacing.lg, lineHeight: 21 },
   viewContainer: { flex: 1, justifyContent: 'space-between' },
 
-  // Holds the deck. Owns the width/offset that contentWrapper used to own,
-  // so the ghost cards can be positioned relative to it.
+  // Holds the deck. Every card inside is absolutely positioned so its slot
+  // transform is what places it, so the stack needs its own explicit height.
   cardStack: {
     width: 260,
+    height: 340,
     alignSelf: 'center',
     marginTop: spacing.xxxl,
   },
@@ -216,50 +264,30 @@ const styles = StyleSheet.create({
     width: '100%',
     // Floor height keeps the shell from jumping when copy lengths differ.
     minHeight: 340,
-    // Opaque background is required, otherwise the ghost cards show through
-    // and the two card layers bleed into each other mid-swap.
+    // Opaque background is required, otherwise the deeper cards in the deck
+    // show through and the layers bleed into each other while animating.
     backgroundColor: colors.background,
     borderColor: colors.borderMuted,
     borderRadius: radii.xxl,
     overflow: 'hidden',
   },
 
-  outgoingCard: {
+  deckCard: {
     position: 'absolute',
-    top: 0,
     left: 0,
-    right: 0,
-    bottom: 0,
-  },
-
-  // The ghosts sit flush to the right edge; the small rotation is what swings
-  // their top-right corner clear of the front card. The bottom-left corner
-  // swings the other way and hides behind it, so no outline shows at the
-  // bottom. `left`/`bottom` must stay larger than halfHeight*sin(angle) and
-  // halfWidth*sin(angle) respectively, or the ghost pokes out on those sides.
-  ghostCard: {
-    position: 'absolute',
-    right: 0,
-    borderWidth: 1,
-    borderColor: colors.borderMuted,
-    borderRadius: radii.xxl,
-    backgroundColor: colors.background,
-  },
-
-  ghostCardMid: {
-    top: 10,
-    bottom: 22,
-    left: 18,
-    opacity: 0.7,
-    transform: [{ rotate: '3deg' }],
-  },
-
-  ghostCardBack: {
-    top: 14,
-    bottom: 34,
-    left: 30,
-    opacity: 0.45,
-    transform: [{ rotate: '6deg' }],
+    top: 0,
+    // Pivot every rotation and scale about the card's TOP edge, matching the
+    // reference. With RN's default centre origin the 3/6/9° slot rotations
+    // swing the artwork band (which sits near the top) wide open — measured
+    // at ~30% of the card width versus the reference's ~4% — which is what
+    // let the back cards' red artwork show past the front card's edge. It
+    // also keeps the shrunken back cards' top edges aligned with the front
+    // card instead of dropping them.
+    //
+    // Needs RN 0.74+ / Expo SDK 51+. On older versions this style prop is
+    // ignored; the equivalent is to add a compensating translateY of
+    // (CARD_HEIGHT / 2) * (scale - 1) to each slot.
+    transformOrigin: 'center top',
   },
 
   imageCard: {
