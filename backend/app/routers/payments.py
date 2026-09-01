@@ -53,9 +53,9 @@ class ActiveInsuranceResponse(BaseModel):
 
 
 class PaymentMethodResponse(BaseModel):
-    brand: str | None = None
-    last4: str | None = None
-    id: str | None = None
+    brand: Optional[str] = None
+    last4: Optional[str] = None
+    id: Optional[str] = None
 
 
 @router.get("/customer-payment-methods", response_model=PaymentMethodResponse)
