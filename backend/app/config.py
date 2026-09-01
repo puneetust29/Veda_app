@@ -13,6 +13,11 @@ class Settings(BaseSettings):
     anthropic_api_key: str
     anthropic_model: str = "claude-haiku-4-5-20251001"
 
+    openai_api_key: str = ""
+    openai_model: str = "gpt-4o-mini"
+    # "anthropic" | "openai" — agents that support both check this to pick the provider
+    llm_provider: str = "anthropic"
+
     # Google OAuth (unified for Calendar + Gmail). Optional: the app boots without these,
     # and Google routes answer 503 until configured. Deliberate, so a deployment that
     # hasn't done the Cloud Console setup isn't a hard boot failure.
@@ -20,7 +25,10 @@ class Settings(BaseSettings):
     google_client_secret: str = ""
     google_redirect_uri: str = "http://localhost:8000/auth/google/callback"
     google_calendar_scopes: str = "https://www.googleapis.com/auth/calendar.events"
-    google_gmail_scopes: str = "https://www.googleapis.com/auth/gmail.readonly"
+    google_gmail_scopes: str = (
+        "https://www.googleapis.com/auth/gmail.readonly "
+        "https://www.googleapis.com/auth/gmail.send"
+    )
     # Deep link the callback page bounces back to after auth. Must match the `scheme` in mobile/app.json.
     google_post_auth_redirect: str = "veda://google-auth-complete"
 
@@ -34,11 +42,38 @@ class Settings(BaseSettings):
     stripe_secret_key: str = ""
     stripe_publishable_key: str = ""
 
+    # TfL (Transport for London) API key. Optional: transport agent skips TfL calls if empty.
+    tfl_api_key: str = ""
+
     environment: str = "development"
     cors_origins: str = "*"
 
+    uber_client_id: str = ""
+
     max_commit_amount_eur: float = 200.0
     stream_heartbeat_seconds: int = 15
+
+    # TfL Open Data API (optional — app boots without it)
+    tfl_api_key: str = ""
+
+    # Google Maps Platform (optional — maps agent skips if absent)
+    google_maps_api_key: str = ""
+
+    # Deliveroo (optional — deliveroo routes skips if absent)
+    deliveroo_client_id: str = ""
+    deliveroo_client_secret: str = ""
+    deliveroo_env: str = "sandbox"  # "sandbox" | "production"
+    deliveroo_webhook_secret: str = ""
+
+    @property
+    def deliveroo_configured(self) -> bool:
+        return bool(self.deliveroo_client_id and self.deliveroo_client_secret)
+
+    @property
+    def deliveroo_api_base_url(self) -> str:
+        if self.deliveroo_env == "production":
+            return "https://api.developers.deliveroo.com"
+        return "https://api-sandbox.developers.deliveroo.com"
 
     @property
     def google_calendar_configured(self) -> bool:

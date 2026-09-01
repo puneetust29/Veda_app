@@ -1,5 +1,5 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -24,12 +24,20 @@ function isInsuranceAlreadyPurchased(items: any[], currentIdx: number): boolean 
 export default function ChatScreen({ route, navigation }: Props) {
   const { event } = route.params;
   const { customer } = useAuth();
+  console.log('[ChatScreen] opened for event:', event.title, '| origin:', event.origin, '| dest:', event.destination, '| start:', event.start_datetime);
   const { items, phase, confirm, decline, retry, sendMessage, handleInsurancePurchased, workflowState, continueWorkflow } = useWorkflowChat(event);
   const scrollViewRef = useRef<ScrollView>(null);
   const [draft, setDraft] = useState('');
-  const [continueClicked, setContinueClicked] = useState(false);
+  const itemCountRef = useRef(0);
 
   const firstName = customer?.full_name?.split(' ')[0] ?? 'User';
+
+  useEffect(() => {
+    if (items.length > itemCountRef.current) {
+      itemCountRef.current = items.length;
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }
+  }, [items]);
 
   return (
     <View style={styles.container}>
@@ -55,13 +63,11 @@ export default function ChatScreen({ route, navigation }: Props) {
         ref={scrollViewRef}
         style={styles.thread}
         contentContainerStyle={styles.threadContent}
-        onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
       >
         {items.map((item, idx) => {
           // Skip hotel booking component
-          if (item.kind === 'hotel') {
-            return null;
-          }
+          if (item.kind === 'hotel') return null;
+
 
           // Skip rendering confirmation items for roaming plans - they're combined with the card
           if (item.kind === 'confirmation' && item.risk === 'commit') {
@@ -77,11 +83,9 @@ export default function ChatScreen({ route, navigation }: Props) {
               item={item}
               onConfirm={confirm}
               onDecline={decline}
-              onInsurancePurchased={item.kind === 'travel_insurance' && isInsuranceAlreadyPurchased(items, idx) ? undefined : handleInsurancePurchased}
-              onContinuePrep={item.kind === 'trip_preparation' && !continueClicked ? () => {
-                setContinueClicked(true);
-                continueWorkflow();
-              } : undefined}
+              onInsurancePurchased={handleInsurancePurchased}
+              onContinuePrep={continueWorkflow}
+              continuePrepLoading={phase === 'streaming'}
               // Pass the next item if it's a confirmation for a roaming card
               nextItem={
                 item.kind === 'card' && item.card.kind === 'roaming_plan' && items[idx + 1]?.kind === 'confirmation'

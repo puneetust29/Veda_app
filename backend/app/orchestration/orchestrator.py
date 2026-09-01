@@ -6,9 +6,12 @@ AgentRegistry has discovered and validated.
 """
 from __future__ import annotations
 
+import logging
 import uuid
 from functools import lru_cache
 from typing import Callable, List, Optional
+
+logger = logging.getLogger(__name__)
 
 from app.agents.base.contracts import AgentContext, AgentResult
 from app.context.resolver import ContextResolver, get_context_resolver
@@ -52,10 +55,13 @@ class Orchestrator:
         run_id = str(uuid.uuid4())
 
         matched, resolved_context = self._match_with_resolved_context(request)
-        emit({"type": "run_started", "data": {"run_id": run_id, "agents": [e.manifest.name for e in matched]}})
+        agent_names = [e.manifest.name for e in matched]
+        logger.info("[orchestrator] run_id=%s matched_agents=%s", run_id, agent_names)
+        emit({"type": "run_started", "data": {"run_id": run_id, "agents": agent_names}})
 
         results: List[AgentResult] = []
         for entry in matched:
+            logger.info("[orchestrator] dispatching agent=%s", entry.manifest.name)
             ctx_slice = {k: resolved_context.get(k) for k in entry.manifest.required_context}
             agent_ctx = AgentContext(
                 run_id=run_id,
@@ -70,7 +76,9 @@ class Orchestrator:
             agent_crashed = False
             try:
                 result = entry.agent.execute(agent_ctx, request.mode)
+                logger.info("[orchestrator] agent=%s status=%s summary=%s", entry.manifest.name, result.status, result.summary)
             except Exception as exc:  # one agent's failure never aborts the run
+                logger.exception("[orchestrator] agent=%s crashed: %s", entry.manifest.name, exc)
                 agent_crashed = True
                 import traceback
                 print(f"[AGENT ERROR] {entry.manifest.name}: {exc}")

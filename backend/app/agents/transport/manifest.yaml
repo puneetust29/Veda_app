@@ -1,0 +1,23 @@
+name: transport_agent
+version: 0.1.0
+description: Surfaces live TfL transport status and journey options for London trips.
+enabled: false
+priority: 15
+
+capabilities:
+  - transport_status
+  - journey_planning
+
+triggers:
+  rules:
+    - key: calendar_event.event_type
+      op: eq
+      value: flight
+
+required_context:
+  - customer
+  - calendar_event
+
+tools: []
+actions: []
+output_schema: app.agents.transport.schemas:TransportResult

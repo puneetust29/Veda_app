@@ -1,6 +1,7 @@
 """Unified Google OAuth endpoints for Calendar + Gmail in a single auth flow."""
 import html
 import json
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import HTMLResponse
@@ -57,12 +58,12 @@ def google_auth_status(customer: dict = Depends(get_current_customer)) -> dict:
 class GoogleAuthConnectRequest(BaseModel):
     """Request to start Google OAuth flow."""
 
-    app_redirect: str | None = None
+    app_redirect: Optional[str] = None
 
 
 @router.post("/connect")
 def google_auth_connect(
-    payload: GoogleAuthConnectRequest | None = None,
+    payload: Optional[GoogleAuthConnectRequest] = None,
     customer: dict = Depends(get_current_customer),
 ) -> dict:
     """Begin unified Google OAuth flow for Calendar + Gmail.
@@ -80,9 +81,9 @@ def google_auth_connect(
 
 @router.get("/callback", response_class=HTMLResponse)
 def google_auth_callback(
-    state: str | None = None,
-    code: str | None = None,
-    error: str | None = None,
+    state: Optional[str] = None,
+    code: Optional[str] = None,
+    error: Optional[str] = None,
 ) -> HTMLResponse:
     """OAuth callback from Google after unified consent.
 
@@ -121,7 +122,7 @@ Redirecting...""",
 
 
 def _callback_page(
-    heading: str, message: str, *, ok: bool = True, app_redirect: str | None = None
+    heading: str, message: str, *, ok: bool = True, app_redirect: Optional[str] = None
 ) -> HTMLResponse:
     """Render the end of the OAuth flow, then bounce back into the mobile app."""
     colour = "#137333" if ok else "#b00020"

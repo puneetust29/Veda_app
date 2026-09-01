@@ -11,6 +11,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import * as Location from 'expo-location';
 
 import { applyStreamEvent, nextId } from '../lib/chatThread';
 import { useSubscriptionInsurance } from '../context/SubscriptionInsuranceContext';
@@ -83,6 +84,7 @@ export function useWorkflowChat(event: CalendarEvent) {
   const abortControllerRef = useRef<AbortController | null>(null);
   const watchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const startedRef = useRef(false);
+  const deviceLocationRef = useRef<{ latitude: number; longitude: number; label?: string } | null>(null);
   const lastRequestParamsRef = useRef<{
     message?: string;
     priorPlan?: RoamingPlan;
@@ -138,11 +140,15 @@ export function useWorkflowChat(event: CalendarEvent) {
 
   const handleStreamEvent = useCallback(
     (event_: AgentStreamEvent) => {
+      console.log('[stream event]', event_.type, JSON.stringify((event_ as any).data ?? {}).slice(0, 200));
       resetWatchdog();
       const next = applyStreamEvent(itemsRef.current, event_);
       commitItems(next);
 
       switch (event_.type) {
+        case 'transport_result':
+          // dev-only — ignored in main chat flow
+          break;
         case 'confirmation_required':
           setPhase('awaiting_confirmation');
           break;
@@ -188,6 +194,7 @@ export function useWorkflowChat(event: CalendarEvent) {
       if (params) {
         lastRequestParamsRef.current = params;
       }
+      console.log('[startStream] event_id=%s params=%s', event.id, JSON.stringify(params ?? {}));
       setPhase('streaming');
       resetWatchdog();
       api
@@ -197,13 +204,19 @@ export function useWorkflowChat(event: CalendarEvent) {
           onEvent: handleStreamEvent,
           onError: (err) => {
             if (controller.signal.aborted) return;
+            console.warn('[startStream] SSE error:', err);
             handleStreamError(err);
           },
-          onClose: clearWatchdog,
+          onClose: () => {
+            console.log('[startStream] SSE closed event_id=%s', event.id);
+            clearWatchdog();
+          },
+          deviceLocation: deviceLocationRef.current,
           ...params,
         })
         .catch((err) => {
           if (controller.signal.aborted) return;
+          console.error('[startStream] stream promise rejected:', err);
           handleStreamError(err);
         });
     },
@@ -220,6 +233,17 @@ export function useWorkflowChat(event: CalendarEvent) {
     let cancelled = false;
 
     (async () => {
+      // Fetch device location in parallel — used by Uber agent for pickup coordinates
+      Location.getForegroundPermissionsAsync().then((perm) => {
+        if (perm.status === Location.PermissionStatus.GRANTED) {
+          Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced })
+            .then((pos) => {
+              deviceLocationRef.current = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
+            })
+            .catch(() => {});
+        }
+      }).catch(() => {});
+
       try {
         if (cancelled) return;
 
@@ -295,6 +319,7 @@ export function useWorkflowChat(event: CalendarEvent) {
             hasInsuranceActive: !!existingInsurance,
           },
         ]);
+        console.log('[useWorkflowChat] trip_preparation loaded | hasFlightBooking=true | hasHotelBooking:', hasHotelBooking, '| hasRoamingActive:', !!existingRoaming, '| hasInsuranceActive:', !!existingInsurance);
         setPhase('awaiting_confirmation');
         return;
       } catch (err) {
@@ -924,6 +949,16 @@ export function useWorkflowChat(event: CalendarEvent) {
       console.warn('[useWorkflowChat] No trip prep card found');
       return;
     }
+
+    // Immediately show a placeholder — removed automatically when real results arrive
+    appendItems([{
+      id: nextId(),
+      createdAt: Date.now(),
+      kind: 'text',
+      role: 'agent',
+      text: 'On it! Getting your trip recommendations ready…',
+      transient: true,
+    }]);
 
     const { hasRoamingActive, hasInsuranceActive } = tripPrepCard;
 

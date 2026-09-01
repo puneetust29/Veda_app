@@ -1,5 +1,5 @@
 import { loadToken } from './authToken';
-import { mockStreamRoamingConversation } from './mockStream';
+import { mockStreamRoamingConversation, mockStreamVedaConversation } from './mockStream';
 import { streamSse } from './sse';
 import type {
   AgentStreamEvent,
@@ -148,6 +148,11 @@ export const api = {
       `/gmail/sync?max_results=${maxResults}`,
       { method: 'POST' },
     ),
+  sendGmail: (params: { to: string; subject: string; body: string }) =>
+    authedFetch<{ sent: boolean; gmail_message_id?: string }>('/gmail/send', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    }),
   streamRoamingConversation: async (params: {
     calendarEventId: string;
     signal: AbortSignal;
@@ -158,6 +163,7 @@ export const api = {
     priorPlan?: RoamingPlan;
     priorReasoning?: string;
     priorJudgeFeedback?: string;
+    deviceLocation?: { latitude: number; longitude: number; label?: string } | null;
   }): Promise<void> => {
     if (process.env.EXPO_PUBLIC_CHAT_MOCK === '1') {
       return mockStreamRoamingConversation(params);
@@ -175,6 +181,56 @@ export const api = {
       body.prior_reasoning = params.priorReasoning;
       body.prior_judge_feedback = params.priorJudgeFeedback;
     }
+    if (params.deviceLocation) {
+      body.device_location = params.deviceLocation;
+    }
+
+    return streamSse({
+      url: `${API_BASE_URL}/chat/stream`,
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        Accept: 'text/event-stream',
+      },
+      body: JSON.stringify(body),
+      signal: params.signal,
+      onFrame: (frame) => {
+        try {
+          const event = JSON.parse(frame.data);
+          if (__DEV__) console.log('[stream] event:', event.type, JSON.stringify(event.data));
+          params.onEvent(event);
+        } catch {
+          if (__DEV__) console.warn('[stream] bad frame', frame);
+        }
+      },
+      onError: params.onError,
+      onClose: params.onClose,
+    });
+  },
+
+  streamVedaConversation: async (params: {
+    message: string;
+    history?: Array<{ role: 'user' | 'agent'; text: string }>;
+    signal: AbortSignal;
+    onEvent: (event: AgentStreamEvent) => void;
+    onError: (err: unknown) => void;
+    onClose: () => void;
+  }): Promise<void> => {
+    if (process.env.EXPO_PUBLIC_CHAT_MOCK === '1') {
+      return mockStreamVedaConversation(params);
+    }
+
+    const token = await loadToken();
+    if (!token) {
+      throw new Error('Not authenticated');
+    }
+
+    const body = {
+      capability: 'general_assistant',
+      message: params.message,
+      history: params.history || [],
+    };
 
     return streamSse({
       url: `${API_BASE_URL}/chat/stream`,
