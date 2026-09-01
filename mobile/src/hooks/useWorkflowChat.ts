@@ -14,6 +14,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import * as Location from 'expo-location';
 
 import { applyStreamEvent, nextId } from '../lib/chatThread';
+import { useAuth } from '../context/AuthContext';
 import { useSubscriptionInsurance } from '../context/SubscriptionInsuranceContext';
 import { api } from '../lib/api';
 import type { AgentStreamEvent, CalendarEvent, ChatItem, RoamingPlan } from '../types';
@@ -62,6 +63,7 @@ function greetingText(
 }
 
 export function useWorkflowChat(event: CalendarEvent) {
+  const { customer } = useAuth();
   const { subscriptions, activeInsurance, refreshSubscriptions, refreshInsurance } = useSubscriptionInsurance();
 
   const [workflowState, setWorkflowState] = useState<WorkflowState>({
@@ -85,6 +87,9 @@ export function useWorkflowChat(event: CalendarEvent) {
   const watchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const startedRef = useRef(false);
   const deviceLocationRef = useRef<{ latitude: number; longitude: number; label?: string } | null>(null);
+  // Return flight date resolved from listCalendarTrips() during trip prep —
+  // event.end_datetime is only the outbound flight's end, not the trip's.
+  const returnFlightDateRef = useRef<string | undefined>(undefined);
   const lastRequestParamsRef = useRef<{
     message?: string;
     priorPlan?: RoamingPlan;
@@ -114,6 +119,52 @@ export function useWorkflowChat(event: CalendarEvent) {
     },
     [commitItems],
   );
+
+  // Builds the WhatsApp share card shown right after the trip checklist.
+  // Returns [] when the customer has no emergency contact or the card is
+  // already in the thread.
+  const buildWhatsAppShareItems = useCallback((): ChatItem[] => {
+    if (!customer?.emergency_contact_phone) return [];
+    if (itemsRef.current.some((item) => item.kind === 'whatsapp_share')) return [];
+
+    const startDate = new Date(event.start_datetime);
+    // Prefer the actual return flight date (matches TripPreparationCard);
+    // fall back to the event's own end when trips couldn't be fetched.
+    const endDate = returnFlightDateRef.current
+      ? new Date(returnFlightDateRef.current)
+      : new Date(event.end_datetime);
+    // Format in UTC so the dates match the server-side message regardless of
+    // the device's timezone.
+    const dateFormat = { month: 'short', day: 'numeric', timeZone: 'UTC' } as const;
+    const startFormatted = startDate.toLocaleDateString('en-US', dateFormat);
+    const endFormatted = endDate.toLocaleDateString('en-US', dateFormat);
+    const isRoundTrip = startFormatted !== endFormatted;
+
+    const contactName = customer.emergency_contact_name || 'Emergency Contact';
+    const travellerName = customer.full_name?.split(' ')[0] || 'Your friend';
+    const destination = event.destination ?? 'their destination';
+    const text = isRoundTrip
+      ? `Hi ${contactName},\n\n${travellerName} is travelling to ${destination} from ${startFormatted} to ${endFormatted}.`
+      : `Hi ${contactName},\n\n${travellerName} is travelling to ${destination} on ${startFormatted}.`;
+
+    return [
+      {
+        id: nextId(),
+        createdAt: Date.now(),
+        kind: 'text',
+        role: 'agent',
+        text: `Do you want to share the trip details with ${contactName}?`,
+      },
+      {
+        id: nextId(),
+        createdAt: Date.now(),
+        kind: 'whatsapp_share',
+        text,
+        contactName,
+        contactPhone: customer.emergency_contact_phone,
+      },
+    ];
+  }, [customer, event]);
 
   const clearWatchdog = useCallback(() => {
     if (watchdogRef.current) {
@@ -287,6 +338,7 @@ export function useWorkflowChat(event: CalendarEvent) {
           });
           if (trip?.return_date) {
             returnFlightDate = trip.return_date;
+            returnFlightDateRef.current = trip.return_date;
           }
           if (__DEV__) {
             console.log('[useWorkflowChat] trips:', trips);
@@ -420,7 +472,8 @@ export function useWorkflowChat(event: CalendarEvent) {
                 createdAt: Date.now(),
                 kind: 'trip_checklist',
                 destination: event.destination ?? 'your destination',
-              }
+              },
+              ...buildWhatsAppShareItems(),
             );
             appendItems(itemsToAdd);
             setWorkflowState({
@@ -477,7 +530,7 @@ export function useWorkflowChat(event: CalendarEvent) {
           });
         });
     },
-    [appendItems, updateConfirmationItem, event.id, refreshSubscriptions],
+    [appendItems, updateConfirmationItem, event.id, refreshSubscriptions, buildWhatsAppShareItems],
   );
 
   const decline = useCallback(
@@ -668,7 +721,8 @@ export function useWorkflowChat(event: CalendarEvent) {
             createdAt: Date.now(),
             kind: 'trip_checklist',
             destination: event.destination ?? 'your destination',
-          }
+          },
+          ...buildWhatsAppShareItems(),
         );
       } else {
         // Only insurance purchased - show payment complete card
@@ -713,7 +767,7 @@ export function useWorkflowChat(event: CalendarEvent) {
 
       setPhase('complete');
     },
-    [appendItems, event],
+    [appendItems, event, buildWhatsAppShareItems],
   );
 
   const retry = useCallback(() => {

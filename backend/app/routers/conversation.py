@@ -29,6 +29,42 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/chat", tags=["chat"])
 
 
+def _build_trip_message(event: dict, customer: dict) -> str:
+    """Draft a WhatsApp message with trip details for emergency contact."""
+    from datetime import datetime
+
+    destination = event.get("destination", "Unknown")
+    start = event.get("start_datetime", "Unknown")
+    end = event.get("end_datetime", "Unknown")
+
+    customer_name = customer.get("full_name", "Friend")
+    emergency_contact_name = customer.get("emergency_contact_name", "")
+
+    # Parse and format dates
+    start_formatted = start
+    end_formatted = end
+    is_round_trip = False
+
+    if isinstance(start, str) and start.startswith("20"):
+        try:
+            start_dt = datetime.fromisoformat(start.replace("Z", "+00:00"))
+            end_dt = datetime.fromisoformat(end.replace("Z", "+00:00"))
+            start_formatted = start_dt.strftime("%b %d")
+            end_formatted = end_dt.strftime("%b %d")
+            # Check if it's a round-trip (different dates)
+            is_round_trip = start_dt.date() != end_dt.date()
+        except:
+            pass
+
+    # Build message based on trip type
+    if is_round_trip:
+        msg = f"Hi {emergency_contact_name},\n\n{customer_name} is travelling to {destination} from {start_formatted} to {end_formatted}."
+    else:
+        msg = f"Hi {emergency_contact_name},\n\n{customer_name} is travelling to {destination} on {start_formatted}."
+
+    return msg
+
+
 class DeviceLocation(BaseModel):
     latitude: float
     longitude: float
@@ -96,8 +132,29 @@ async def chat_stream(
     async def _drive() -> None:
         try:
             logger.info("[chat/stream] orchestrator starting run_id=%s", conversation_id)
-            await asyncio.to_thread(orchestrator.run, orchestrator_request, stream.emit)
+            result = await asyncio.to_thread(orchestrator.run, orchestrator_request, stream.emit)
             logger.info("[chat/stream] orchestrator finished run_id=%s", conversation_id)
+
+            # Emit WhatsApp share prompt after workflow completes
+            if body.calendar_event_id and customer:
+                try:
+                    from app.deps import get_supabase
+                    db = get_supabase()
+                    customer_data = db.table("customers").select("emergency_contact_name, emergency_contact_phone").eq("id", customer["id"]).execute().data
+                    if customer_data and customer_data[0].get("emergency_contact_phone"):
+                        event = subject.get("calendar_event", {})
+                        trip_msg = _build_trip_message(event, customer_data[0])
+                        stream.emit({
+                            "type": "item",
+                            "data": {
+                                "kind": "whatsapp_share",
+                                "text": trip_msg,
+                                "contactName": customer_data[0].get("emergency_contact_name", "Emergency Contact"),
+                                "contactPhone": customer_data[0].get("emergency_contact_phone"),
+                            }
+                        })
+                except Exception as e:
+                    logger.warning("[chat/stream] failed to emit whatsapp_share: %s", e)
         except Exception as exc:
             logger.exception("[chat/stream] orchestrator crashed run_id=%s: %s", conversation_id, exc)
         finally:

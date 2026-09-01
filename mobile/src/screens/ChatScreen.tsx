@@ -1,7 +1,7 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useRef, useState, useEffect } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import ChatItemView from '../components/chat/ChatItemView';
 import DashboardHeader from '../components/dashboard/DashboardHeader';
@@ -33,6 +33,7 @@ export default function ChatScreen({ route, navigation }: Props) {
   const itemCountRef = useRef(0);
 
   const firstName = customer?.full_name?.split(' ')[0] ?? 'User';
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     if (items.length > itemCountRef.current) {
@@ -49,7 +50,7 @@ export default function ChatScreen({ route, navigation }: Props) {
         onPressClose={() => navigation.goBack()}
         menuItems={[]}
       />
-      <SafeAreaView style={styles.content} edges={['bottom']}>
+      <View style={styles.content}>
       {/* <View style={styles.tripHeader}>
         <Text style={styles.title}>{event.title}</Text>
         <Text style={styles.subtitle}>
@@ -117,7 +118,7 @@ export default function ChatScreen({ route, navigation }: Props) {
         </View>
       )}
 
-      <View style={styles.inputContainer}>
+      <View style={[styles.inputContainer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
         <TextInput
           style={styles.input}
           placeholder="Ask a follow-up question…"
@@ -137,7 +138,7 @@ export default function ChatScreen({ route, navigation }: Props) {
           <Text style={styles.sendButtonText}>Send</Text>
         </TouchableOpacity>
       </View>
-      </SafeAreaView>
+      </View>
     </View>
   );
 }
@@ -181,7 +182,7 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: '#E8E8E8',
     gap: 8,

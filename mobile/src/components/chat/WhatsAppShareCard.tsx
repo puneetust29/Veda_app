@@ -1,23 +1,36 @@
 import { useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 import { shareToWhatsApp } from '../../lib/whatsapp';
-import { VEDA_CONTACT } from '../../config/vedaContact';
-import { colors, radii, spacing, typography } from '../../theme';
+import { brandIcons } from '../../theme';
+import CardShell, { cardShellStyles } from './CardShell';
 
 type Props = {
   text: string;
+  contactName?: string;
+  contactPhone?: string;
 };
 
-export default function WhatsAppShareCard({ text }: Props) {
+export default function WhatsAppShareCard({ text, contactName = 'Emergency Contact', contactPhone }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  if (!contactPhone) {
+    return (
+      <View style={styles.fallbackShadow}>
+        <View style={styles.fallbackCard}>
+          <Text style={styles.error}>Emergency contact not available</Text>
+        </View>
+      </View>
+    );
+  }
 
   const handleShare = async () => {
     setLoading(true);
     setError(null);
     try {
-      await shareToWhatsApp(VEDA_CONTACT.phoneNumberE164, text);
+      await shareToWhatsApp(contactPhone, text);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to open WhatsApp');
     } finally {
@@ -26,70 +39,51 @@ export default function WhatsAppShareCard({ text }: Props) {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.card}>
-        <Text style={styles.label}>Share with {VEDA_CONTACT.name}</Text>
-        <Text style={styles.draftText}>{text}</Text>
-        <TouchableOpacity
-          style={[styles.button, loading && styles.buttonDisabled]}
-          onPress={handleShare}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color={colors.white} size="small" />
-          ) : (
-            <Text style={styles.buttonText}>Send via WhatsApp</Text>
-          )}
-        </TouchableOpacity>
-        {error && <Text style={styles.error}>{error}</Text>}
+    <CardShell
+      badge={<Ionicons name="logo-whatsapp" size={20} color={brandIcons.whatsappGreen} />}
+      badgeBackgroundColor="rgba(37, 211, 102, 0.08)"
+      title={`Share with ${contactName}`}
+      buttonLabel="Send via WhatsApp"
+      onButtonPress={handleShare}
+      loading={loading}
+      footer={error ? <Text style={styles.error}>{error}</Text> : undefined}
+    >
+      <View style={cardShellStyles.divider} />
+      <View style={cardShellStyles.section}>
+        <Text style={cardShellStyles.sectionLabel}>Message</Text>
+        <Text style={styles.messageText}>{text}</Text>
       </View>
-    </View>
+    </CardShell>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    marginVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
+  fallbackShadow: {
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 4,
+    borderRadius: 24,
   },
-  card: {
-    backgroundColor: '#f0f8ff',
-    borderRadius: radii.md,
-    borderLeftWidth: 4,
-    borderLeftColor: '#25d366',
-    padding: spacing.lg,
+  fallbackCard: {
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
+    padding: 16,
   },
-  label: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#666',
-    marginBottom: spacing.md,
-    textTransform: 'uppercase',
-  },
-  draftText: {
+  messageText: {
     fontSize: 14,
-    color: colors.textPrimary,
+    fontWeight: '400',
+    fontFamily: 'Urbanist_400Regular',
+    color: '#1a1a1a',
     lineHeight: 20,
-    marginBottom: spacing.lg,
-  },
-  button: {
-    backgroundColor: '#25d366',
-    borderRadius: radii.md,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    alignItems: 'center',
-  },
-  buttonDisabled: {
-    opacity: 0.7,
-  },
-  buttonText: {
-    color: colors.white,
-    fontSize: 14,
-    fontWeight: '600',
   },
   error: {
-    marginTop: spacing.md,
+    marginBottom: 12,
+    marginHorizontal: 16,
     fontSize: 12,
     color: '#d32f2f',
+    fontWeight: '500',
   },
 });

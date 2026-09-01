@@ -14,6 +14,8 @@ export type Customer = {
   account_number: string;
   created_at: string;
   current_plans: CurrentPlanCard[];
+  emergency_contact_name?: string | null;
+  emergency_contact_phone?: string | null;
 };
 
 export type CalendarEvent = {
@@ -318,7 +320,7 @@ export type ChatItem =
   | (ChatItemBase & { kind: 'card'; card: RecommendationCardPayload })
   | (ChatItemBase & { kind: 'hotel'; hotel: HotelDetectionResultPayload })
   | (ChatItemBase & { kind: 'maps'; maps: MapsResultPayload })
-  | (ChatItemBase & { kind: 'whatsapp_share'; text: string })
+  | (ChatItemBase & { kind: 'whatsapp_share'; text: string; contactName?: string; contactPhone?: string })
   | (ChatItemBase & { kind: 'travel_insurance'; plan: TravelInsurancePlan; calendarEventId: string })
   | (ChatItemBase & {
       kind: 'confirmation';
