@@ -5,8 +5,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import ChatItemView from '../components/chat/ChatItemView';
 import DashboardHeader from '../components/dashboard/DashboardHeader';
+import LoadingStream from '../components/chat/LoadingStream';
 import { useAuth } from '../context/AuthContext';
 import { useWorkflowChat } from '../hooks/useWorkflowChat';
+import { INITIAL_STREAM_EVENTS } from '../lib/mockStream';
 import type { RootStackParamList } from '../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Chat'>;
@@ -57,6 +59,9 @@ export default function ChatScreen({ route, navigation }: Props) {
         contentContainerStyle={styles.threadContent}
         onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
       >
+        {items.length === 0 && phase === 'idle' ? (
+          <LoadingStream items={INITIAL_STREAM_EVENTS} />
+        ) : null}
         {items.map((item, idx) => {
           // Skip hotel booking component
           if (item.kind === 'hotel') {
