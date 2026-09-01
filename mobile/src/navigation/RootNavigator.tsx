@@ -43,14 +43,7 @@ export default function RootNavigator() {
         ) : (
           <>
             <Stack.Screen name="Dashboard" component={DashboardScreen} />
-            <Stack.Screen
-              name="Chat"
-              component={ChatScreen}
-              options={({ route }) => ({
-                headerShown: true,
-                title: route.params.event.destination ?? '',
-              })}
-            />
+            <Stack.Screen name="Chat" component={ChatScreen} />
             <Stack.Screen
               name="VedaChat"
               component={VedaChatScreen}

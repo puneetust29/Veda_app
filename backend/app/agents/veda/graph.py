@@ -1,5 +1,4 @@
 from langchain_anthropic import ChatAnthropic
-from langchain_openai import ChatOpenAI
 from langgraph.graph import END, StateGraph
 from langgraph.types import StreamWriter
 
@@ -13,8 +12,6 @@ def _llm():
     settings = get_settings()
     if settings.anthropic_api_key:
         return ChatAnthropic(model=settings.anthropic_model, api_key=settings.anthropic_api_key, temperature=0)
-    if settings.openai_api_key:
-        return ChatOpenAI(model=settings.openai_model, api_key=settings.openai_api_key, temperature=0)
     raise RuntimeError("No LLM key configured — set ANTHROPIC_API_KEY or OPENAI_API_KEY in backend/.env")
 
 

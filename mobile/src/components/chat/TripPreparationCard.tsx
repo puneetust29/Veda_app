@@ -1,9 +1,9 @@
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import type { CalendarEvent } from '../../types';
 import ProgressIcon from '../icons/ProgressIcon';
 import CalendarIcon from '../icons/CalendarIcon';
-import HeaderBackground from '../../../assets/header-background.svg';
 import CheckIcon from '../icons/CheckIcon';
+import CardShell, { cardShellStyles } from './CardShell';
 
 type Props = {
   event: CalendarEvent;
@@ -30,10 +30,6 @@ export default function TripPreparationCard({
     day: 'numeric',
     month: 'short',
   });
-  const endDate = new Date(event.end_datetime).toLocaleDateString('en-US', {
-    day: 'numeric',
-    month: 'short',
-  });
   const returnDate = returnFlightDate ? new Date(returnFlightDate).toLocaleDateString('en-US', {
     day: 'numeric',
     month: 'short',
@@ -49,150 +45,48 @@ export default function TripPreparationCard({
   const anyPending = !hasRoamingActive || !hasInsuranceActive;
 
   return (
-    <View style={styles.cardShadow}>
-      <View style={styles.card}>
-        {/* Decorative Header Background */}
-        <View style={styles.decorativeHeader} pointerEvents="none">
-          <HeaderBackground width="100%" height="100%" preserveAspectRatio="xMidYMid slice" />
-        </View>
+    <CardShell
+      badge={<CalendarIcon size={20} color="#E60000" />}
+      title={`${returnDate ? `${startDate} - ${returnDate}` : startDate}, ${event.destination}`}
+      buttonLabel="Continue"
+      onButtonPress={onContinue}
+      loading={loading}
+      buttonDisabled={!anyPending}
+    >
+      {/* Travellers Section */}
+      <View style={cardShellStyles.section}>
+        <Text style={cardShellStyles.sectionLabel}>Travellers</Text>
+        <Text style={cardShellStyles.sectionValue}>1 people</Text>
+      </View>
 
-        {/* Trip Info Section */}
-        <View style={styles.tripInfo}>
-          <View style={styles.calendarBadge}>
-            <CalendarIcon size={20} color="#E60000" />
-          </View>
-          <Text style={styles.tripDates}>
-            {returnDate ? `${startDate} - ${returnDate}` : startDate}, {event.destination}
-          </Text>
-        </View>
+      <View style={cardShellStyles.divider} />
 
-        {/* Travellers Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Travellers</Text>
-          <Text style={styles.travellerCount}>1 people</Text>
-        </View>
-
-        <View style={styles.divider} />
-
-        {/* Preparation Section */}
-        <View style={styles.section}>
-          <Text style={styles.preparationTitle}>Preparation</Text>
-          <View style={styles.statusList}>
-            {statusItems.map((item, idx) => (
-              <View key={idx} style={styles.statusItem}>
-                <View style={styles.statusIconContainer}>
-                  {item.active ? (
-                    <CheckIcon size={12} />
-                  ) : (
-                    <ProgressIcon size={12} color="#6B7280" />
-                  )}
-                </View>
-                <Text style={[styles.statusLabel, !item.active && styles.pendingLabel]}>
-                  {item.label}
-                </Text>
-                {!item.active && (
-                  <Text style={styles.readyToReview}>Ready to review</Text>
+      {/* Preparation Section */}
+      <View style={cardShellStyles.section}>
+        <Text style={styles.preparationTitle}>Preparation</Text>
+        <View style={styles.statusList}>
+          {statusItems.map((item, idx) => (
+            <View key={idx} style={styles.statusItem}>
+              <View style={styles.statusIconContainer}>
+                {item.active ? (
+                  <CheckIcon size={12} />
+                ) : (
+                  <ProgressIcon size={12} color="#6B7280" />
                 )}
               </View>
-            ))}
-          </View>
+              <Text style={styles.statusLabel}>{item.label}</Text>
+              {!item.active && (
+                <Text style={styles.readyToReview}>Ready to review</Text>
+              )}
+            </View>
+          ))}
         </View>
-
-        {/* Continue Button */}
-        <TouchableOpacity
-          style={[styles.continueButton, (loading || !anyPending) && styles.continueButtonDisabled]}
-          onPress={onContinue}
-          disabled={loading || !anyPending}
-          activeOpacity={0.8}
-        >
-          {loading ? (
-            <ActivityIndicator color="#FFFFFF" size="small" />
-          ) : (
-            <Text style={styles.continueButtonText}>Continue</Text>
-          )}
-        </TouchableOpacity>
       </View>
-    </View>
+    </CardShell>
   );
 }
 
 const styles = StyleSheet.create({
-  cardShadow: {
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    elevation: 4,
-    borderRadius: 24,
-  },
-  card: {
-    borderRadius: 24,
-    backgroundColor: '#FFFFFF',
-    overflow: 'hidden',
-  },
-  decorativeHeader: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 141,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-  },
-  tripInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingTop: 16,
-    paddingHorizontal: 16,
-    marginBottom: 8,
-    zIndex: 1,
-  },
-  calendarBadge: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: 'rgba(230, 0, 0, 0.08)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  calendarIcon: {
-    fontSize: 20,
-  },
-  tripDates: {
-    fontSize: 20,
-    fontWeight: '600',
-    fontFamily: 'Urbanist_600SemiBold',
-    color: '#000000',
-    flex: 1,
-    lineHeight: 24,
-  },
-  section: {
-    paddingHorizontal: 16,
-    marginBottom: 16,
-
-  },
-  sectionLabel: {
-    fontSize: 12,
-    fontWeight: '400',
-    fontFamily: 'Urbanist_400Regular',
-    color: '#000000',
-    marginBottom: 4,
-    letterSpacing: 0.5,
-  },
-  travellerCount: {
-    fontSize: 14,
-    fontWeight: '600',
-    fontFamily: 'Urbanist_600SemiBold',
-    color: '#000000',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.1)',
-    marginHorizontal: 16,
-    marginVertical: 12,
-  },
   preparationTitle: {
     fontSize: 14,
     fontWeight: '600',
@@ -221,31 +115,10 @@ const styles = StyleSheet.create({
     color: '#1a1a1a',
     flex: 1,
   },
-  pendingLabel: {
-    color: '#1a1a1a',
-  },
   readyToReview: {
     fontSize: 12,
     fontFamily: 'Inter_400Regular',
     color: '#6b7280',
     fontWeight: '400',
-  },
-  continueButton: {
-    backgroundColor: '#f00405',
-    borderRadius: 24,
-    marginHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 16,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  continueButtonDisabled: {
-    opacity: 0.6,
-  },
-  continueButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '700',
-    fontFamily: 'Urbanist_700Bold',
   },
 });
