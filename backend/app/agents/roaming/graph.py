@@ -1,6 +1,9 @@
+import logging
 from typing import Optional
 
 from langchain_anthropic import ChatAnthropic
+
+log = logging.getLogger("app.agents.roaming")
 from langgraph.graph import END, StateGraph
 from langgraph.types import StreamWriter
 
@@ -18,9 +21,11 @@ MAX_RETRIES = 2
 def _llm():
     settings = get_settings()
     if settings.anthropic_api_key:
+        log.info("[llm] using Anthropic model=%s", settings.anthropic_model)
         return ChatAnthropic(model=settings.anthropic_model, api_key=settings.anthropic_api_key, temperature=0)
     if settings.openai_api_key:
         from langchain_openai import ChatOpenAI
+        log.info("[llm] using OpenAI model=%s", settings.openai_model)
         return ChatOpenAI(model=settings.openai_model, api_key=settings.openai_api_key, temperature=0)
     raise RuntimeError("No LLM key configured — set ANTHROPIC_API_KEY or OPENAI_API_KEY in backend/.env")
 

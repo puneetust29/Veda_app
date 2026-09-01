@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     supabase_service_role_key: str
     supabase_jwt_secret: str
 
-    anthropic_api_key: str
+    anthropic_api_key: str = ""
     anthropic_model: str = "claude-haiku-4-5-20251001"
 
     openai_api_key: str = ""
