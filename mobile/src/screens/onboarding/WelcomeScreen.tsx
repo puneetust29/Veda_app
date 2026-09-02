@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
-import { Animated, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import type { FC, SVGProps } from 'react';
 
 import StepHeader from '../../components/onboarding/StepHeader';
@@ -18,20 +18,6 @@ import payAsYouGo from '../../../assets/pay-as-you-go.svg';
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'Welcome'>;
 
 const CARD_INTERVAL = 2400;
-
-// Matches contentWrapper's minHeight below. Used only for the iOS
-// transformOrigin compensation (see IOS_ORIGIN_FIX_ENABLED).
-const CARD_HEIGHT = 340;
-
-// RN's Fabric implementation of `transformOrigin` is unreliable on iOS when
-// combined with 3D transforms (rotateY/perspective): it's silently ignored,
-// so the scale pivots from the view's centre instead of its top. That sinks
-// each receding card's top edge into the middle of the deck instead of
-// keeping it flush with the front card, exposing the back card's title/
-// bullet text instead of the intended hairline sliver of artwork. Android
-// honours transformOrigin correctly, so only iOS needs the manual
-// compensating translateY.
-const IOS_ORIGIN_FIX_ENABLED = Platform.OS === 'ios';
 
 // ONE spring drives the entire deck (see `progress` below), so these values
 // are matched to the reference implementation exactly.
@@ -73,18 +59,24 @@ const FALLBACK_CARDS: CurrentPlanCard[] = [
 // Revolving deck slots keyed by the (non-shortest) circular distance 0..3+
 // from the active card. Slot 0 is the centred, front-facing card; 1..3 form a
 // receding fan tucked behind it to the right — a touch lower, smaller,
-// dimmer, rotated further and turned a little more on Y for depth — with a
-// lower z so each tucks behind the card ahead of it.
+// dimmer, rotated further — with a lower z so each tucks behind the card
+// ahead of it.
 //
 // Offsets are the reference's, rescaled to this card's rendered width
 // (the reference's 240px card is drawn at FRONT_SCALE 1.2 = 288px, so its
 // 24/42/56 offsets are 8.3%/14.6%/19.4% of the card — applied here to 260px).
 // Scales/opacities are the reference's normalised to a 1.0 front card.
 //
-// These pair with transformOrigin: 'center top' on the card (see below).
-// The rotations are measured about the TOP edge, not the centre, so the
-// artwork band near the top of the card barely swings and the deck reads as
-// hairline slivers up top that fan out toward the bottom.
+// These pair with transformOrigin: '50% 0%' on the card (see below) — i.e.
+// pivoted about the card's TOP-CENTRE, not its centre. The rotations are
+// measured about that top edge, so the artwork band near the top of the
+// card barely swings and the deck reads as hairline slivers up top that fan
+// out toward the bottom, instead of swinging wide open from the middle.
+//
+// NOTE: rotateY is intentionally left out of the transform below (see the
+// comment on that transform array). Do not reintroduce rotateY/perspective
+// here without re-reading that comment — combining either with
+// transformOrigin breaks the top-edge pivot on iOS.
 //
 // zIndex is a plain number applied the instant the index changes —
 // deliberately not delayed or animated. A card dropping toward the back must
@@ -94,13 +86,13 @@ const FALLBACK_CARDS: CurrentPlanCard[] = [
 function slotFor(raw: number) {
   switch (raw) {
     case 0: // centre, front — flat, face-on, full size
-      return { x: 0, y: 0, rotate: 0, rotateY: 0, scale: 1, z: 40, contentOpacity: 1 };
+      return { x: 0, y: 0, rotate: 0, scale: 1, z: 40, contentOpacity: 1 };
     case 1: // just behind — a thin sliver peeks right
-      return { x: 22, y: 7, rotate: 3, rotateY: -11, scale: 0.925, z: 30, contentOpacity: 0.7 };
+      return { x: 22, y: 7, rotate: 3, scale: 0.925, z: 30, contentOpacity: 0.7 };
     case 2: // deeper, tucked behind slot 1
-      return { x: 38, y: 14, rotate: 6, rotateY: -15, scale: 0.858, z: 20, contentOpacity: 0.5 };
+      return { x: 38, y: 14, rotate: 6, scale: 0.858, z: 20, contentOpacity: 0.5 };
     default: // 3+ — deepest in the deck
-      return { x: 50, y: 21, rotate: 9, rotateY: -18, scale: 0.792, z: 10, contentOpacity: 0.35 };
+      return { x: 50, y: 21, rotate: 9, scale: 0.792, z: 10, contentOpacity: 0.35 };
   }
 }
 
@@ -211,11 +203,6 @@ export default function WelcomeScreen({ navigation }: Props) {
               const lerpDeg = (a: number, b: number) =>
                 progress.interpolate({ inputRange: [0, 1], outputRange: [`${a}deg`, `${b}deg`] });
 
-              // See IOS_ORIGIN_FIX_ENABLED — no-op on Android, where
-              // transformOrigin already keeps the top edge pinned.
-              const anchorY = (y: number, scale: number) =>
-                IOS_ORIGIN_FIX_ENABLED ? y + (CARD_HEIGHT / 2) * (scale - 1) : y;
-
               return (
                 <Animated.View
                   key={c.id}
@@ -225,11 +212,9 @@ export default function WelcomeScreen({ navigation }: Props) {
                     {
                       zIndex: to.z,
                       transform: [
-                        { perspective: 800 },
                         { translateX: lerp(from.x, to.x) },
-                        { translateY: lerp(anchorY(from.y, from.scale), anchorY(to.y, to.scale)) },
+                        { translateY: lerp(from.y, to.y) },
                         { rotate: lerpDeg(from.rotate, to.rotate) },
-                        { rotateY: lerpDeg(from.rotateY, to.rotateY) },
                         { scale: lerp(from.scale, to.scale) },
                       ],
                     },
@@ -295,18 +280,28 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     top: 0,
-    // Pivot every rotation and scale about the card's TOP edge, matching the
-    // reference. With RN's default centre origin the 3/6/9° slot rotations
-    // swing the artwork band (which sits near the top) wide open — measured
-    // at ~30% of the card width versus the reference's ~4% — which is what
-    // let the back cards' red artwork show past the front card's edge. It
-    // also keeps the shrunken back cards' top edges aligned with the front
-    // card instead of dropping them.
+    // Pivot every rotation and scale about the card's TOP edge (horizontally
+    // centred), matching the reference. With RN's default centre origin the
+    // 3/6/9° slot rotations swing the artwork band (which sits near the top)
+    // wide open — measured at ~30% of the card width versus the reference's
+    // ~4% — which is what let the back cards' red artwork *and* their
+    // title/bullet text show past the front card's edge.
     //
-    // Needs RN 0.74+ / Expo SDK 51+. On older versions this style prop is
-    // ignored; the equivalent is to add a compensating translateY of
-    // (CARD_HEIGHT / 2) * (scale - 1) to each slot.
-    transformOrigin: 'center top',
+    // IMPORTANT: do not add `perspective` or `rotateY` to the transform
+    // array above without re-reading this comment. RN Fabric's
+    // transformOrigin is unreliable on iOS specifically when combined with
+    // those 3D-transform properties — it gets silently ignored and falls
+    // back to centre-pivot, reintroducing the exact bug this comment is
+    // describing. There is no partial fix for that (a manual translateY-only
+    // compensation was tried here previously; it only corrects the scale
+    // channel and leaves the rotate channel's swing uncorrected, which is
+    // worse than it looks because the rotate channel's error grows with
+    // sin(angle) and is what actually pulls the deeper, more-rotated cards
+    // furthest out of place). Keeping this transform 2D lets iOS honour
+    // transformOrigin natively, same as Android already does.
+    //
+    // Needs RN 0.74+ / Expo SDK 51+.
+    transformOrigin: '50% 0%',
   },
 
   imageCard: {
