@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
-import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import type { FC, SVGProps } from 'react';
 
 import StepHeader from '../../components/onboarding/StepHeader';
@@ -18,6 +18,20 @@ import payAsYouGo from '../../../assets/pay-as-you-go.svg';
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'Welcome'>;
 
 const CARD_INTERVAL = 2400;
+
+// Matches contentWrapper's minHeight below. Used only for the iOS
+// transformOrigin compensation (see IOS_ORIGIN_FIX_ENABLED).
+const CARD_HEIGHT = 340;
+
+// RN's Fabric implementation of `transformOrigin` is unreliable on iOS when
+// combined with 3D transforms (rotateY/perspective): it's silently ignored,
+// so the scale pivots from the view's centre instead of its top. That sinks
+// each receding card's top edge into the middle of the deck instead of
+// keeping it flush with the front card, exposing the back card's title/
+// bullet text instead of the intended hairline sliver of artwork. Android
+// honours transformOrigin correctly, so only iOS needs the manual
+// compensating translateY.
+const IOS_ORIGIN_FIX_ENABLED = Platform.OS === 'ios';
 
 // ONE spring drives the entire deck (see `progress` below), so these values
 // are matched to the reference implementation exactly.
@@ -197,6 +211,11 @@ export default function WelcomeScreen({ navigation }: Props) {
               const lerpDeg = (a: number, b: number) =>
                 progress.interpolate({ inputRange: [0, 1], outputRange: [`${a}deg`, `${b}deg`] });
 
+              // See IOS_ORIGIN_FIX_ENABLED — no-op on Android, where
+              // transformOrigin already keeps the top edge pinned.
+              const anchorY = (y: number, scale: number) =>
+                IOS_ORIGIN_FIX_ENABLED ? y + (CARD_HEIGHT / 2) * (scale - 1) : y;
+
               return (
                 <Animated.View
                   key={c.id}
@@ -208,7 +227,7 @@ export default function WelcomeScreen({ navigation }: Props) {
                       transform: [
                         { perspective: 800 },
                         { translateX: lerp(from.x, to.x) },
-                        { translateY: lerp(from.y, to.y) },
+                        { translateY: lerp(anchorY(from.y, from.scale), anchorY(to.y, to.scale)) },
                         { rotate: lerpDeg(from.rotate, to.rotate) },
                         { rotateY: lerpDeg(from.rotateY, to.rotateY) },
                         { scale: lerp(from.scale, to.scale) },
@@ -244,7 +263,7 @@ export default function WelcomeScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  body: { paddingHorizontal: spacing.xl, flex: 1, flexDirection: 'column' },
+  body: { paddingHorizontal: spacing.xl, paddingTop:spacing.xl, flex: 1, flexDirection: 'column' },
   title: { fontSize: 32, fontWeight: '700', fontFamily: fonts.bold, color: colors.textPrimary, marginBottom: spacing.sm, lineHeight: 40 },
   subtitle: { fontSize: 14, fontWeight: '400', fontFamily: fonts.body, color: '#6b7280', marginBottom: spacing.lg, lineHeight: 21 },
   viewContainer: { flex: 1, justifyContent: 'space-between' },

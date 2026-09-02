@@ -477,24 +477,27 @@ function TierHero({ topInset }: { topInset: number }) {
 // disc itself produces the opposite — an inner edge that dips in the middle —
 // no matter how the numbers are tuned.
 
-const FAN_DISC = 24;
-const FAN_TICKS = 21;       // keep odd — the middle one is replaced by the spine
-const FAN_GAP = 8;          // clear space under the disc, spanned by the spine
-const FAN_RX = 100;         // horizontal half-span of the crown
-const FAN_RY = 30;          // how far the ends drop below the crown's peak
-const FAN_TICK = 14;        // tick length — constant across the sweep
-const FAN_SPREAD_DEG = 54;  // half-sweep; smaller = flatter, steeper end ticks
-const FAN_TOP_SPACING = 10; // gap between the card's bottom edge and the fan
+const FAN_DISC = 30;
+const FAN_TICKS = 17;       // keep odd — the middle one is replaced by the spine
+const FAN_GAP = 15;          // clear space under the disc, spanned by the spine
+const FAN_RX = 91;         // horizontal half-span of the crown
+const FAN_RY = 18;          // how far the ends drop below the crown's peak
+const FAN_TICK = 12;        // tick length — constant across the sweep
+const FAN_SPREAD_DEG = 30;  // half-sweep; smaller = flatter, steeper end ticks
+// The disc straddles the card's bottom edge rather than sitting clear below it,
+// so it reads as a badge pinned to the card corner. 0 centres the disc exactly
+// on the border (half in, half out) — see the marginTop math in styles below.
+const FAN_TOP_SPACING = 0;
 const FAN_HEIGHT = FAN_DISC / 2 + FAN_GAP + FAN_RY + FAN_TICK + 4;
 
-const FAN_SPINE_ALPHA = 0.5;
+const FAN_SPINE_ALPHA = 0.8;
 const FAN_CENTRE_INDEX = (FAN_TICKS - 1) / 2;
 
 function SelectionFan({ width, pinX }: { width: number; pinX: Animated.Value }) {
   const cx = width / 2;
   const cy = FAN_DISC / 2;
 
-  const peakY = cy + FAN_DISC / 2 + FAN_GAP;
+  const peakY = cy + FAN_GAP;
   const spread = (FAN_SPREAD_DEG * Math.PI) / 180;
   const a = FAN_RX / Math.sin(spread);
   const b = FAN_RY / (1 - Math.cos(spread));
@@ -525,7 +528,7 @@ function SelectionFan({ width, pinX }: { width: number; pinX: Animated.Value }) 
               y1={py}
               x2={px + (dx / len) * FAN_TICK}
               y2={py + (dy / len) * FAN_TICK}
-              stroke={withOpacity(colors.accentRed, 0.12 + 0.2 * centred)}
+              stroke={withOpacity(colors.accentRed, 0.08 + 0.2 * centred)}
               strokeWidth={1.2}
               strokeLinecap="round"
             />
@@ -536,10 +539,11 @@ function SelectionFan({ width, pinX }: { width: number; pinX: Animated.Value }) 
           x1={cx}
           y1={cy + FAN_DISC / 2}
           x2={cx}
-          y2={peakY + FAN_TICK}
+          y2={FAN_HEIGHT - 1}
           stroke={withOpacity(colors.accentRed, FAN_SPINE_ALPHA)}
           strokeWidth={1.4}
           strokeLinecap="round"
+          // stroke={withOpacity(colors.accentRed, 0.8)}
         />
       </Svg>
 
@@ -550,7 +554,7 @@ function SelectionFan({ width, pinX }: { width: number; pinX: Animated.Value }) 
           { left: cx - FAN_DISC / 2, transform: [{ translateX: pinX }] },
         ]}
       >
-        <Ionicons name="checkmark" size={14} color={colors.white} />
+        <Ionicons name="checkmark" size={17} color={colors.white} />
       </Animated.View>
     </View>
   );
