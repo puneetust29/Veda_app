@@ -22,9 +22,11 @@ import { arrowWhite, chipDevices, chipMap } from './figmaSvgs';
 
 type Props = {
   flights: CalendarEvent[];
+  bills?: CalendarEvent[];
   activeRoamingEventIds: Set<string>;
   activeInsuranceEventIds: Set<string>;
   onPressFlight: (flight: CalendarEvent) => void;
+  onPressBill?: (bill: CalendarEvent) => void;
 };
 
 type TagKey = 'roaming' | 'insurance';
@@ -93,13 +95,19 @@ function getCardSubtitle(status: CompletionStatus): string {
 // title + Inter body copy, chips, and a grey footer action bar with a red
 // square arrow button. Built on RN's built-in Animated API rather than
 // reanimated, which isn't a dependency yet.
-export default function AttentionCarousel({ flights, activeRoamingEventIds, activeInsuranceEventIds, onPressFlight }: Props) {
+export default function AttentionCarousel({ flights, bills = [], activeRoamingEventIds, activeInsuranceEventIds, onPressFlight, onPressBill }: Props) {
   const [activeIndex, setActiveIndex] = useState(0);
   const scrollX = useRef(new Animated.Value(0)).current;
   // Per-flight, per-tag confirmation state for chips with no backend-tracked status.
   // Insurance status now comes from backend, so only track local confirmations if needed.
   const [confirmed, setConfirmed] = useState<Record<string, Set<TagKey>>>({}); // TODO: Consider removing if not needed
 
+  // Combine flights and bills, sorted by start_datetime
+  const allEvents = [...flights, ...bills].sort((a, b) => {
+    const dateA = new Date(a.start_datetime).getTime();
+    const dateB = new Date(b.start_datetime).getTime();
+    return dateA - dateB;
+  });
 
   const toggleTag = (flightId: string, tag: TagKey) => {
     setConfirmed((prev) => {
@@ -115,11 +123,11 @@ export default function AttentionCarousel({ flights, activeRoamingEventIds, acti
 
   const handleMomentumScrollEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const index = Math.round(event.nativeEvent.contentOffset.x / SNAP_INTERVAL);
-    setActiveIndex(Math.max(0, Math.min(index, flights.length - 1)));
+    setActiveIndex(Math.max(0, Math.min(index, allEvents.length - 1)));
   };
 
-  if (flights.length === 0) {
-    return <Text style={styles.empty}>No upcoming flights found.</Text>;
+  if (allEvents.length === 0) {
+    return <Text style={styles.empty}>No upcoming events found.</Text>;
   }
 
   return (
@@ -136,25 +144,26 @@ export default function AttentionCarousel({ flights, activeRoamingEventIds, acti
         onMomentumScrollEnd={handleMomentumScrollEnd}
         scrollEventThrottle={16}
       >
-        {flights.map((flight, index) => (
+        {allEvents.map((event, index) => (
           <AttentionCard
-            key={flight.id}
-            flight={flight}
+            key={event.id}
+            event={event}
+            type={event.event_type as 'flight' | 'broadbandBill'}
             index={index}
             scrollX={scrollX}
-            roamingActive={activeRoamingEventIds.has(flight.id)}
-            insuranceActive={activeInsuranceEventIds.has(flight.id)}
-            confirmedTags={confirmed[flight.id] ?? new Set<TagKey>()}
-            onToggleTag={(tag) => toggleTag(flight.id, tag)}
-            onPress={() => onPressFlight(flight)}
+            roamingActive={activeRoamingEventIds.has(event.id)}
+            insuranceActive={activeInsuranceEventIds.has(event.id)}
+            confirmedTags={confirmed[event.id] ?? new Set<TagKey>()}
+            onToggleTag={(tag) => toggleTag(event.id, tag)}
+            onPress={() => event.event_type === 'flight' ? onPressFlight(event) : onPressBill?.(event)}
           />
         ))}
       </Animated.ScrollView>
 
-      {flights.length > 1 ? (
+      {allEvents.length > 1 ? (
         <View style={styles.dots}>
-          {flights.map((flight, index) => (
-            <View key={flight.id} style={[styles.dot, index === activeIndex && styles.dotActive]} />
+          {allEvents.map((event, index) => (
+            <View key={event.id} style={[styles.dot, index === activeIndex && styles.dotActive]} />
           ))}
         </View>
       ) : null}
@@ -177,7 +186,8 @@ function getRandomFallbackImage(seed: string): number {
 }
 
 function AttentionCard({
-  flight,
+  event,
+  type,
   index,
   scrollX,
   roamingActive,
@@ -186,7 +196,8 @@ function AttentionCard({
   onToggleTag,
   onPress,
 }: {
-  flight: CalendarEvent;
+  event: CalendarEvent;
+  type: 'flight' | 'broadbandBill';
   index: number;
   scrollX: Animated.Value;
   roamingActive: boolean;
@@ -208,12 +219,73 @@ function AttentionCard({
     extrapolate: 'clamp',
   });
 
-  const destinationCity = cityFromLocation(flight.destination);
-  const completionStatus = getFlightCompletionStatus(flight.id, subscriptions, activeInsurance);
-  const isDomestic = flight.is_domestic ?? false;
+  // Bill card rendering
+  if (type === 'broadbandBill') {
+    const rawDetails = event.raw_details as any || {};
+    const billProvider = rawDetails.bill_provider || 'Broadband';
+    const billAmount = rawDetails.bill_amount || 0;
+    const billCurrency = rawDetails.bill_currency || 'USD';
+    const dueDate = rawDetails.due_date ? new Date(rawDetails.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Due soon';
+
+    return (
+      <Animated.View style={[styles.card, { transform: [{ scale }] }]}>
+        {/* Banner with image */}
+        <View style={styles.banner}>
+          <Image
+            source={
+              imageLoadFailed
+                ? getRandomFallbackImage(event.id)
+                : { uri: `https://picsum.photos/seed/${encodeURIComponent(event.id)}/600/300` }
+            }
+            style={StyleSheet.absoluteFill}
+            resizeMode="cover"
+            onError={() => setImageLoadFailed(true)}
+          />
+          <View style={styles.badgeRow}>
+            <SourceBadge source={event.source} />
+          </View>
+        </View>
+
+        {/* Content */}
+        <View style={styles.content}>
+          <Text style={styles.cardTitle} numberOfLines={2}>
+            Pay this month's household bills
+          </Text>
+          <Text style={styles.cardSubtitle} numberOfLines={2}>
+            I've gathered everything that's due this month.
+          </Text>
+
+          {/* Bill Provider Tag */}
+          <View style={styles.billCategoriesRow}>
+            <View style={[styles.billCategory, styles.billCategoryHighlight]}>
+              <Text style={[styles.billCategoryLabel, styles.billCategoryLabelHighlight]}>
+                {billProvider}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Footer with amount and button */}
+        <TouchableOpacity
+          style={[styles.ctaRow]}
+          onPress={onPress}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.ctaText}>Review & Pay</Text>
+          <View style={styles.ctaButton}>
+            <SvgXml xml={arrowWhite} width={14} height={14} />
+          </View>
+        </TouchableOpacity>
+      </Animated.View>
+    );
+  }
+
+  // Flight card rendering
+  const destinationCity = cityFromLocation(event.destination);
+  const completionStatus = getFlightCompletionStatus(event.id, subscriptions, activeInsurance);
+  const isDomestic = event.is_domestic ?? false;
   const cardSubtitle = getCardSubtitle(completionStatus);
   const shouldDisableButton = isDomestic || completionStatus === 'both_done';
-
 
   return (
     <Animated.View style={[styles.card, { transform: [{ scale }] }]}>
@@ -221,15 +293,15 @@ function AttentionCard({
         <Image
           source={
             imageLoadFailed
-              ? getRandomFallbackImage(flight.id)
-              : { uri: `https://picsum.photos/seed/${encodeURIComponent(flight.id)}/600/300` }
+              ? getRandomFallbackImage(event.id)
+              : { uri: `https://picsum.photos/seed/${encodeURIComponent(event.id)}/600/300` }
           }
           style={StyleSheet.absoluteFill}
           resizeMode="cover"
           onError={() => setImageLoadFailed(true)}
         />
         <View style={styles.badgeRow}>
-          <SourceBadge source={flight.source} />
+          <SourceBadge source={event.source} />
         </View>
       </View>
 
@@ -241,7 +313,7 @@ function AttentionCard({
           {cardSubtitle}
         </Text>
 
-        {!flight.is_domestic && (
+        {!event.is_domestic && (
           <View style={styles.tagRow}>
             <CheckableTag
               iconXml={chipMap}
@@ -373,4 +445,27 @@ const styles = StyleSheet.create({
   dots: { flexDirection: 'row', justifyContent: 'center', gap: 4 },
   dot: { width: 5, height: 5, borderRadius: 100, backgroundColor: colors.dotInactive },
   dotActive: { backgroundColor: colors.accentCta, width: 24, height: 5 },
+  billCategoriesRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+    flexWrap: 'wrap',
+  },
+  billCategory: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: 8,
+    backgroundColor: 'rgba(230, 0, 0, 0.08)',
+  },
+  billCategoryHighlight: {
+    backgroundColor: '#E60000',
+  },
+  billCategoryLabel: {
+    fontFamily: fonts.semiBold,
+    fontSize: 12,
+    color: colors.accentButton,
+  },
+  billCategoryLabelHighlight: {
+    color: 'white',
+  },
 });

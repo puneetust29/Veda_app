@@ -154,6 +154,15 @@ export default function DashboardScreen({ navigation }: Props) {
       return Number(isLondon(b)) - Number(isLondon(a));
     });
   console.log('[Dashboard] upcomingFlights order:', upcomingFlights.map((e, i) => `#${i+1} "${e.title}" origin=${e.origin} dest=${e.destination} start=${e.start_datetime} end=${e.end_datetime}`));
+
+  const upcomingBills = events
+    .filter((event) => event.event_type === 'broadbandBill')
+    .sort((a, b) => {
+      const dateA = a.start_datetime ? new Date(a.start_datetime).getTime() : 0;
+      const dateB = b.start_datetime ? new Date(b.start_datetime).getTime() : 0;
+      return dateA - dateB;
+    });
+
   const firstName = customer?.full_name?.split(' ')[0] ?? 'there';
 
   // "Connect apps" tiles are visual placeholders for integrations that
@@ -243,6 +252,7 @@ export default function DashboardScreen({ navigation }: Props) {
 
             <AttentionCarousel
               flights={upcomingFlights}
+              bills={upcomingBills}
               activeRoamingEventIds={
                 new Set(
                   (subscriptions ?? [])
@@ -256,6 +266,10 @@ export default function DashboardScreen({ navigation }: Props) {
               onPressFlight={(event) => {
                 const idx = upcomingFlights.findIndex((f) => f.id === event.id);
                 console.log(`[Dashboard] opened card #${idx + 1} "${event.title}" origin=${event.origin} dest=${event.destination} start=${event.start_datetime}`);
+                navigation.navigate('Chat', { event });
+              }}
+              onPressBill={(event) => {
+                console.log('[Dashboard] opened bill', event.id);
                 navigation.navigate('Chat', { event });
               }}
             />
