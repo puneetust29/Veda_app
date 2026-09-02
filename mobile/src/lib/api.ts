@@ -211,6 +211,7 @@ export const api = {
 
   streamVedaConversation: async (params: {
     message: string;
+    capability?: string;
     history?: Array<{ role: 'user' | 'agent'; text: string }>;
     signal: AbortSignal;
     onEvent: (event: AgentStreamEvent) => void;
@@ -227,7 +228,7 @@ export const api = {
     }
 
     const body = {
-      capability: 'general_assistant',
+      capability: params.capability ?? 'general_assistant',
       message: params.message,
       history: params.history || [],
     };

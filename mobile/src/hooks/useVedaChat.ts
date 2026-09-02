@@ -12,6 +12,13 @@ function greetingText(): string {
   return "Hi, I'm Veda — ask me about your travel plans or the Veda app.";
 }
 
+const GROCERY_KEYWORDS = /\b(milk|eggs?|bread|butter|cheese|chicken|beef|fish|salmon|pasta|rice|flour|sugar|salt|pepper|tomato|potato|onion|garlic|carrot|spinach|lettuce|apple|banana|orange|grocery|groceries|supermarket|tesco|sainsbury|asda|waitrose|morrison|ocado|shopping list|food shop|food shopping)\b/i;
+
+function detectCapability(message: string): string {
+  if (GROCERY_KEYWORDS.test(message)) return 'grocery';
+  return 'general_assistant';
+}
+
 export function useVedaChat() {
   const [items, setItems] = useState<ChatItem[]>(() => [
     { id: nextId(), createdAt: Date.now(), kind: 'text', role: 'agent', text: greetingText() },
@@ -102,17 +109,19 @@ export function useVedaChat() {
           text: (item as any).text,
         }));
 
+      const capability = detectCapability(message);
       if (__DEV__) {
-        console.log('[useVedaChat] Starting stream:', { message, historyLen: history.length });
+        console.log('[useVedaChat] Starting stream:', { message, capability, historyLen: history.length });
       }
 
       api
         .streamVedaConversation({
           message,
+          capability,
           history,
           signal: controller.signal,
           onEvent: (event) => {
-            if (__DEV__) console.log('[useVedaChat] Event:', event.type);
+            if (__DEV__) console.log('[useVedaChat] Event:', event.type, JSON.stringify((event as any).data ?? '').slice(0, 200));
             handleStreamEvent(event);
           },
           onError: (err) => {

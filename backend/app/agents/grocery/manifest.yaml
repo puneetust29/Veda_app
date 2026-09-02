@@ -1,0 +1,13 @@
+name: grocery_agent
+version: 0.1.0
+description: Detects grocery shopping intent and builds a product basket via Pepesto API, with a checkout link to complete the order.
+enabled: true
+priority: 30
+capabilities: [grocery]
+triggers:
+  events: []
+  rules: []
+required_context: [customer]
+tools: []
+actions: []
+output_schema: app.agents.grocery.schemas:GroceryResultCard

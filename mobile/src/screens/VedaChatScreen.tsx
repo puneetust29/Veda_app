@@ -24,7 +24,13 @@ export default function VedaChatScreen({ navigation }: Props) {
         onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
       >
         {items.map((item) => (
-          <ChatItemView key={item.id} item={item} />
+          <ChatItemView
+            key={item.id}
+            item={item}
+            onChoiceSelect={(value) => {
+              sendMessage(value);
+            }}
+          />
         ))}
       </ScrollView>
 

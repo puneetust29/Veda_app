@@ -12,6 +12,8 @@ import WhatsAppShareCard from './WhatsAppShareCard';
 import TravelInsuranceCardChat from './TravelInsuranceCardChat';
 import TripPreparationCard from './TripPreparationCard';
 import TripChecklistCard from './TripChecklistCard';
+import GroceryBasketCard from './GroceryBasketCard';
+import ChoiceCard from './ChoiceCard';
 
 
 type Props = {
@@ -20,11 +22,12 @@ type Props = {
   onDecline?: (actionId: string) => void;
   onInsurancePurchased?: (data: any) => void;
   onContinuePrep?: () => void;
+  onChoiceSelect?: (value: string) => void;
   continuePrepLoading?: boolean;
   nextItem?: ChatItem;
 };
 
-function ChatItemViewImpl({ item, onConfirm, onDecline, onInsurancePurchased, onContinuePrep, continuePrepLoading, nextItem }: Props) {
+function ChatItemViewImpl({ item, onConfirm, onDecline, onInsurancePurchased, onContinuePrep, onChoiceSelect, continuePrepLoading, nextItem }: Props) {
   switch (item.kind) {
     case 'text':
       return <MessageBubble text={item.text} tone={item.role} />;
@@ -93,6 +96,17 @@ function ChatItemViewImpl({ item, onConfirm, onDecline, onInsurancePurchased, on
       );
     case 'trip_checklist':
       return <TripChecklistCard destination={item.destination} />;
+    case 'grocery_basket':
+      return <GroceryBasketCard basket={item.basket} />;
+    case 'choice':
+      return (
+        <ChoiceCard
+          question={item.question}
+          choices={item.choices}
+          selected={item.selected}
+          onSelect={(value) => onChoiceSelect?.(value)}
+        />
+      );
     case 'error':
       return <MessageBubble text={item.message} tone="error" />;
     default: {

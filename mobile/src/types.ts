@@ -291,6 +291,33 @@ export type MapsResultPayload = {
 // The wire event contract emitted by `POST /chat/stream`. This is the backend's
 // still-being-finalized shape — only `chatThread.ts` should need to know both this
 // and `ChatItem` below; everything else in the app works off the stable render model.
+export type ChoiceOption = { label: string; value: string };
+
+export type ChoicePayload = {
+  question: string;
+  choices: ChoiceOption[];
+};
+
+export type GroceryBasketItem = {
+  item_name: string;
+  product_name: string;
+  price: number;
+  price_formatted: string;
+  image_url?: string | null;
+  num_units: number;
+};
+
+export type GroceryBasketPayload = {
+  supermarket: string;
+  supermarket_name: string;
+  items: GroceryBasketItem[];
+  missing_items: string[];
+  total_formatted?: string | null;
+  checkout_url: string;
+  checkout_mode: 'predirect' | 'products' | 'oneshot';
+  message: string;
+};
+
 export type AgentStreamEvent =
   | { type: 'run_started'; data: { run_id: string; agents: string[] } }
   | { type: 'status'; data: { text: string; attempt?: number } }
@@ -302,6 +329,8 @@ export type AgentStreamEvent =
   | { type: 'transport_result'; data: TransportResultPayload }
   | { type: 'maps_result'; data: MapsResultPayload }
   | { type: 'share_draft'; data: { text: string } }
+  | { type: 'grocery_basket'; data: GroceryBasketPayload }
+  | { type: 'choice'; data: ChoicePayload }
   | {
       type: 'confirmation_required';
       data: { action_id: string; summary: string; risk: 'commit' | 'read'; plan_id: string; calendar_event_id: string };
@@ -361,4 +390,6 @@ export type ChatItem =
       destination: string;
     })
   | (ChatItemBase & { kind: 'transport'; transport: TransportResultPayload })
+  | (ChatItemBase & { kind: 'grocery_basket'; basket: GroceryBasketPayload })
+  | (ChatItemBase & { kind: 'choice'; question: string; choices: ChoiceOption[]; selected?: string })
   | (ChatItemBase & { kind: 'error'; message: string; retryable: boolean });

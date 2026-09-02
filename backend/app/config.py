@@ -50,6 +50,9 @@ class Settings(BaseSettings):
 
     uber_client_id: str = ""
 
+    # Pepesto grocery API (optional — grocery agent uses /predirect for free without it)
+    pepesto_api_key: str = ""
+
     max_commit_amount_eur: float = 200.0
     stream_heartbeat_seconds: int = 15
 

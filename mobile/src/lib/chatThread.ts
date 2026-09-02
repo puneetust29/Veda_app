@@ -130,6 +130,17 @@ export function applyStreamEvent(items: ChatItem[], event: AgentStreamEvent): Ch
       return [...withDone, { id: nextId(), createdAt: Date.now(), kind: 'whatsapp_share', text: event.data.text }];
     }
 
+    case 'grocery_basket': {
+      if (__DEV__) console.log('[chatThread] grocery_basket received', JSON.stringify(event.data).slice(0, 300));
+      const clean = removeTransient(removeAllStatuses(items));
+      return [...clean, { id: nextId(), createdAt: Date.now(), kind: 'grocery_basket', basket: event.data }];
+    }
+
+    case 'choice': {
+      const clean = removeTransient(removeAllStatuses(items));
+      return [...clean, { id: nextId(), createdAt: Date.now(), kind: 'choice', question: event.data.question, choices: event.data.choices }];
+    }
+
     case 'confirmation_required': {
       const alreadyExists = items.some(
         (item) => item.kind === 'confirmation' && item.actionId === event.data.action_id,
