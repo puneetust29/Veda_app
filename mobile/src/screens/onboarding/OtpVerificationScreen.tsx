@@ -1,6 +1,15 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  Keyboard,
+  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 import OnboardingBanner from '../../components/onboarding/OnboardingBanner';
 import OtpInput from '../../components/onboarding/OtpInput';
@@ -25,8 +34,35 @@ export default function OtpVerificationScreen({ navigation }: Props) {
   const [resendTimer, setResendTimer] = useState(RESEND_TIMEOUT);
   const [canResend, setCanResend] = useState(false);
   const [otpResetKey, setOtpResetKey] = useState(0);
+  const [screenHeight, setScreenHeight] = useState(0);
+  const [keyboardTop, setKeyboardTop] = useState<number | null>(null);
 
   const isComplete = code.length === 6;
+
+  // How much of this screen the keyboard covers. Measured rather than taken from
+  // the keyboard's own height so it stays correct whether or not the window
+  // resizes for the keyboard (Android edge-to-edge, on by default in Expo 54,
+  // means it does not) — if it does resize, screenHeight shrinks to the keyboard
+  // top and this lands on 0 instead of double-shifting.
+  const keyboardOverlap =
+    keyboardTop === null || screenHeight === 0 ? 0 : Math.max(screenHeight - keyboardTop, 0);
+
+  useEffect(() => {
+    // The keyboard is usually already up when we land here (previous screen's
+    // input, plus OtpInput autofocuses), so no show event ever fires for it.
+    // Seed from the live metrics; this is what KeyboardAvoidingView cannot do.
+    setKeyboardTop(Keyboard.metrics()?.screenY ?? null);
+
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillChangeFrame' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const subscriptions = [
+      Keyboard.addListener(showEvent, (event) => setKeyboardTop(event.endCoordinates.screenY)),
+      Keyboard.addListener(hideEvent, () => setKeyboardTop(null)),
+    ];
+
+    return () => subscriptions.forEach((subscription) => subscription.remove());
+  }, []);
 
   useEffect(() => {
     if (resendTimer <= 0) {
@@ -92,11 +128,14 @@ export default function OtpVerificationScreen({ navigation }: Props) {
   };
 
   return (
-    <View style={styles.container}>
+    <View
+      style={styles.container}
+      onLayout={(event) => setScreenHeight(event.nativeEvent.layout.height)}
+    >
       <OnboardingBanner />
       <StepHeader onBack={() => navigation.goBack()} overlay />
 
-      <View style={styles.body}>
+      <View style={[styles.body, { paddingBottom: keyboardOverlap }]}>
         <StepProgressBar step={1} totalSteps={5}/>
         <Text style={styles.title}>Verify it's you.</Text>
         <Text style={styles.subtitle}>
