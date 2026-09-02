@@ -3,6 +3,19 @@ from typing import Literal, Optional
 from pydantic import BaseModel, Field
 
 
+class DestinationExtraction(BaseModel):
+    destination: str = Field(
+        description="Extracted destination city name, or empty string if not found or off-topic"
+    )
+    is_relevant: bool = Field(
+        description="Whether the message is about booking a ride (taxi/Uber)"
+    )
+    redirect_message: Optional[str] = Field(
+        default=None,
+        description="Friendly redirect message if message is off-topic"
+    )
+
+
 class RideSuggestion(BaseModel):
     origin_type: Literal["airport", "train_station", "ferry", "unknown"] = Field(
         description="Type of departure location: airport, train_station, ferry, or unknown"

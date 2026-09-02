@@ -334,7 +334,12 @@ export const api = {
     ),
 
   extractDestination: (message: string) =>
-    authedFetch<{ destination: string; error?: string }>(
+    authedFetch<{
+      destination: string;
+      is_relevant: boolean;
+      redirect_message?: string;
+      error?: string;
+    }>(
       `/places/extract-destination?message=${encodeURIComponent(message)}`,
       {
         method: 'POST',

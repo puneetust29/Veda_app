@@ -2,9 +2,10 @@
 from __future__ import annotations
 
 import httpx
-from anthropic import Anthropic
+from langchain_anthropic import ChatAnthropic
 from fastapi import APIRouter, Depends, Query
 
+from app.agents.uber.schemas import DestinationExtraction
 from app.config import get_settings
 from app.deps import get_current_customer
 
@@ -59,33 +60,38 @@ def extract_destination(
     message: str = Query(..., description="User message to extract destination from"),
     _customer: dict = Depends(get_current_customer),
 ):
-    """Extract destination from user message using Claude."""
+    """Extract destination from user message and validate relevance using Claude."""
     settings = get_settings()
     api_key = settings.anthropic_api_key
 
     if not api_key:
-        return {"destination": "", "error": "Anthropic API key not configured"}
+        return {"destination": "", "is_relevant": False, "error": "Anthropic API key not configured"}
 
     try:
-        client = Anthropic(api_key=api_key)
-        response = client.messages.create(
-            model=settings.anthropic_model,
-            max_tokens=100,
-            system="You are a helpful assistant that extracts destination city names from user messages. Extract only the destination city name, nothing else. If no destination is found, respond with 'NONE'.",
-            messages=[
-                {
-                    "role": "user",
-                    "content": f"Extract the destination from this message: '{message}'"
-                }
-            ]
+        llm = ChatAnthropic(model=settings.anthropic_model, api_key=api_key, temperature=0)
+        structured_llm = llm.with_structured_output(DestinationExtraction)
+
+        prompt = (
+            "You are a taxi/Uber booking assistant. Your role is to help users book rides to specific destinations.\n\n"
+            "For each user message:\n"
+            "1. Determine if it's relevant to booking a taxi/ride (on-topic)\n"
+            "2. Extract the destination city if mentioned\n\n"
+            "If the message is off-topic (e.g., asking about weather, restaurants, general questions unrelated to booking), "
+            "set is_relevant=false and provide a brief redirect message like: "
+            "'I can only help with taxi bookings. Please tell me where you'd like to go.'\n"
+            "If on-topic but no destination found, set destination='' but keep is_relevant=true.\n"
+            "If on-topic and destination found, set is_relevant=true and destination to the city name, redirect_message=null.\n\n"
+            f"User message: '{message}'"
         )
 
-        destination = response.content[0].text.strip()
-        if destination.upper() == "NONE":
-            destination = ""
-
-        print(f"[Places] Extracted destination: '{destination}' from message: '{message}'")
-        return {"destination": destination}
+        result = structured_llm.invoke(prompt)
+        print(f"[Places] Extracted: destination='{result.destination}' is_relevant={result.is_relevant}")
+        return result.model_dump()
     except Exception as e:
         print(f"[Places] Extraction error: {str(e)}")
-        return {"destination": "", "error": str(e)}
+        return {
+            "destination": "",
+            "is_relevant": False,
+            "error": str(e),
+            "redirect_message": "I can only help with taxi/ride bookings. Please tell me where you'd like to go."
+        }

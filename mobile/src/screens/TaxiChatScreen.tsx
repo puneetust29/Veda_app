@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 import ChatItemView from '../components/chat/ChatItemView';
+import LoadingStream from '../components/chat/LoadingStream';
 import RecommendationCard from '../components/chat/RecommendationCard';
 import { usePlacesAutocomplete } from '../hooks/usePlacesAutocomplete';
 import { api } from '../lib/api';
@@ -52,8 +53,14 @@ export default function TaxiChatScreen({ navigation }: Props) {
 
       const result = await api.extractDestination(messageToExtract);
 
+      if (!result.is_relevant) {
+        setErrorMessage(result.redirect_message || 'I can only help with taxi bookings. Please tell me where you\'d like to go.');
+        setPhase('error');
+        return;
+      }
+
       if (!result.destination) {
-        setErrorMessage('Could not extract destination from message. Try mentioning a city name.');
+        setErrorMessage('Please mention a destination city to book your ride.');
         setPhase('error');
         return;
       }
@@ -152,11 +159,38 @@ export default function TaxiChatScreen({ navigation }: Props) {
           <ChatItemView key={item.id} item={item} />
         ))}
 
-        {phase === 'loading' && (
-          <View style={styles.loadingItem}>
-            <ActivityIndicator color={colors.brand} />
-            <Text style={styles.loadingText}>Booking your taxi…</Text>
+        {displayPredictions.length > 0 && phase === 'input' && (
+          <View style={styles.suggestionsWrapper}>
+            <Text style={styles.suggestionsTitle}>Suggestions</Text>
+            <View style={styles.suggestionsGrid}>
+              {displayPredictions.map((pred) => (
+                <TouchableOpacity
+                  key={pred.place_id}
+                  style={styles.suggestionCard}
+                  onPress={() => handleSelectPrediction(pred.description)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.suggestionIcon}>
+                    <Ionicons name="location" size={20} color={colors.white} />
+                  </View>
+                  <View style={styles.suggestionContent}>
+                    <Text style={styles.suggestionText}>{pred.description}</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color={colors.brand} />
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
+        )}
+
+        {phase === 'loading' && (
+          <LoadingStream
+            items={[
+              { text: 'Extracting destination…', delayMs: 500 },
+              { text: 'Searching available rides…', delayMs: 600 },
+              { text: 'Booking your taxi…', delayMs: 700 },
+            ]}
+          />
         )}
 
         {phase === 'card' && uberCard && (
@@ -198,20 +232,6 @@ export default function TaxiChatScreen({ navigation }: Props) {
               )}
             </TouchableOpacity>
           </View>
-
-          {displayPredictions.length > 0 && (
-            <View style={styles.suggestionsContainer}>
-              {displayPredictions.map((pred) => (
-                <TouchableOpacity
-                  key={pred.place_id}
-                  style={styles.suggestionRow}
-                  onPress={() => handleSelectPrediction(pred.description)}
-                >
-                  <Text style={styles.suggestionText}>{pred.description}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
         </View>
       )}
     </SafeAreaView>
@@ -284,17 +304,52 @@ const styles = StyleSheet.create({
   sendButtonDisabled: {
     opacity: 0.5,
   },
-  suggestionsContainer: {
-    maxHeight: 200,
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
-    backgroundColor: '#f9f9f9',
-  },
-  suggestionRow: {
+  suggestionsWrapper: {
+    marginVertical: spacing.xl,
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    gap: spacing.lg,
   },
-  suggestionText: { fontSize: 14, color: '#1f1f1f', fontWeight: '500' },
+  suggestionsTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.brand,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  suggestionsGrid: {
+    gap: spacing.md,
+  },
+  suggestionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.brandTint,
+    borderRadius: 16,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
+    borderWidth: 1.5,
+    borderColor: '#ffccc7',
+    gap: spacing.lg,
+    shadowColor: colors.brand,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  suggestionIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: colors.brand,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  suggestionContent: {
+    flex: 1,
+  },
+  suggestionText: {
+    fontSize: 15,
+    color: colors.textPrimary,
+    fontWeight: '600',
+    lineHeight: 20,
+  },
 });
