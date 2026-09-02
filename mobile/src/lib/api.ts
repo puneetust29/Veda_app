@@ -324,4 +324,20 @@ export const api = {
     }>('/payments/customer-payment-methods', {
       method: 'GET',
     }),
+
+  autocompletePlaces: (input: string) =>
+    authedFetch<{ predictions: Array<{ place_id: string; description: string }> }>(
+      `/places/autocomplete?input=${encodeURIComponent(input)}`,
+      {
+        method: 'GET',
+      },
+    ),
+
+  extractDestination: (message: string) =>
+    authedFetch<{ destination: string; error?: string }>(
+      `/places/extract-destination?message=${encodeURIComponent(message)}`,
+      {
+        method: 'POST',
+      },
+    ),
 };

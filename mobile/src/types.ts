@@ -158,6 +158,7 @@ export type RootStackParamList = {
   FlightDetail: { event: CalendarEvent };
   Chat: { event: CalendarEvent };
   VedaChat: undefined;
+  TaxiChat: undefined;
   Subscriptions: undefined;
   RoamingPlans: undefined;
   // Single merged calendar screen: reads every calendar expo-calendar exposes

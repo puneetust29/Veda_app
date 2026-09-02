@@ -11,6 +11,7 @@ import GmailScreen from '../screens/GmailScreen';
 import DevNavigator from '../dev/DevNavigator';
 import RoamingPlansScreen from '../screens/RoamingPlansScreen';
 import SubscriptionsScreen from '../screens/SubscriptionsScreen';
+import TaxiChatScreen from '../screens/TaxiChatScreen';
 import VedaChatScreen from '../screens/VedaChatScreen';
 import OnboardingNavigator from './OnboardingNavigator';
 import type { RootStackParamList } from '../types';
@@ -50,6 +51,14 @@ export default function RootNavigator() {
               options={{
                 headerShown: true,
                 title: 'Ask Veda',
+              }}
+            />
+            <Stack.Screen
+              name="TaxiChat"
+              component={TaxiChatScreen}
+              options={{
+                headerShown: true,
+                title: 'Book a taxi',
               }}
             />
             <Stack.Screen

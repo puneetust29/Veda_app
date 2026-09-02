@@ -184,6 +184,7 @@ export default function DashboardScreen({ navigation }: Props) {
       label: 'Order food',
       connectAppIcons: [{ source: ellipse1 }, { source: ellipse3 }],
     },
+    { id: 'taxi', iconXml: tileMap, label: 'Book a taxi', onPress: () => navigation.navigate('TaxiChat') },
   ];
 
   // No dedicated profile/settings screen exists in the Figma design yet, so
