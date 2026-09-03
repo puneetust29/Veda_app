@@ -20,7 +20,7 @@ if not _app_log.handlers:
     _h.setFormatter(logging.Formatter("%(levelname)s %(name)s: %(message)s"))
     _app_log.addHandler(_h)
     _app_log.propagate = False  # avoid double-printing via uvicorn's root handler
-from app.routers import auth, calendar, conversation, dev, gmail, google_auth, roaming, subscriptions, insurance, payments
+from app.routers import auth, calendar, conversation, dev, gmail, google_auth, grocery, roaming, subscriptions, insurance, payments
 
 settings = get_settings()
 
@@ -54,6 +54,7 @@ app.include_router(subscriptions.router)
 app.include_router(conversation.router)
 app.include_router(insurance.router)
 app.include_router(payments.router)
+app.include_router(grocery.router)
 app.include_router(dev.router)
 
 

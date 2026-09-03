@@ -10,6 +10,7 @@ import type {
   GoogleCalendarEvent,
   GoogleCalendarStatus,
   GoogleSyncResult,
+  GroceryBasketSku,
   RecommendResponse,
   RoamingPlan,
   Subscription,
@@ -325,4 +326,53 @@ export const api = {
     }>('/payments/customer-payment-methods', {
       method: 'GET',
     }),
+
+  // --- Grocery: save supermarket login session (called after in-app WebView login) ---
+  saveAsdaSession: (data: {
+    localStorage: Record<string, string>;
+    cookies: string;
+  }) =>
+    authedFetch<{ saved: boolean }>('/grocery/asda/save-session', {
+      method: 'POST',
+      body: JSON.stringify({ local_storage: data.localStorage, cookies: data.cookies }),
+    }),
+
+  // --- Grocery automated checkout ---
+  // Streams SSE status events while Pepesto's browser automation loop runs.
+  // Events: {kind:"status",text:"..."} and a final {kind:"done",success:bool,message:"..."}
+  streamGroceryAutoCheckout: async (params: {
+    supermarketDomain: string;
+    skus: GroceryBasketSku[];
+    signal: AbortSignal;
+    onEvent: (event: { kind: string; text?: string; success?: boolean; message?: string }) => void;
+    onError: (err: unknown) => void;
+    onClose: () => void;
+  }): Promise<void> => {
+    const token = await loadToken();
+    if (!token) throw new Error('Not authenticated');
+
+    return streamSse({
+      url: `${API_BASE_URL}/grocery/auto-checkout`,
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        Accept: 'text/event-stream',
+      },
+      body: JSON.stringify({
+        supermarket_domain: params.supermarketDomain,
+        skus: params.skus,
+      }),
+      signal: params.signal,
+      onFrame: (frame) => {
+        try {
+          params.onEvent(JSON.parse(frame.data));
+        } catch {
+          if (__DEV__) console.warn('[grocery/auto-checkout] bad frame', frame);
+        }
+      },
+      onError: params.onError,
+      onClose: params.onClose,
+    });
+  },
 };

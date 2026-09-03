@@ -1,0 +1,303 @@
+{
+  "cookies": [
+    {
+      "name": "da_intState",
+      "value": "",
+      "domain": "www.asda.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "da_lid",
+      "value": "C999A4039A7EEA133397BB99D6315DF29B|0|0|0",
+      "domain": "www.asda.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "da_sid",
+      "value": "FAAA97308E3EAE88A6C6AA13943317F928.1|3|0|3",
+      "domain": "www.asda.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "kampyleSessionPageCounter",
+      "value": "1",
+      "domain": "www.asda.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "kampyleUserPercentile",
+      "value": "61.13827192774377",
+      "domain": "www.asda.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "kampyleUserSession",
+      "value": "1788408228321",
+      "domain": "www.asda.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "kampyleUserSessionsCount",
+      "value": "1",
+      "domain": "www.asda.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "kampyle_userid",
+      "value": "3566-f3d4-1991-bac9-63de-67f2-9979-bd50",
+      "domain": "www.asda.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "SLAS.CUSTOMER_ID",
+      "value": "abl0lFlXwZlXERkKpKxaYYxuw3",
+      "domain": "www.asda.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "kndctr_B9CB1CFE53309CAD0A490D45_AdobeOrg_cluster",
+      "value": "va6",
+      "domain": "www.asda.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "kndctr_B9CB1CFE53309CAD0A490D45_AdobeOrg_consent",
+      "value": "general=out",
+      "domain": "www.asda.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "SLAS.AUTH_TOKEN",
+      "value": "Bearer%20eyJ2ZXIiOiIxLjAiLCJqa3UiOiJzbGFzL3Byb2QvYmpnc19wcmQiLCJraWQiOiJkZTU2MGYwMi0yM2VjLTRiZDMtYWMwZS1jYjdlOWQzNTI0NmYiLCJ0eXAiOiJqd3QiLCJjbHYiOiJKMi4zLjQiLCJhbGciOiJFUzI1NiJ9.eyJhdXQiOiJHVUlEIiwic2NwIjoic2ZjYy5zaG9wcGVyLW15YWNjb3VudC5iYXNrZXRzIHNmY2Muc2hvcHBlci1wcm9kdWN0cyBzZmNjLnNob3BwZXItbXlhY2NvdW50LnJ3IHNmY2Muc2hvcHBlci1jdXN0b21lcnMubG9naW4gc2ZjYy5zaG9wcGVyLWNvbnRleHQucncgc2ZjYy5zaG9wcGVyLW15YWNjb3VudC5vcmRlcnMgc2ZjYy5zaG9wcGVyLWNhdGVnb3JpZXNmIHNmY2Muc2hvcHBlci1jdXN0b21lcnMucmVnaXN0ZXIgc2ZjYy5zaG9wcGVyLW15YWNjb3VudC5hZGRyZXNzZXMucncgc2ZjYy5zaG9wcGVyLW15YWNjb3VudC5wcm9kdWN0bGlzdHMucncgc2ZjYy5zaG9wcGVyLXByb21vdGlvbnMgc2ZjYy5zaG9wcGVyLWJhc2tldHMtb3JkZXJzLnJ3IHNmY2Muc2hvcHBlci1teWFjY291bnQucGF5bWVudGluc3RydW1lbnRzLnJ3IGNfY3VzdG9tYXBpX3IiLCJzdWIiOiJjYy1zbGFzOjpiamdzX3ByZDo6c2NpZDplNjhjYTM2ZC02NTE2LTQ3MDQtYjcwNS0wNmI3NGY4NWVmMmU6OnVzaWQ6N2NhNzY1NzgtMmRmZC00ZWY5LWFjZDktNWNjMzBmMDU1ZTgwIiwic3NjIjoib2h3aHV3NmgiLCJjdHgiOiJzbGFzIiwiaXNzIjoic2xhcy9wcm9kL2JqZ3NfcHJkIiwiaXN0IjoxLCJkbnQiOiIwIiwiYXVkIjoiY29tbWVyY2VjbG91ZC9wcm9kdWN0aW9uL2JqZ3NwcmQiLCJuYmYiOjE3ODg0MDgxOTcsInN0eSI6IlVzZXIiLCJpc2IiOiJ1aWRvOnNsYXM6OnVwbjpHdWVzdDo6dWlkbjpHdWVzdCBVc2VyOjpnY2lkOmFibDBsRmxYd1psWEVSa0twS3hhWVl4dXczOjpjaGlkOkFTREFfR1JPQ0VSSUVTIiwiZXhwIjoxNzg4NDEwMDI3LCJpYXQiOjE3ODg0MDgyMjcsImp0aSI6IkMyQy0xMDE2MzE4OTAtMTYyODEzMDQxOTMwNzE3NDIwMzIxMDg5ODYwIn0.OynbRC2W8t_xgtGrD29QFgsiKAOB_y-vQ0jprBjwZFJ8jzqk28psEPWS8RNradl6a56-hZxoS-oKaAjVvZpoPw",
+      "domain": "www.asda.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "SLAS.ENC_USER_ID",
+      "value": "adb831a7fdd83dd1e2a309ce7591dff8",
+      "domain": "www.asda.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "SLAS.USID",
+      "value": "7ca76578-2dfd-4ef9-acd9-5cc30f055e80",
+      "domain": "www.asda.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "LOGIN_REFRESH_TIMESTAMP",
+      "value": "1788408227777",
+      "domain": "www.asda.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "_mibhv",
+      "value": "anon-1788408227483-2519977638_8338",
+      "domain": "www.asda.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "previousPageName",
+      "value": "home",
+      "domain": "www.asda.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "storeGroup",
+      "value": "WyJFbmdsYW5kIiwiSnVzdCBFYXQgR3JvY2VyaWVzIiwiVGFrZSBPdXQgQ2x1YiBTdG9yZXMiLCKjNiBQaXp6YSBNZWFsIERlYWwiLCKjMTIgUGl6emEgTWVhbCBEZWFsIiwiMyBmb3IgMiBGVEciLCJCaXN0cm8gTWVhbCBEZWFsIE9jdCAyNCAoMTMxMikiLCJJbmRpYW4gTWVhbCBEZWFsIE9jdCAyNCAoMTMxMSkiLCJOb24gTWlncmF0ZWQiLCJNZWRpdW0gUGl6emEiLCJMYXJnZSBQaXp6YSJd",
+      "domain": "www.asda.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "OptanonConsent",
+      "value": "isGpcEnabled=0&datestamp=Wed+Sep+02+2026+21%3A03%3A46+GMT-0700+(Pacific+Daylight+Time)&version=202511.1.0&browserGpcFlag=0&isIABGlobal=false&hosts=&landingPath=NotLandingPage&groups=5%3A0%2C2%3A0%2C4%3A0%2C1%3A1%2CV2STACK42%3A0&geolocation=US%3BWA&AwaitingReconsent=false",
+      "domain": "www.asda.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "visitorId",
+      "value": "3c80b135-105e-4f49-8e7a-2f4e03720bd4",
+      "domain": "www.asda.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "correlation_session_token",
+      "value": "423b86fb-3a03-46cc-b297-aab9f7de3ae7",
+      "domain": "www.asda.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "OptanonAlertBoxClosed",
+      "value": "2026-09-03T03:49:40.516Z",
+      "domain": "www.asda.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "eupubconsent-v2",
+      "value": "CQp-w1gQp-w1gAcABBENCuFgAAAAAAAAAChQAAAAAAAA.YAAAAAAAAAAA.IMzNR_G__bXlv-bb36btkeYxf9_hr7sQxBgbIsm4FzLvW7JwG32EbJEyatiIKmRIAu3DBIQNtHBjURUChKIAVrzDMaE2U4TtKJ-BkiHMZYytQCExvm4tjeQCZ4ur_9kd0mR-t6dr-2dzy27hnn3a9fuS1UJydKYetHfv-ZhOS-_IU9_x-_4v4_MbpEm0eSVv9tUtt4zc64vv6dpuxt-Tyff6f__f73fS7X__e__33_8qX3_r76-___3__v___ff________7d__-________wAAA",
+      "domain": "www.asda.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "kndctr_B9CB1CFE53309CAD0A490D45_AdobeOrg_identity",
+      "value": "CiYyOTI0MTY0NTIwMDcwNDMwNzQ2MDU4MjA3NTMyNzkzNDc2MjI3OFISCPrbi6uGNBABGAIqA1ZBNjAA8AH624urhjQ=",
+      "domain": "www.asda.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax"
+    }
+  ],
+  "origins": [
+    {
+      "origin": "https://www.asda.com",
+      "localStorage": [
+        {
+          "name": "kampyleSessionPageCounter",
+          "value": "1"
+        },
+        {
+          "name": "kampyleUserSessionsCount",
+          "value": "1"
+        },
+        {
+          "name": "kampyle_userid",
+          "value": "3566-f3d4-1991-bac9-63de-67f2-9979-bd50"
+        },
+        {
+          "name": "currURL",
+          "value": "https://www.asda.com/"
+        },
+        {
+          "name": "kampyleUserPercentile",
+          "value": "61.13827192774377"
+        },
+        {
+          "name": "_mibhv",
+          "value": "anon-1788408227483-2519977638_8338; Expires=Fri, 03 Sep 2027 04:03:47 GMT; Path=/; Secure; SameSite=None;"
+        },
+        {
+          "name": "com.adobe.alloy.B9CB1CFE53309CAD0A490D45_AdobeOrg.consentHashes.Adobe.1.0",
+          "value": "4292994512"
+        },
+        {
+          "name": "refresh_token_storage",
+          "value": "[1788408227267]"
+        },
+        {
+          "name": "chakra-ui-color-mode",
+          "value": "light"
+        },
+        {
+          "name": "kampyleUserSession",
+          "value": "1788408228321"
+        },
+        {
+          "name": "NRBA_SESSION",
+          "value": "{\"value\":\"5d895260e622ab28\",\"inactiveAt\":1788410028499,\"expiresAt\":1788422628499,\"updatedAt\":1788408228773,\"sessionReplayMode\":0,\"sessionReplaySentFirstChunk\":false,\"sessionTraceMode\":0,\"traceHarvestStarted\":false,\"loggingMode\":1,\"logApiMode\":1,\"serverTimeDiff\":-79,\"custom\":{},\"numOfResets\":0,\"consent\":false}"
+        },
+        {
+          "name": "algoliasearch-client-js-4.26.0-8I6WSKCCNV",
+          "value": "{\"{\\\"protocol\\\":\\\"https\\\",\\\"url\\\":\\\"8I6WSKCCNV-dsn.algolia.net\\\",\\\"accept\\\":1}\":{\"timestamp\":1788408228691,\"value\":{\"protocol\":\"https\",\"url\":\"8I6WSKCCNV-dsn.algolia.net\",\"accept\":1,\"status\":3,\"lastUpdate\":1788408228672}}}"
+        },
+        {
+          "name": "basketRestoreConfig",
+          "value": "{\"value\":\"{\\\"pollingCount\\\":2,\\\"pollingTime\\\":5000,\\\"enableSCAChanges\\\":false}\",\"expiry\":1791000227248}"
+        }
+      ]
+    }
+  ]
+}

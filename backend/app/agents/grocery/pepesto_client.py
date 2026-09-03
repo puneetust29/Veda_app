@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 PEPESTO_BASE = "https://s.pepesto.com/api"
 TIMEOUT = 15.0
+CHECKOUT_TIMEOUT = 240.0  # /checkout sends screenshot + DOM for vision/LLM processing — needs longer
 
 
 class PepetoClient:
@@ -162,4 +163,14 @@ class PepetoClient:
         }
         if screenshot_b64:
             payload["screenshot"] = screenshot_b64
-        return self._post("checkout", payload)
+        url = f"{PEPESTO_BASE}/checkout"
+        logger.info("[pepesto] POST checkout | has_screenshot=%s | payload_size~=%d chars",
+                    bool(screenshot_b64), len(str(payload)))
+        resp = httpx.post(url, json=payload, headers=self._headers, timeout=CHECKOUT_TIMEOUT)
+        logger.info("[pepesto] checkout → HTTP %d | body_size=%d bytes", resp.status_code, len(resp.content))
+        if not resp.is_success:
+            logger.error("[pepesto] checkout error | status=%d | body=%r", resp.status_code, resp.text[:500])
+        resp.raise_for_status()
+        data = resp.json()
+        logger.info("[pepesto] checkout parsed | top_keys=%s", list(data.keys()) if isinstance(data, dict) else type(data).__name__)
+        return data

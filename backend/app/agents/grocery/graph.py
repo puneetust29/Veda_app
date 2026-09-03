@@ -121,6 +121,7 @@ def node_build_basket(state: dict, writer: StreamWriter) -> dict:
     product_items = []
     missing_items = []
     total_formatted = None
+    auto_checkout_skus: list[dict] = []
 
     has_key = bool(get_settings().pepesto_api_key)
     logger.info("[grocery] has_pepesto_key=%s | shopping_list=%r", has_key, shopping_list)
@@ -175,40 +176,46 @@ def node_build_basket(state: dict, writer: StreamWriter) -> dict:
             logger.info("[grocery] /products SUCCESS | matched=%d | missing=%d | total=%s",
                         len(product_items), len(missing_items), total_formatted)
 
-            skus = [{"session_token": p["session_token"], "quantity": p["num_units"]}
-                    for p in product_items if p.get("session_token")]
+            # Build SKU list from matched products (for automated checkout)
+            auto_checkout_skus = [
+                {"session_token": p["session_token"], "quantity": p["num_units"]}
+                for p in product_items
+                if p.get("session_token")
+            ]
 
-            if skus:
-                # Use Pepesto /session with charge_user=True to get a hosted web payment
-                # URL (Stripe-based). Pepesto charges the user then places the Tesco order.
-                # This is the only way to migrate the matched basket into Tesco without
-                # requiring the Pepesto app — the payment_redirect_url is a real web page.
-                logger.info("[grocery] calling /session | charge_user=True | skus=%d | total_pence=%d", len(skus), total_pence)
-                try:
-                    session_result = client.session(
-                        supermarket_domain=supermarket_domain,
-                        skus=skus,
-                        charge_user=True,
-                        charge_user_amount=total_pence / 100.0,
-                        unresolved_items=missing_items or None,
-                    )
-                    logger.info("[grocery] /session response keys: %s", list(session_result.keys()))
-                    payment_redirect_url = session_result.get("payment_redirect_url", "")
-                    logger.info("[grocery] payment_redirect_url: %s", payment_redirect_url if payment_redirect_url else "EMPTY")
-                    if payment_redirect_url:
-                        checkout_url = payment_redirect_url
-                        checkout_mode = "session"
-                        logger.info("[grocery] checkout via Pepesto hosted payment page")
-                    else:
-                        checkout_url = supermarket_search_url(supermarket_domain, [p["item_name"] for p in product_items] or items)
-                        logger.warning("[grocery] no payment_redirect_url in session response — falling back to search URL")
-                except Exception as sess_err:
-                    logger.error("[grocery] /session FAILED: %r — falling back to search URL", sess_err)
+            # Use /oneshot to get Pepesto's hosted checkout URL (real web page,
+            # not an app redirect). User reviews basket on Pepesto's page and
+            # can pay on Pepesto's hosted UI — shown in Veda's in-app browser sheet.
+            shopping_list_text = ", ".join(items)
+            logger.info("[grocery] calling /oneshot | supermarket=%s | list=%r", supermarket_domain, shopping_list_text)
+            redirect_url = ""
+            try:
+                oneshot_result = client.oneshot(
+                    supermarket_domain=supermarket_domain,
+                    content_text=shopping_list_text,
+                )
+                logger.info("[grocery] /oneshot response keys: %s", list(oneshot_result.keys()))
+                redirect_url = oneshot_result.get("redirect_url", "")
+                logger.info("[grocery] /oneshot redirect_url: %s", redirect_url if redirect_url else "EMPTY")
+                if redirect_url:
+                    checkout_url = redirect_url
+                    logger.info("[grocery] checkout via Pepesto hosted page (oneshot)")
+                else:
                     checkout_url = supermarket_search_url(supermarket_domain, [p["item_name"] for p in product_items] or items)
+                    logger.warning("[grocery] no redirect_url in oneshot response — falling back to search URL")
+            except Exception as oneshot_err:
+                logger.error("[grocery] /oneshot FAILED: %r — falling back to search URL", oneshot_err)
+                checkout_url = supermarket_search_url(supermarket_domain, [p["item_name"] for p in product_items] or items)
+
+            # Use automated mode when we have SKUs (session tokens) for all matched items;
+            # fall back to oneshot or products URL otherwise.
+            if auto_checkout_skus:
+                checkout_mode = "automated"
+                logger.info("[grocery] checkout_mode=automated | skus=%d", len(auto_checkout_skus))
+            elif redirect_url and checkout_url == redirect_url:
+                checkout_mode = "oneshot"
             else:
-                checkout_url = supermarket_search_url(supermarket_domain, items)
-                logger.info("[grocery] no skus — using search URL: %s", checkout_url)
-            checkout_mode = "products"
+                checkout_mode = "products"
 
         except Exception as e:
             import traceback
@@ -229,6 +236,7 @@ def node_build_basket(state: dict, writer: StreamWriter) -> dict:
         checkout_url=checkout_url,
         checkout_mode=checkout_mode,
         message=state.get("reply", ""),
+        auto_checkout_skus=auto_checkout_skus if checkout_mode == "automated" else None,
     )
 
     logger.info(
@@ -246,6 +254,7 @@ def node_build_basket(state: dict, writer: StreamWriter) -> dict:
         "total_formatted": card.total_formatted,
         "checkout_url": card.checkout_url,
         "checkout_mode": card.checkout_mode,
+        "auto_checkout_skus": card.auto_checkout_skus,
         "message": card.message,
     })
 

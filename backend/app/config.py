@@ -42,9 +42,6 @@ class Settings(BaseSettings):
     stripe_secret_key: str = ""
     stripe_publishable_key: str = ""
 
-    # TfL (Transport for London) API key. Optional: transport agent skips TfL calls if empty.
-    tfl_api_key: str = ""
-
     environment: str = "development"
     cors_origins: str = "*"
 
@@ -52,6 +49,13 @@ class Settings(BaseSettings):
 
     # Pepesto grocery API (optional — grocery agent uses /predirect for free without it)
     pepesto_api_key: str = ""
+
+    # Supermarket credentials (used by Pepesto for automated checkout)
+    asda_email: str = ""
+    asda_password: str = ""
+    # Path to saved Playwright storage state (cookies) for Asda.
+    # Run backend/scripts/save_asda_session.py once to create this file.
+    asda_auth_state_path: str = ""
 
     max_commit_amount_eur: float = 200.0
     stream_heartbeat_seconds: int = 15

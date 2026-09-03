@@ -308,6 +308,11 @@ export type GroceryBasketItem = {
   num_units: number;
 };
 
+export type GroceryBasketSku = {
+  session_token: string;
+  quantity: number;
+};
+
 export type GroceryBasketPayload = {
   supermarket: string;
   supermarket_name: string;
@@ -315,7 +320,8 @@ export type GroceryBasketPayload = {
   missing_items: string[];
   total_formatted?: string | null;
   checkout_url: string;
-  checkout_mode: 'predirect' | 'products' | 'oneshot' | 'session';
+  checkout_mode: 'predirect' | 'products' | 'oneshot' | 'session' | 'automated';
+  auto_checkout_skus?: GroceryBasketSku[] | null;
   message: string;
 };
 
