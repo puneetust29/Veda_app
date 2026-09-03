@@ -65,7 +65,6 @@ export default function LocationPickerModal({
               placeholderTextColor="#999"
               value={searchInput}
               onChangeText={onSearchChange}
-              editable={!loading}
             />
             {loading && (
               <ActivityIndicator

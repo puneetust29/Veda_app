@@ -59,7 +59,11 @@ export default function TaxiChatScreen({ navigation }: Props) {
 
   const handlePickupLocationSearch = (text: string) => {
     setPickupSearchInput(text);
-    searchPickup(text);
+    if (pickupLocation?.latitude != null && pickupLocation?.longitude != null) {
+      searchPickup(text, pickupLocation.latitude, pickupLocation.longitude);
+    } else {
+      searchPickup(text);
+    }
   };
 
   const handleSendMessage = async () => {

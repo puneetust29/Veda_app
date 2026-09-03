@@ -336,13 +336,19 @@ export const api = {
       method: 'GET',
     }),
 
-  autocompletePlaces: (input: string) =>
-    authedFetch<{ predictions: Array<{ place_id: string; description: string }> }>(
-      `/places/autocomplete?input=${encodeURIComponent(input)}`,
+  autocompletePlaces: (input: string, latitude?: number, longitude?: number) => {
+    const params = new URLSearchParams({ input });
+    if (latitude !== undefined && longitude !== undefined) {
+      params.append('latitude', latitude.toString());
+      params.append('longitude', longitude.toString());
+    }
+    return authedFetch<{ predictions: Array<{ place_id: string; description: string }> }>(
+      `/places/autocomplete?${params.toString()}`,
       {
         method: 'GET',
       },
-    ),
+    );
+  },
 
   getPlaceCoordinates: (destination: string) =>
     authedFetch<{

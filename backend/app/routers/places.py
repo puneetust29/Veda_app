@@ -15,6 +15,8 @@ router = APIRouter(prefix="/places", tags=["places"])
 @router.get("/autocomplete")
 def places_autocomplete(
     input: str = Query(..., description="Input text to autocomplete"),
+    latitude: float | None = Query(None, description="User latitude for location bias"),
+    longitude: float | None = Query(None, description="User longitude for location bias"),
     _customer: dict = Depends(get_current_customer),
 ):
     """Return Google Places autocomplete predictions for the given input."""
@@ -32,6 +34,17 @@ def places_autocomplete(
     payload = {
         "input": input,
     }
+
+    if latitude is not None and longitude is not None:
+        payload["locationBias"] = {
+            "circle": {
+                "center": {
+                    "latitude": latitude,
+                    "longitude": longitude,
+                },
+                "radius": 50000.0,
+            }
+        }
 
     try:
         with httpx.Client() as client:

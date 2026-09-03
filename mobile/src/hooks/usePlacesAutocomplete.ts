@@ -20,12 +20,12 @@ export function usePlacesAutocomplete() {
     };
   }, []);
 
-  const search = useCallback((input: string) => {
+  const search = useCallback((input: string, latitude?: number, longitude?: number) => {
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
     }
 
-    if (!input.trim()) {
+    if (input.trim().length < 2) {
       setPredictions([]);
       setLoading(false);
       return;
@@ -34,8 +34,8 @@ export function usePlacesAutocomplete() {
     setLoading(true);
     debounceRef.current = setTimeout(async () => {
       try {
-        if (__DEV__) console.log('[usePlacesAutocomplete] Searching for:', input);
-        const result = await api.autocompletePlaces(input);
+        if (__DEV__) console.log('[usePlacesAutocomplete] Searching for:', input, { latitude, longitude });
+        const result = await api.autocompletePlaces(input, latitude, longitude);
         if (__DEV__) console.log('[usePlacesAutocomplete] Result:', result);
         if (isMountedRef.current) {
           setPredictions(result.predictions || []);
