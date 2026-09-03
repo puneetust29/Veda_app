@@ -1,13 +1,8 @@
 import * as Location from 'expo-location';
+import { getCachedReverseGeocode } from '../../lib/geocodeCache';
 
 async function getReadableLocation(latitude: number, longitude: number): Promise<string> {
-  const places = await Location.reverseGeocodeAsync({ latitude, longitude });
-  if (!places.length) return 'Unknown location';
-  const place = places[0];
-  const locality = place.city ?? place.subregion ?? place.region;
-  const country = place.country;
-  if (locality && country) return `${locality}, ${country}`;
-  return locality ?? country ?? 'Unknown location';
+  return getCachedReverseGeocode(latitude, longitude);
 }
 
 // Unlike weather.ts's silent-fallback read, this is an explicit user-triggered

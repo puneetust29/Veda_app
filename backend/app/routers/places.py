@@ -55,6 +55,34 @@ def places_autocomplete(
         return {"error": str(e), "predictions": []}
 
 
+@router.get("/coordinates")
+def get_place_coordinates(
+    destination: str = Query(..., description="Destination name to geocode"),
+    _customer: dict = Depends(get_current_customer),
+):
+    """Return coordinates for a given destination."""
+    from app.agents.maps.maps_client import geocode
+
+    settings = get_settings()
+    api_key = settings.google_maps_api_key
+
+    if not api_key:
+        return {"error": "geocode_failed", "message": "Google Maps API key not configured"}
+
+    try:
+        latlng = geocode(destination, api_key)
+        if not latlng:
+            return {"error": "geocode_failed", "message": f"Could not geocode destination: {destination}"}
+
+        return {
+            "latitude": latlng["lat"],
+            "longitude": latlng["lng"],
+        }
+    except Exception as e:
+        print(f"[Places] Geocode error: {str(e)}")
+        return {"error": "geocode_failed", "message": str(e)}
+
+
 @router.post("/extract-destination")
 def extract_destination(
     message: str = Query(..., description="User message to extract destination from"),

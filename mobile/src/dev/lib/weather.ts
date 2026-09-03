@@ -1,19 +1,8 @@
 import * as Location from 'expo-location';
+import { getCachedReverseGeocode } from '../../lib/geocodeCache';
 
-// Dev-only duplicate of lib/weather.ts's device weather read, kept
-// intentionally separate so the integrations catalog never depends on
-// production code paths. Unlike lib/weather.ts's silent fallback (used for
-// the Dashboard's background read), this is an explicit user-triggered test
-// action, so it requests permission and surfaces failures instead of
-// falling back to a canned reading.
 async function getReadableLocation(latitude: number, longitude: number): Promise<string> {
-  const places = await Location.reverseGeocodeAsync({ latitude, longitude });
-  if (!places.length) return 'Unknown location';
-  const place = places[0];
-  const locality = place.city ?? place.subregion ?? place.region;
-  const country = place.country;
-  if (locality && country) return `${locality}, ${country}`;
-  return locality ?? country ?? 'Unknown location';
+  return getCachedReverseGeocode(latitude, longitude);
 }
 
 export async function getWeatherSample(): Promise<{ summary: string }> {

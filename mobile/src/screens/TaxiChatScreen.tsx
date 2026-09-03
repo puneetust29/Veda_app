@@ -1,22 +1,31 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 
 import ChatItemView from '../components/chat/ChatItemView';
 import LoadingStream from '../components/chat/LoadingStream';
 import RecommendationCard from '../components/chat/RecommendationCard';
+import PickupLocationRow from '../components/taxi/PickupLocationRow';
+import LocationPickerModal from '../components/taxi/LocationPickerModal';
+import DestinationSuggestions from '../components/taxi/DestinationSuggestions';
+import ErrorPanel from '../components/taxi/ErrorPanel';
 import { usePlacesAutocomplete } from '../hooks/usePlacesAutocomplete';
 import { api } from '../lib/api';
 import { loadToken } from '../lib/authToken';
 import { nextId } from '../lib/chatThread';
+import { getCachedReverseGeocode } from '../lib/geocodeCache';
+import { calculateDistance } from '../lib/distanceCalculator';
 import type { RecommendationCardPayload, RootStackParamList, ChatItem } from '../types';
 import { colors, spacing, typography } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'TaxiChat'>;
 
 type ScreenPhase = 'input' | 'loading' | 'card' | 'error';
+
+type PickupLocation = { label: string; latitude: number | null; longitude: number | null };
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
 
@@ -36,11 +45,21 @@ export default function TaxiChatScreen({ navigation }: Props) {
   const [uberCard, setUberCard] = useState<RecommendationCardPayload | null>(null);
   const [selectedDestination, setSelectedDestination] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string>('');
+  const [pickupLocation, setPickupLocation] = useState<PickupLocation | null>(null);
+  const [pickerVisible, setPickerVisible] = useState(false);
+  const [pickerPermissionError, setPickerPermissionError] = useState<string>('');
+  const [pickupSearchInput, setPickupSearchInput] = useState<string>('');
 
   const { predictions, loading: autocompleteLoading, search } = usePlacesAutocomplete();
+  const { predictions: pickupPredictions, loading: pickupLoading, search: searchPickup } = usePlacesAutocomplete();
 
   const handleDestinationSearch = (text: string) => {
     setDraft(text);
+  };
+
+  const handlePickupLocationSearch = (text: string) => {
+    setPickupSearchInput(text);
+    searchPickup(text);
   };
 
   const handleSendMessage = async () => {
@@ -66,6 +85,30 @@ export default function TaxiChatScreen({ navigation }: Props) {
       }
 
       if (__DEV__) console.log('[TaxiChat] Extracted destination:', result.destination);
+
+      if (pickupLocation?.latitude != null && pickupLocation?.longitude != null) {
+        const coordResult = await api.getPlaceCoordinates(result.destination);
+        if (coordResult.error || coordResult.latitude == null || coordResult.longitude == null) {
+          setErrorMessage(coordResult.message || 'Could not find location coordinates.');
+          setPhase('error');
+          return;
+        }
+
+        const distance = calculateDistance(
+          pickupLocation.latitude,
+          pickupLocation.longitude,
+          coordResult.latitude,
+          coordResult.longitude,
+        );
+
+        const THRESHOLD_KM = 50.0;
+        if (distance > THRESHOLD_KM) {
+          setErrorMessage(`${result.destination} is more than ${THRESHOLD_KM}km from your pickup location. Try a closer destination or change your pickup location.`);
+          setPhase('error');
+          return;
+        }
+      }
+
       search(result.destination);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to extract destination';
@@ -78,6 +121,7 @@ export default function TaxiChatScreen({ navigation }: Props) {
   const handleSelectPrediction = async (description: string) => {
     setDraft('');
     setDisplayPredictions([]);
+    search('');
     setSelectedDestination(description);
     setPhase('loading');
     setErrorMessage('');
@@ -87,11 +131,49 @@ export default function TaxiChatScreen({ navigation }: Props) {
       { id: nextId(), createdAt: Date.now(), kind: 'text', role: 'user', text: description },
     ]);
 
+    const startTime = Date.now();
+
     try {
       const token = await loadToken();
       if (!token) throw new Error('Not authenticated');
 
+      let destLat: number | null = null;
+      let destLng: number | null = null;
+
+      if (pickupLocation?.latitude != null && pickupLocation?.longitude != null) {
+        const coordResult = await api.getPlaceCoordinates(description);
+        if (coordResult.error || coordResult.latitude == null || coordResult.longitude == null) {
+          setErrorMessage(coordResult.message || 'Could not find location coordinates.');
+          setPhase('error');
+          return;
+        }
+
+        destLat = coordResult.latitude;
+        destLng = coordResult.longitude;
+
+        const distance = calculateDistance(
+          pickupLocation.latitude,
+          pickupLocation.longitude,
+          destLat,
+          destLng,
+        );
+
+        const THRESHOLD_KM = 50.0;
+        if (distance > THRESHOLD_KM) {
+          setErrorMessage(`${description} is more than ${THRESHOLD_KM}km from your pickup location. Try a closer destination or change your pickup location.`);
+          setPhase('error');
+          return;
+        }
+      }
+
       const params = new URLSearchParams({ destination: description });
+      if (pickupLocation?.latitude != null && pickupLocation?.longitude != null) {
+        params.set('pickup_latitude', String(pickupLocation.latitude));
+        params.set('pickup_longitude', String(pickupLocation.longitude));
+      } else if (pickupLocation?.label) {
+        params.set('pickup_description', pickupLocation.label);
+      }
+
       const res = await fetch(`${API_BASE_URL}/dev/uber/deeplink?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -99,18 +181,36 @@ export default function TaxiChatScreen({ navigation }: Props) {
       if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
 
       const raw = (await res.json()) as {
-        destination: string;
-        dropoff_latlng: { lat: number; lng: number };
-        uber_app_url: string;
-        deep_link_url: string;
+        destination?: string;
+        dropoff_latlng?: { lat: number; lng: number };
+        uber_app_url?: string;
+        deep_link_url?: string;
+        error?: string;
+        message?: string;
       };
+
+      if (raw.error) {
+        setErrorMessage(raw.message || 'This destination is too far away.');
+        setPhase('error');
+        return;
+      }
+
+      if (!raw.destination || !raw.dropoff_latlng || !raw.uber_app_url || !raw.deep_link_url) {
+        throw new Error('Invalid response from server');
+      }
+
+      const elapsedMs = Date.now() - startTime;
+      const minDurationMs = 2000;
+      if (elapsedMs < minDurationMs) {
+        await new Promise(resolve => setTimeout(resolve, minDurationMs - elapsedMs));
+      }
 
       const card: RecommendationCardPayload = {
         kind: 'uber_ride',
         origin_type: 'current_location',
         reasoning: '',
         suggested_message: '',
-        pickup_label: 'Current location',
+        pickup_label: pickupLocation?.label ?? 'Current location',
         dropoff_label: raw.destination,
         uber_app_url: raw.uber_app_url,
         deep_link_url: raw.deep_link_url,
@@ -129,14 +229,67 @@ export default function TaxiChatScreen({ navigation }: Props) {
     }
   };
 
-  const handleRetry = async () => {
-    if (!selectedDestination) return;
-    await handleSelectPrediction(selectedDestination);
+  const handleRetry = () => {
+    setPhase('input');
+    setSelectedDestination('');
+    setDraft('');
+    setErrorMessage('');
+  };
+
+  const getReadableLocation = async (latitude: number, longitude: number): Promise<string> => {
+    return getCachedReverseGeocode(latitude, longitude);
+  };
+
+  const handleUseCurrentLocation = async () => {
+    setPickerPermissionError('');
+    try {
+      let permission = await Location.getForegroundPermissionsAsync();
+      if (permission.status !== Location.PermissionStatus.GRANTED) {
+        permission = await Location.requestForegroundPermissionsAsync();
+      }
+      if (permission.status !== Location.PermissionStatus.GRANTED) {
+        setPickerPermissionError('Location permission denied — enable it in Settings to use your current location.');
+        return;
+      }
+
+      const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const { latitude, longitude } = position.coords;
+      const label = await getReadableLocation(latitude, longitude);
+      setPickupLocation({ label, latitude, longitude });
+      setPickerVisible(false);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to get location';
+      setPickerPermissionError(msg);
+    }
+  };
+
+  const handleSelectPickupPrediction = (description: string) => {
+    setPickupLocation({ label: description, latitude: null, longitude: null });
+    setPickupSearchInput('');
+    setPickerVisible(false);
   };
 
   useEffect(() => {
     scrollViewRef.current?.scrollToEnd({ animated: true });
   }, [items, phase]);
+
+  useEffect(() => {
+    const initializeLocation = async () => {
+      try {
+        const permission = await Location.getForegroundPermissionsAsync();
+        if (permission.status === Location.PermissionStatus.GRANTED) {
+          const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+          const { latitude, longitude } = position.coords;
+          const label = await getReadableLocation(latitude, longitude);
+          setPickupLocation({ label, latitude, longitude });
+        }
+      } catch (err) {
+        if (__DEV__) console.error('[TaxiChat] Failed to initialize location:', err);
+      }
+    };
+
+    initializeLocation();
+  }, []);
 
   const [displayPredictions, setDisplayPredictions] = useState<typeof predictions>([]);
   useEffect(() => {
@@ -149,6 +302,12 @@ export default function TaxiChatScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
+      {(phase === 'input' || phase === 'error') && (
+        <PickupLocationRow
+          label={pickupLocation?.label ?? 'Current location (default)'}
+          onChangePress={() => setPickerVisible(true)}
+        />
+      )}
       <ScrollView
         ref={scrollViewRef}
         style={styles.thread}
@@ -159,28 +318,11 @@ export default function TaxiChatScreen({ navigation }: Props) {
           <ChatItemView key={item.id} item={item} />
         ))}
 
-        {displayPredictions.length > 0 && phase === 'input' && (
-          <View style={styles.suggestionsWrapper}>
-            <Text style={styles.suggestionsTitle}>Suggestions</Text>
-            <View style={styles.suggestionsGrid}>
-              {displayPredictions.map((pred) => (
-                <TouchableOpacity
-                  key={pred.place_id}
-                  style={styles.suggestionCard}
-                  onPress={() => handleSelectPrediction(pred.description)}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.suggestionIcon}>
-                    <Ionicons name="location" size={20} color={colors.white} />
-                  </View>
-                  <View style={styles.suggestionContent}>
-                    <Text style={styles.suggestionText}>{pred.description}</Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={18} color={colors.brand} />
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
+        {phase === 'input' && (
+          <DestinationSuggestions
+            predictions={displayPredictions}
+            onSelect={handleSelectPrediction}
+          />
         )}
 
         {phase === 'loading' && (
@@ -200,14 +342,24 @@ export default function TaxiChatScreen({ navigation }: Props) {
         )}
 
         {phase === 'error' && (
-          <View style={styles.errorContainer}>
-            <Text style={styles.errorText}>{errorMessage}</Text>
-            <TouchableOpacity style={styles.retryButton} onPress={handleRetry}>
-              <Text style={styles.retryButtonText}>Try again</Text>
-            </TouchableOpacity>
-          </View>
+          <ErrorPanel message={errorMessage} onRetry={handleRetry} />
         )}
       </ScrollView>
+
+      <LocationPickerModal
+        visible={pickerVisible}
+        onClose={() => {
+          setPickerVisible(false);
+          setPickupSearchInput('');
+        }}
+        onUseCurrentLocation={handleUseCurrentLocation}
+        permissionError={pickerPermissionError}
+        searchInput={pickupSearchInput}
+        onSearchChange={handlePickupLocationSearch}
+        predictions={pickupPredictions}
+        loading={pickupLoading}
+        onPredictionSelect={handleSelectPickupPrediction}
+      />
 
       {phase === 'input' && (
         <View style={styles.inputSection}>
@@ -242,33 +394,9 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   thread: { flex: 1 },
   threadContent: { padding: spacing.lg, paddingBottom: spacing.md },
-  loadingItem: {
-    alignItems: 'center',
-    gap: spacing.md,
-    marginVertical: spacing.lg,
-  },
-  loadingText: { color: colors.textSecondary, fontSize: 14 },
   cardContainer: {
     marginVertical: spacing.md,
   },
-  errorContainer: {
-    marginVertical: spacing.lg,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.lg,
-    backgroundColor: '#fff3f3',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#ffcccc',
-    gap: spacing.md,
-  },
-  errorText: { color: colors.brand, fontSize: 14, lineHeight: 20 },
-  retryButton: {
-    backgroundColor: colors.brand,
-    borderRadius: 8,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-  },
-  retryButtonText: { color: colors.white, fontSize: 14, fontWeight: '600' },
   inputSection: {
     borderTopWidth: 1,
     borderTopColor: '#eee',
@@ -290,9 +418,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     backgroundColor: '#f9f9f9',
   },
-  inputSpinner: {
-    marginRight: spacing.sm,
-  },
   sendButton: {
     backgroundColor: colors.brand,
     borderRadius: 8,
@@ -303,53 +428,5 @@ const styles = StyleSheet.create({
   },
   sendButtonDisabled: {
     opacity: 0.5,
-  },
-  suggestionsWrapper: {
-    marginVertical: spacing.xl,
-    paddingHorizontal: spacing.lg,
-    gap: spacing.lg,
-  },
-  suggestionsTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.brand,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-  },
-  suggestionsGrid: {
-    gap: spacing.md,
-  },
-  suggestionCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.brandTint,
-    borderRadius: 16,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.lg,
-    borderWidth: 1.5,
-    borderColor: '#ffccc7',
-    gap: spacing.lg,
-    shadowColor: colors.brand,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  suggestionIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: colors.brand,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  suggestionContent: {
-    flex: 1,
-  },
-  suggestionText: {
-    fontSize: 15,
-    color: colors.textPrimary,
-    fontWeight: '600',
-    lineHeight: 20,
   },
 });

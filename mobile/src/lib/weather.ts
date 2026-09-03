@@ -1,10 +1,9 @@
 import * as Location from 'expo-location';
 
 import type { WeatherSummary } from '../types';
+import { getCachedReverseGeocode } from './geocodeCache';
 
 const FALLBACK_WEATHER: WeatherSummary = { temperatureC: 13, location: '', weatherCode: null };
-
-const locationCache = new Map<string, string>();
 
 type OpenMeteoCurrentResponse = {
   current?: {
@@ -20,31 +19,8 @@ type WttrResponse = {
   }>;
 };
 
-function formatLocation(place: Location.LocationGeocodedAddress): string {
-  const locality = place.city ?? place.subregion ?? place.region;
-  const country = place.country;
-  if (locality && country) return `${locality}, ${country}`;
-  if (locality) return locality;
-  if (country) return country;
-  return FALLBACK_WEATHER.location;
-}
-
 async function getReadableLocation(latitude: number, longitude: number): Promise<string> {
-  const key = `${latitude.toFixed(4)},${longitude.toFixed(4)}`;
-  console.log(`Fetching readable location for coordinates: ${locationCache.has(key) ? 'cache hit' : 'cache miss'} (${key})`);
-  if (locationCache.has(key)) return locationCache.get(key)!;
-
-  try {
-    const places = await Location.reverseGeocodeAsync({ latitude, longitude });
-
-    const location = places.length ? formatLocation(places[0]) : FALLBACK_WEATHER.location;
-    locationCache.set(key, location);
-    return location;
-  } catch (e){
-    console.warn('Failed to reverse geocode location, using fallback',);
-    locationCache.set(key, FALLBACK_WEATHER.location);
-    return FALLBACK_WEATHER.location;
-  }
+  return getCachedReverseGeocode(latitude, longitude);
 }
 
 async function getWeatherFromOpenMeteo(latitude: number, longitude: number): Promise<WeatherSummary | null> {
