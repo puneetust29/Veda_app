@@ -118,6 +118,11 @@ export default function RecommendationCard({ card, confirmation, onConfirm, onDe
       const hasAirportOptions = card.airport_options.length > 0;
 
       const handleOpenUber = async (uber_app_url?: string | null, deep_link_url?: string | null) => {
+        if (__DEV__) {
+          console.log('[RecommendationCard] Uber button clicked');
+          console.log('[RecommendationCard] App URL:', uber_app_url);
+          console.log('[RecommendationCard] Web URL:', deep_link_url);
+        }
         try {
           await openUber({ uber_app_url, deep_link_url });
         } catch {

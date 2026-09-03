@@ -4,6 +4,10 @@ from pydantic import BaseModel, Field
 
 
 class DestinationExtraction(BaseModel):
+    pickup_location: Optional[str] = Field(
+        default=None,
+        description="Extracted pickup/start location, or empty/null if not specified (will use current location)"
+    )
     destination: str = Field(
         description="Extracted destination city name, or empty string if not found or off-topic"
     )

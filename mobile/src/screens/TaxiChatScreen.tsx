@@ -1,26 +1,30 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 import ChatItemView from '../components/chat/ChatItemView';
+import DashboardHeader from '../components/dashboard/DashboardHeader';
 import LoadingStream from '../components/chat/LoadingStream';
 import RecommendationCard from '../components/chat/RecommendationCard';
+import { useAuth } from '../context/AuthContext';
 import { usePlacesAutocomplete } from '../hooks/usePlacesAutocomplete';
 import { api } from '../lib/api';
 import { loadToken } from '../lib/authToken';
 import { nextId } from '../lib/chatThread';
 import type { RecommendationCardPayload, RootStackParamList, ChatItem } from '../types';
-import { colors, spacing, typography } from '../theme';
+import { colors, spacing } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'TaxiChat'>;
 
-type ScreenPhase = 'input' | 'loading' | 'card' | 'error';
+type ScreenPhase = 'input' | 'loading' | 'select_pickup' | 'select_destination' | 'card' | 'error';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
 
 export default function TaxiChatScreen({ navigation }: Props) {
+  const { customer } = useAuth();
+  const insets = useSafeAreaInsets();
   const scrollViewRef = useRef<ScrollView>(null);
   const [draft, setDraft] = useState('');
   const [phase, setPhase] = useState<ScreenPhase>('input');
@@ -35,13 +39,16 @@ export default function TaxiChatScreen({ navigation }: Props) {
   ]);
   const [uberCard, setUberCard] = useState<RecommendationCardPayload | null>(null);
   const [selectedDestination, setSelectedDestination] = useState<string>('');
+  const [selectedPickup, setSelectedPickup] = useState<string | null>(null);
+  const [selectedPickupCoords, setSelectedPickupCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [selectedDestinationCoords, setSelectedDestinationCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [extractedDestination, setExtractedDestination] = useState<string>('');
+  const [searchingFor, setSearchingFor] = useState<'pickup' | 'destination'>('pickup');
   const [errorMessage, setErrorMessage] = useState<string>('');
 
+  const firstName = customer?.full_name?.split(' ')[0] ?? 'User';
   const { predictions, loading: autocompleteLoading, search } = usePlacesAutocomplete();
 
-  const handleDestinationSearch = (text: string) => {
-    setDraft(text);
-  };
 
   const handleSendMessage = async () => {
     if (!draft.trim()) return;
@@ -65,33 +72,53 @@ export default function TaxiChatScreen({ navigation }: Props) {
         return;
       }
 
-      if (__DEV__) console.log('[TaxiChat] Extracted destination:', result.destination);
-      search(result.destination);
+      setExtractedDestination(result.destination);
+      setItems((prev) => [
+        ...prev,
+        { id: nextId(), createdAt: Date.now(), kind: 'text', role: 'user', text: messageToExtract },
+      ]);
+
+      // If pickup location was extracted, search pickup suggestions first; otherwise go
+      // straight to destination. Stay in 'loading' — the predictions effect flips the
+      // phase once results actually arrive.
+      if (result.pickup_location) {
+        setSearchingFor('pickup');
+        search(result.pickup_location);
+      } else {
+        setSearchingFor('destination');
+        search(result.destination);
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to extract destination';
       setErrorMessage(msg);
       setPhase('error');
-      if (__DEV__) console.error('[TaxiChat] Extraction error:', err);
     }
   };
 
-  const handleSelectPrediction = async (description: string) => {
-    setDraft('');
-    setDisplayPredictions([]);
-    setSelectedDestination(description);
-    setPhase('loading');
+  const bookTaxi = async (
+    destination: string,
+    pickup?: string | null,
+    destinationCoords?: { lat: number; lng: number } | null,
+    pickupCoords?: { lat: number; lng: number } | null,
+  ) => {
+    setSelectedDestination(destination);
     setErrorMessage('');
-
-    setItems((prev) => [
-      ...prev,
-      { id: nextId(), createdAt: Date.now(), kind: 'text', role: 'user', text: description },
-    ]);
 
     try {
       const token = await loadToken();
       if (!token) throw new Error('Not authenticated');
 
-      const params = new URLSearchParams({ destination: description });
+      const params = new URLSearchParams({ destination });
+      if (pickupCoords) {
+        params.append('pickup_lat', String(pickupCoords.lat));
+        params.append('pickup_lng', String(pickupCoords.lng));
+        if (pickup) params.append('pickup_label', pickup);
+      }
+      if (destinationCoords) {
+        params.append('destination_lat', String(destinationCoords.lat));
+        params.append('destination_lng', String(destinationCoords.lng));
+      }
+
       const res = await fetch(`${API_BASE_URL}/dev/uber/deeplink?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -110,7 +137,7 @@ export default function TaxiChatScreen({ navigation }: Props) {
         origin_type: 'current_location',
         reasoning: '',
         suggested_message: '',
-        pickup_label: 'Current location',
+        pickup_label: pickup || 'Current location',
         dropoff_label: raw.destination,
         uber_app_url: raw.uber_app_url,
         deep_link_url: raw.deep_link_url,
@@ -125,30 +152,69 @@ export default function TaxiChatScreen({ navigation }: Props) {
       const msg = err instanceof Error ? err.message : 'Failed to book taxi';
       setErrorMessage(msg);
       setPhase('error');
-      if (__DEV__) console.error('[TaxiChat] Deeplink error:', err);
     }
   };
 
-  const handleRetry = async () => {
-    if (!selectedDestination) return;
-    await handleSelectPrediction(selectedDestination);
+
+  const handleSelectPrediction = async (description: string, placeId: string) => {
+    setDraft('');
+
+    try {
+      // Geocode the selected place to get coordinates
+      if (__DEV__) console.log('[TaxiChat] Geocoding place:', placeId, description);
+      const coords = await api.geocodePlace(placeId);
+      if (__DEV__) console.log('[TaxiChat] Geocode response:', coords);
+
+      if (!coords.latitude || !coords.longitude) {
+        setErrorMessage(coords.error || 'Could not get location coordinates');
+        setPhase('error');
+        return;
+      }
+
+      if (searchingFor === 'pickup') {
+        setSelectedPickup(description);
+        setSelectedPickupCoords({ lat: coords.latitude, lng: coords.longitude });
+        setSearchingFor('destination');
+        // Back to loading until the destination predictions arrive — avoids showing
+        // the stale pickup suggestions under a "Select Destination" header.
+        setPhase('loading');
+        search(extractedDestination);
+      } else {
+        setSelectedDestination(description);
+        setSelectedDestinationCoords({ lat: coords.latitude, lng: coords.longitude });
+        setPhase('loading');
+        await bookTaxi(description, selectedPickup, { lat: coords.latitude, lng: coords.longitude }, selectedPickupCoords);
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to geocode location';
+      setErrorMessage(msg);
+      setPhase('error');
+    }
   };
 
   useEffect(() => {
     scrollViewRef.current?.scrollToEnd({ animated: true });
   }, [items, phase]);
 
-  const [displayPredictions, setDisplayPredictions] = useState<typeof predictions>([]);
   useEffect(() => {
-    if (__DEV__) console.log('[TaxiChat] Predictions updated:', predictions);
-    setDisplayPredictions(predictions);
     if (predictions.length > 0 && phase === 'loading') {
-      setPhase('input');
+      if (searchingFor === 'pickup') {
+        setPhase('select_pickup');
+      } else {
+        setPhase('select_destination');
+      }
     }
-  }, [predictions, phase]);
+  }, [predictions, phase, searchingFor]);
+
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <View style={styles.container}>
+      <DashboardHeader
+        avatarInitial={firstName.charAt(0).toUpperCase()}
+        onPressHistory={() => navigation.goBack()}
+        onPressClose={() => navigation.goBack()}
+        menuItems={[]}
+      />
       <ScrollView
         ref={scrollViewRef}
         style={styles.thread}
@@ -159,15 +225,17 @@ export default function TaxiChatScreen({ navigation }: Props) {
           <ChatItemView key={item.id} item={item} />
         ))}
 
-        {displayPredictions.length > 0 && phase === 'input' && (
+        {predictions.length > 0 && (phase === 'select_pickup' || phase === 'select_destination') && (
           <View style={styles.suggestionsWrapper}>
-            <Text style={styles.suggestionsTitle}>Suggestions</Text>
+            <Text style={styles.suggestionsTitle}>
+              {searchingFor === 'pickup' ? 'Select Pickup Location' : 'Select Destination'}
+            </Text>
             <View style={styles.suggestionsGrid}>
-              {displayPredictions.map((pred) => (
+              {predictions.map((pred) => (
                 <TouchableOpacity
                   key={pred.place_id}
                   style={styles.suggestionCard}
-                  onPress={() => handleSelectPrediction(pred.description)}
+                  onPress={() => handleSelectPrediction(pred.description, pred.place_id)}
                   activeOpacity={0.7}
                 >
                   <View style={styles.suggestionIcon}>
@@ -202,23 +270,29 @@ export default function TaxiChatScreen({ navigation }: Props) {
         {phase === 'error' && (
           <View style={styles.errorContainer}>
             <Text style={styles.errorText}>{errorMessage}</Text>
-            <TouchableOpacity style={styles.retryButton} onPress={handleRetry}>
-              <Text style={styles.retryButtonText}>Try again</Text>
-            </TouchableOpacity>
+            {selectedDestination && (
+              <TouchableOpacity
+                style={styles.retryButton}
+                onPress={() =>
+                  bookTaxi(selectedDestination, selectedPickup, selectedDestinationCoords, selectedPickupCoords)
+                }
+              >
+                <Text style={styles.retryButtonText}>Try again</Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
       </ScrollView>
 
-      {phase === 'input' && (
-        <View style={styles.inputSection}>
+      {(phase === 'input' || phase === 'error') && (
+        <View style={[styles.inputSection, { paddingBottom: insets.bottom }]}>
           <View style={styles.inputContainer}>
             <TextInput
               style={styles.input}
               placeholder="Search destination…"
               value={draft}
-              onChangeText={handleDestinationSearch}
+              onChangeText={setDraft}
               placeholderTextColor="#999"
-              editable={!autocompleteLoading}
             />
             <TouchableOpacity
               style={[styles.sendButton, (!draft.trim() || autocompleteLoading) && styles.sendButtonDisabled]}
@@ -234,12 +308,12 @@ export default function TaxiChatScreen({ navigation }: Props) {
           </View>
         </View>
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+  container: { flex: 1, backgroundColor: '#FFFFFF' },
   thread: { flex: 1 },
   threadContent: { padding: spacing.lg, paddingBottom: spacing.md },
   loadingItem: {

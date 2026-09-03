@@ -57,8 +57,7 @@ export default function RootNavigator() {
               name="TaxiChat"
               component={TaxiChatScreen}
               options={{
-                headerShown: true,
-                title: 'Book a taxi',
+                headerShown: false,
               }}
             />
             <Stack.Screen

@@ -333,8 +333,19 @@ export const api = {
       },
     ),
 
+  geocodePlace: (placeId: string) =>
+    authedFetch<{
+      place_id: string;
+      latitude: number | null;
+      longitude: number | null;
+      error?: string;
+    }>(
+      `/places/geocode?place_id=${encodeURIComponent(placeId)}`,
+    ),
+
   extractDestination: (message: string) =>
     authedFetch<{
+      pickup_location: string | null;
       destination: string;
       is_relevant: boolean;
       redirect_message?: string;

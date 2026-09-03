@@ -55,6 +55,52 @@ def places_autocomplete(
         return {"error": str(e), "predictions": []}
 
 
+@router.get("/geocode")
+def geocode_place(
+    place_id: str = Query(..., description="Google Places place_id to geocode"),
+    _customer: dict = Depends(get_current_customer),
+):
+    """Get coordinates for a place by place_id."""
+    settings = get_settings()
+    api_key = settings.google_maps_api_key
+
+    if not api_key:
+        return {"error": "Google Maps API key not configured", "latitude": None, "longitude": None}
+
+    url = "https://places.googleapis.com/v1/places/" + place_id
+    headers = {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": api_key,
+    }
+    params = {
+        "fields": "location,displayName"
+    }
+
+    try:
+        with httpx.Client() as client:
+            response = client.get(url, headers=headers, params=params, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+
+        location = data.get("location", {})
+        latitude = location.get("latitude")
+        longitude = location.get("longitude")
+
+        if latitude is None or longitude is None:
+            print(f"[Places] ❌ No coordinates in response for place {place_id}")
+            return {"error": "No coordinates found in API response", "latitude": None, "longitude": None}
+
+        print(f"[Places] ✅ Geocoded place {place_id}: lat={latitude}, lng={longitude}")
+        return {
+            "place_id": place_id,
+            "latitude": latitude,
+            "longitude": longitude,
+        }
+    except Exception as e:
+        print(f"[Places] ❌ Geocoding error: {str(e)}")
+        return {"error": str(e), "latitude": None, "longitude": None}
+
+
 @router.post("/extract-destination")
 def extract_destination(
     message: str = Query(..., description="User message to extract destination from"),
@@ -72,20 +118,24 @@ def extract_destination(
         structured_llm = llm.with_structured_output(DestinationExtraction)
 
         prompt = (
-            "You are a taxi/Uber booking assistant. Your role is to help users book rides to specific destinations.\n\n"
+            "You are a taxi/Uber booking assistant. Your role is to help users book rides.\n\n"
             "For each user message:\n"
             "1. Determine if it's relevant to booking a taxi/ride (on-topic)\n"
-            "2. Extract the destination city if mentioned\n\n"
+            "2. Extract both pickup location and destination if mentioned\n\n"
+            "Patterns to handle:\n"
+            "- 'from X to Y' → pickup_location='X', destination='Y'\n"
+            "- 'to Y' or 'I want to go to Y' → pickup_location=null (use current location), destination='Y'\n"
+            "- Just 'Y' when context is clear → pickup_location=null, destination='Y'\n\n"
             "If the message is off-topic (e.g., asking about weather, restaurants, general questions unrelated to booking), "
-            "set is_relevant=false and provide a brief redirect message like: "
-            "'I can only help with taxi bookings. Please tell me where you'd like to go.'\n"
+            "set is_relevant=false and provide a brief redirect message.\n"
             "If on-topic but no destination found, set destination='' but keep is_relevant=true.\n"
-            "If on-topic and destination found, set is_relevant=true and destination to the city name, redirect_message=null.\n\n"
+            "If on-topic and destination found, set is_relevant=true and destination to the location name.\n"
+            "If pickup location is explicitly mentioned, extract it; otherwise set to null.\n\n"
             f"User message: '{message}'"
         )
 
         result = structured_llm.invoke(prompt)
-        print(f"[Places] Extracted: destination='{result.destination}' is_relevant={result.is_relevant}")
+        print(f"[Places] Extracted: pickup='{result.pickup_location}' destination='{result.destination}' is_relevant={result.is_relevant}")
         return result.model_dump()
     except Exception as e:
         print(f"[Places] Extraction error: {str(e)}")

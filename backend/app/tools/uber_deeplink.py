@@ -129,6 +129,17 @@ def lookup_airport_coordinates(label: Optional[str]) -> Optional[tuple[float, fl
         if _normalize(known) == normalized:
             logger.info("[uber] coords NORMALIZED HIT %r -> %r", label, known)
             return known_coords
+
+    # Try extracting airport code from full address (e.g., "Airport (SEA), Address, City" → "SEA")
+    import re
+    match = re.search(r'\(([A-Z]{3})\)', label)
+    if match:
+        code = match.group(1)
+        if code in ALL_KNOWN_COORDINATES:
+            coords = ALL_KNOWN_COORDINATES[code]
+            logger.info("[uber] coords CODE MATCH %r -> %r -> %s", label, code, coords)
+            return coords
+
     logger.warning("[uber] coords MISS %r", label)
     return None
 

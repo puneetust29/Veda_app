@@ -123,28 +123,78 @@ def dev_transport_status(
 @router.get("/uber/deeplink")
 def dev_uber_deeplink(
     destination: str = Query("London Heathrow Airport", description="Destination name"),
+    pickup_lat: float = Query(None, description="Optional pickup latitude"),
+    pickup_lng: float = Query(None, description="Optional pickup longitude"),
+    pickup_label: str = Query(None, description="Optional pickup nickname shown in Uber"),
+    destination_lat: float = Query(None, description="Optional destination latitude"),
+    destination_lng: float = Query(None, description="Optional destination longitude"),
     _customer: dict = Depends(get_current_customer),
 ):
     """Return an Uber deeplink for a ride to the given destination."""
+    import logging
     from app.agents.maps.maps_client import geocode
-    from app.tools.uber_deeplink import build_uber_deeplink
+    from app.tools.uber_deeplink import build_uber_deeplink, lookup_airport_coordinates
+
+    logger = logging.getLogger(__name__)
+    logger.info(f"\n{'='*80}")
+    logger.info(f"[UBER DEEPLINK] Request for destination: {destination}")
+    logger.info(f"{'='*80}")
 
     settings = get_settings()
     api_key = settings.google_maps_api_key
 
-    latlng = geocode(destination, api_key)
-    if not latlng:
-        return {"error": f"Could not geocode destination: {destination}"}
+    if not api_key:
+        raise HTTPException(503, "Google Maps API key not configured")
 
-    app_url, web_url = build_uber_deeplink(
-        dropoff_latitude=latlng["lat"],
-        dropoff_longitude=latlng["lng"],
-        dropoff_nickname=destination,
-    )
+    if not settings.uber_client_id:
+        raise HTTPException(503, "Uber client ID not configured")
+
+    # If destination coordinates provided, use them; otherwise try to lookup/geocode
+    if destination_lat is not None and destination_lng is not None:
+        dropoff_latlng = {"lat": destination_lat, "lng": destination_lng}
+        logger.info(f"[UBER DEEPLINK] Using provided destination coordinates: {dropoff_latlng}")
+    else:
+        # Try hardcoded airport coordinates first
+        logger.info(f"[UBER DEEPLINK] Looking up coordinates for: {destination}")
+        coords = lookup_airport_coordinates(destination)
+        dropoff_latlng = None
+        if coords:
+            dropoff_latlng = {"lat": coords[0], "lng": coords[1]}
+            logger.info(f"[UBER DEEPLINK] ✅ Found hardcoded coordinates: {dropoff_latlng}")
+
+        # If not found, try geocoding with Google Maps API
+        if not dropoff_latlng:
+            logger.info(f"[UBER DEEPLINK] Coordinates not found, trying Google Maps API geocoding...")
+            dropoff_latlng = geocode(destination, api_key)
+            if dropoff_latlng:
+                logger.info(f"[UBER DEEPLINK] ✅ Geocoded coordinates: {dropoff_latlng}")
+
+        if not dropoff_latlng:
+            logger.error(f"[UBER DEEPLINK] ❌ Could not geocode destination: {destination}")
+            raise HTTPException(400, f"Could not geocode destination: {destination}")
+
+    try:
+        logger.info(f"[UBER DEEPLINK] Building deeplink with dropoff: lat={dropoff_latlng['lat']}, lng={dropoff_latlng['lng']}")
+        if pickup_lat is not None and pickup_lng is not None:
+            logger.info(f"[UBER DEEPLINK] Pickup coordinates provided: lat={pickup_lat}, lng={pickup_lng}")
+        app_url, web_url = build_uber_deeplink(
+            pickup_latitude=pickup_lat,
+            pickup_longitude=pickup_lng,
+            pickup_nickname=pickup_label,
+            dropoff_latitude=dropoff_latlng["lat"],
+            dropoff_longitude=dropoff_latlng["lng"],
+            dropoff_nickname=destination,
+        )
+        logger.info(f"[UBER DEEPLINK] ✅ App URL: {app_url}")
+        logger.info(f"[UBER DEEPLINK] ✅ Web URL: {web_url}")
+        logger.info(f"{'='*80}\n")
+    except Exception as e:
+        logger.error(f"[UBER DEEPLINK] ❌ Failed to build deeplink: {str(e)}")
+        raise HTTPException(500, f"Failed to build deeplink: {str(e)}")
 
     return {
         "destination": destination,
-        "dropoff_latlng": latlng,
+        "dropoff_latlng": dropoff_latlng,
         "uber_app_url": app_url,
         "deep_link_url": web_url,
     }

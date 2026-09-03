@@ -23,6 +23,7 @@ export function usePlacesAutocomplete() {
     }
 
     setLoading(true);
+    setPredictions([]);
     debounceRef.current = setTimeout(async () => {
       try {
         abortControllerRef.current?.abort();
