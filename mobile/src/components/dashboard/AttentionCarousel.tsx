@@ -230,7 +230,7 @@ function AttentionCard({
   // Bill card rendering
   if (type === 'broadbandBill') {
     const rawDetails = event.raw_details as any || {};
-    const billProvider = rawDetails.bill_provider || 'Broadband';
+    const billType = rawDetails.bill_type || 'Utility';
     const billAmount = rawDetails.bill_amount || 0;
     const billCurrency = rawDetails.bill_currency || 'USD';
     const dueDate = rawDetails.due_date ? new Date(rawDetails.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Due soon';
@@ -263,10 +263,10 @@ function AttentionCard({
             {billPaid ? `Paid on ${new Date(event.start_datetime).toLocaleDateString()}` : 'I\'ve gathered everything that\'s due this month.'}
           </Text>
 
-          {/* Bill Provider Tag with Checkmark */}
+          {/* Bill Type Tag with Checkmark */}
           <View style={styles.billTagRow}>
             <View style={styles.billTag}>
-              <Text style={styles.billTagLabel}>{billProvider}</Text>
+              <Text style={styles.billTagLabel}>{billType.charAt(0).toUpperCase() + billType.slice(1)}</Text>
               {billPaid ? (
                 <Ionicons name="checkmark-circle" size={14} color={colors.success} />
               ) : (

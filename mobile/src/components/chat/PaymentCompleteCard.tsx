@@ -3,6 +3,19 @@ import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing } from '../../theme';
 
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  USD: '$',
+  EUR: '€',
+  GBP: '£',
+  JPY: '¥',
+  INR: '₹',
+  CAD: 'C$',
+  AUD: 'A$',
+  CHF: 'CHF',
+  SEK: 'kr',
+  NOK: 'kr',
+};
+
 type Props = {
   paymentMethodBrand?: string;
   paymentMethodLast4?: string;
@@ -18,6 +31,8 @@ export default function PaymentCompleteCard({
   amount,
   currency,
 }: Props) {
+  const currencySymbol = CURRENCY_SYMBOLS[currency] || currency;
+
   return (
     <View style={styles.card}>
       {/* Header with checkmark */}
@@ -60,7 +75,7 @@ export default function PaymentCompleteCard({
       <View style={styles.totalRow}>
         <Text style={styles.totalLabel}>Total</Text>
         <Text style={styles.totalAmount}>
-          {currency}{amount.toFixed(2)}
+          {currencySymbol}{amount.toFixed(2)}
         </Text>
       </View>
     </View>

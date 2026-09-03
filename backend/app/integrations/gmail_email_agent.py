@@ -624,6 +624,7 @@ class BillEmailParsing:
         email_sender: str,
         email_subject: str,
         email_received_at: datetime,
+        bill_type: str = "utility",
     ):
         self.gmail_message_id = gmail_message_id
         self.customer_id = customer_id
@@ -637,6 +638,7 @@ class BillEmailParsing:
         self.email_sender = email_sender
         self.email_subject = email_subject
         self.email_received_at = email_received_at
+        self.bill_type = bill_type
 
     def to_calendar_event(self) -> dict:
         """Convert to calendar_events table row format."""
@@ -662,6 +664,7 @@ class BillEmailParsing:
                 "due_date": self.due_date.isoformat(),
                 "bill_reference": self.bill_reference,
                 "plan_details": self.plan_details,
+                "bill_type": self.bill_type,
                 "bill_confidence": self.confidence,
                 "parsed_from": "email_body",
                 "provider_detected_method": "keyword_or_domain",
@@ -761,6 +764,9 @@ def parse_bill_email(email: dict, customer_id: str) -> Optional[BillEmailParsing
     # Extract bill reference
     bill_reference = _extract_bill_reference(subject, body)
 
+    # Extract bill type
+    bill_type = _extract_bill_type_from_email(subject, body)
+
     # Calculate confidence
     has_booster = any(booster in combined_text for booster in confidence_boosters)
     confidence = 0.4 + 0.3 + 0.2 + (0.1 if has_booster else 0)  # min 0.6
@@ -778,6 +784,7 @@ def parse_bill_email(email: dict, customer_id: str) -> Optional[BillEmailParsing
         email_sender=sender,
         email_subject=subject,
         email_received_at=received_at,
+        bill_type=bill_type,
     )
 
 
@@ -942,6 +949,40 @@ def _extract_bill_reference(subject: str, body: str) -> Optional[str]:
             return match.group(1).strip()
 
     return None
+
+
+def _extract_bill_type_from_email(subject: str, body: str) -> str:
+    """Extract bill type from email subject and body.
+
+    Searches for keywords to identify bill category (broadband, electricity, water, gas, mobile).
+    Returns first match found, or 'utility' if no specific type detected.
+
+    Args:
+        subject: Email subject line
+        body: Email body content
+
+    Returns:
+        Bill type string: "broadband", "electricity", "water", "gas", "mobile", or "utility"
+    """
+    combined_text = f"{subject}\n{body}".lower()
+
+    # Bill type keywords mapping - order matters for priority
+    bill_type_keywords = {
+        "broadband": ["broadband", "internet", "wifi", "isp", "dsl", "fiber", "cable internet"],
+        "electricity": ["electricity", "electric", "power", "kilowatt", "kwh", "energy"],
+        "water": ["water", "sewage", "wastewater", "aqua"],
+        "gas": ["gas", "propane", "natural gas", "lpg"],
+        "mobile": ["mobile", "phone", "cellular", "telecom", "wireless", "sim card"],
+    }
+
+    # Search for each bill type - return first match (case-insensitive)
+    for bill_type, keywords in bill_type_keywords.items():
+        for keyword in keywords:
+            if keyword in combined_text:
+                return bill_type
+
+    # Default to utility if no specific type found
+    return "utility"
 
 
 def check_duplicate_bill(

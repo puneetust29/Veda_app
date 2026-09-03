@@ -9,6 +9,19 @@ import PaymentProcessingCard from './PaymentProcessingCard';
 
 type State = 'idle' | 'processing' | 'success' | 'error';
 
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  USD: '$',
+  EUR: '€',
+  GBP: '£',
+  JPY: '¥',
+  INR: '₹',
+  CAD: 'C$',
+  AUD: 'A$',
+  CHF: 'CHF',
+  SEK: 'kr',
+  NOK: 'kr',
+};
+
 type Props = {
   bill: CalendarEvent;
   paymentMethodBrand?: string;
@@ -32,9 +45,10 @@ export default function BillPaymentCard({
   const { refreshBills } = useSubscriptionInsurance();
 
   const rawDetails = bill.raw_details as any || {};
-  const billProvider = rawDetails.bill_provider || 'Broadband';
+  const billType = rawDetails.bill_type || 'Utility';
   const billAmount = rawDetails.bill_amount || 0;
   const billCurrency = rawDetails.bill_currency || 'USD';
+  const currencySymbol = CURRENCY_SYMBOLS[billCurrency] || billCurrency;
 
   const handlePayment = async () => {
     try {
@@ -117,9 +131,9 @@ export default function BillPaymentCard({
       {/* Bills List */}
       <View style={styles.billsList}>
         <View style={styles.billRow}>
-          <Text style={styles.billName}>{billProvider}</Text>
+          <Text style={styles.billName}>{billType.charAt(0).toUpperCase() + billType.slice(1)}</Text>
           <Text style={styles.billAmount}>
-            {billCurrency}{billAmount.toFixed(2)}
+            {currencySymbol}{billAmount.toFixed(2)}
           </Text>
         </View>
       </View>
@@ -131,7 +145,7 @@ export default function BillPaymentCard({
       <View style={styles.totalRow}>
         <Text style={styles.totalLabel}>Total</Text>
         <Text style={styles.totalAmount}>
-          {billCurrency}{billAmount.toFixed(2)}
+          {currencySymbol}{billAmount.toFixed(2)}
         </Text>
       </View>
 
