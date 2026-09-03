@@ -31,10 +31,15 @@ class PepetoClient:
         if auth_required and not self._api_key:
             raise RuntimeError(f"Pepesto API key required for {path}. Set PEPESTO_API_KEY in backend/.env")
         url = f"{PEPESTO_BASE}/{path.lstrip('/')}"
-        logger.info("[pepesto] POST %s payload=%r", url, payload)
+        logger.info("[pepesto] POST %s | auth=%s | payload=%r", url, auth_required, payload)
         resp = httpx.post(url, json=payload, headers=self._headers, timeout=TIMEOUT)
+        logger.info("[pepesto] %s → HTTP %d | body_size=%d bytes", path, resp.status_code, len(resp.content))
+        if not resp.is_success:
+            logger.error("[pepesto] %s error | status=%d | body=%r", path, resp.status_code, resp.text[:500])
         resp.raise_for_status()
-        return resp.json()
+        data = resp.json()
+        logger.info("[pepesto] %s parsed | top_keys=%s", path, list(data.keys()) if isinstance(data, dict) else type(data).__name__)
+        return data
 
     # ── Free endpoints (no API key needed) ─────────────────────────────────
 
@@ -127,6 +132,21 @@ class PepetoClient:
         if unresolved_items:
             payload["unresolved_items"] = unresolved_items
         return self._post("session", payload)
+
+    def mcheckout(
+        self,
+        supermarket_domain: str,
+        skus: list[dict],
+        return_url: str = "",
+    ) -> dict:
+        """Mobile hosted checkout — returns mobile_hosted_url to open in-app browser."""
+        payload: dict[str, Any] = {
+            "supermarket_domain": supermarket_domain,
+            "skus": skus,
+        }
+        if return_url:
+            payload["return_url"] = return_url
+        return self._post("mcheckout", payload)
 
     def checkout(
         self,

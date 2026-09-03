@@ -304,6 +304,7 @@ export type GroceryBasketItem = {
   price: number;
   price_formatted: string;
   image_url?: string | null;
+  product_url?: string | null;
   num_units: number;
 };
 
@@ -314,7 +315,7 @@ export type GroceryBasketPayload = {
   missing_items: string[];
   total_formatted?: string | null;
   checkout_url: string;
-  checkout_mode: 'predirect' | 'products' | 'oneshot';
+  checkout_mode: 'predirect' | 'products' | 'oneshot' | 'session';
   message: string;
 };
 

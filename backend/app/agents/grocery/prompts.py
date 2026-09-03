@@ -31,33 +31,36 @@ SUPERMARKET_SEARCH_URLS = {
 
 
 def supermarket_search_url(supermarket_domain: str, items: list[str]) -> str:
-    """Build a direct supermarket search URL for a list of items (first item as query)."""
+    """Build a direct supermarket search URL for a list of items."""
     template = SUPERMARKET_SEARCH_URLS.get(supermarket_domain, f"https://www.{supermarket_domain}/groceries")
-    query = "+".join(items[0].replace(" ", "+").split() if items else ["groceries"])
+    # Use first item as the search query (supermarkets search one term at a time)
+    query = items[0].replace(" ", "+") if items else "groceries"
     return template.format(query=query)
 
 
 def grocery_intent_prompt(user_message: str, history: list[dict] = None) -> str:
     history_lines = ""
     if history:
-        history_lines = "\nRecent conversation:\n"
-        for msg in history[-4:]:
+        history_lines = "\nConversation so far:\n"
+        for msg in history[-10:]:
             role = "Customer" if msg.get("role") == "user" else "Veda"
             history_lines += f"{role}: {msg.get('text', '')}\n"
 
     return (
-        "You are Veda's grocery shopping assistant. Extract the user's grocery shopping intent.\n\n"
-        "Your job:\n"
-        "1. Identify the items they want to buy (be specific, normalise quantities where possible)\n"
-        "2. Identify which UK supermarket they want (default to Tesco if not stated)\n"
+        "You are Veda's grocery shopping assistant. Your job is to build a CUMULATIVE grocery list.\n\n"
+        "Rules:\n"
+        "1. Collect ALL items the customer has mentioned across the ENTIRE conversation — not just the latest message.\n"
+        "   If they said 'I need milk' earlier and now say 'I need eggs', the list is ['milk', 'eggs'].\n"
+        "2. Deduplicate items — if the same item appears multiple times, include it once.\n"
+        "3. Identify which UK supermarket they want. Once chosen, keep it — do not change it.\n"
         "   UK supermarkets: Tesco (tesco.com), Sainsbury's (sainsburys.co.uk), "
         "Asda (asda.com), Waitrose (waitrose.com), Morrisons (groceries.morrisons.com)\n"
-        "3. Write a short friendly reply to show the user before building their basket\n\n"
+        "   Default to Tesco if no supermarket is mentioned.\n"
+        "4. Write a short friendly confirmation reply listing all the items collected so far.\n\n"
         "Examples:\n"
-        "- 'I need milk, eggs and bread from Tesco' → items: ['milk', 'eggs', 'bread'], supermarket: tesco.com\n"
-        "- 'Get me ingredients for chicken tikka masala at Sainsbury's' → items: ['chicken breast', 'yoghurt', "
-        "'tomatoes', 'onion', 'garlic', 'tikka masala paste', 'cream', 'rice'], supermarket: sainsburys.co.uk\n"
-        "- 'Weekly shop' → items: ['milk', 'bread', 'eggs', 'butter', 'cheese'], supermarket: tesco.com\n\n"
+        "- History: 'I need milk' / 'Tesco' | New: 'I need eggs' → items: ['milk', 'eggs'], supermarket: tesco.com\n"
+        "- History: 'milk, eggs' / 'Sainsbury's' | New: 'also bread' → items: ['milk', 'eggs', 'bread'], supermarket: sainsburys.co.uk\n"
+        "- Single message: 'I need milk, eggs and bread from Tesco' → items: ['milk', 'eggs', 'bread'], supermarket: tesco.com\n\n"
         f"{history_lines}"
-        f"\nCustomer's message: {user_message}"
+        f"\nCustomer's latest message: {user_message}"
     )
