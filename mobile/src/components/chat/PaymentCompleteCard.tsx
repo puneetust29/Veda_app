@@ -1,84 +1,67 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing } from '../../theme';
-import CheckmarkIcon from '../icons/CheckmarkIcon';
-import HeaderBackground from '../icons/HeaderBackground';
-import { api } from '../../lib/api';
-
-
 
 type Props = {
-  insuranceId?: string;
-  insuranceAmount?: number;
-  insuranceCurrency?: string;
-  destination: string;
-  cardLast4?: string;
-  cardBrand?: string;
+  paymentMethodBrand?: string;
+  paymentMethodLast4?: string;
+  transactionId?: string;
+  amount: number;
+  currency: string;
 };
 
-export default function PaymentCompleteCard({ insuranceId, insuranceAmount, insuranceCurrency, destination, cardLast4, cardBrand }: Props) {
-  const [paymentMethodBrand, setPaymentMethodBrand] = useState(cardBrand);
-  const [paymentMethodLast4, setPaymentMethodLast4] = useState(cardLast4);
-
-  useEffect(() => {
-    if (!cardBrand || !cardLast4) {
-      const fetchPaymentMethod = async () => {
-        try {
-          const response = await api.getCustomerPaymentMethods();
-          if (!cardBrand) setPaymentMethodBrand(response.brand ?? undefined);
-          if (!cardLast4) setPaymentMethodLast4(response.last4 ?? undefined);
-        } catch (err) {
-          if (__DEV__) console.debug('Payment method fetch failed:', err);
-        }
-      };
-      fetchPaymentMethod();
-    }
-  }, [cardBrand, cardLast4]);
-
-  const totalAmount = insuranceAmount || 0;
-  const currency = insuranceCurrency || '£';
-  const transactionId = insuranceId || 'N/A';
-
+export default function PaymentCompleteCard({
+  paymentMethodBrand,
+  paymentMethodLast4,
+  transactionId,
+  amount,
+  currency,
+}: Props) {
   return (
-    <View>
-      <View style={styles.card}>
-        <View style={styles.pattern} pointerEvents="none">
-          <HeaderBackground width={366} height={141} />
+    <View style={styles.card}>
+      {/* Header with checkmark */}
+      <View style={styles.headerSection}>
+        <View style={styles.checkmarkCircle}>
+          <Ionicons name="checkmark" size={32} color="white" />
         </View>
+        <Text style={styles.title}>Payment Complete</Text>
+      </View>
 
-        <View style={styles.headerSection}>
-          <View style={styles.iconContainer}>
-            <CheckmarkIcon size={24} color={colors.brand} />
-          </View>
-          <Text style={styles.headerTitle}>Payment Complete</Text>
-        </View>
+      {/* Divider */}
+      <View style={styles.divider} />
 
-        <View style={styles.divider} />
-
-        <View style={styles.detailsSection}>
-          {paymentMethodBrand && paymentMethodLast4 && (
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Payment method</Text>
-              <Text style={styles.detailValue}>
-                {paymentMethodBrand.charAt(0).toUpperCase() + paymentMethodBrand.slice(1)} •••• {paymentMethodLast4}
-              </Text>
-            </View>
-          )}
-
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Transaction ID</Text>
-            <Text style={styles.detailValue}>{transactionId}</Text>
-          </View>
-
-          <View style={styles.divider} />
-
-          <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>Total</Text>
-            <Text style={styles.totalValue}>
-              {currency}{totalAmount.toFixed(2)}
+      {/* Payment Method */}
+      {paymentMethodBrand && paymentMethodLast4 && (
+        <View style={styles.detailRow}>
+          <Text style={styles.label}>Payment method</Text>
+          <View style={styles.valueRow}>
+            <Ionicons name="card" size={16} color={colors.textPrimary} />
+            <Text style={styles.value}>
+              {paymentMethodBrand.charAt(0).toUpperCase() + paymentMethodBrand.slice(1)} •••• {paymentMethodLast4}
             </Text>
           </View>
         </View>
+      )}
+
+      {/* Transaction ID */}
+      {transactionId && (
+        <>
+          <View style={styles.divider} />
+          <View style={styles.detailRow}>
+            <Text style={styles.label}>Transaction ID</Text>
+            <Text style={styles.value}>{transactionId}</Text>
+          </View>
+        </>
+      )}
+
+      {/* Total */}
+      <View style={styles.divider} />
+      <View style={styles.totalRow}>
+        <Text style={styles.totalLabel}>Total</Text>
+        <Text style={styles.totalAmount}>
+          {currency}{amount.toFixed(2)}
+        </Text>
       </View>
     </View>
   );
@@ -87,102 +70,73 @@ export default function PaymentCompleteCard({ insuranceId, insuranceAmount, insu
 const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.white,
-    borderRadius: 24,
-    padding: 16,
-    marginBottom: spacing.lg,
+    borderRadius: 20,
+    padding: spacing.lg,
+    marginVertical: spacing.md,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  pattern: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 141,
-    opacity: 0.16,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   headerSection: {
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    height: 40,
+    paddingBottom: spacing.lg,
   },
-  iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: 'rgba(230, 0, 0, 0.08)',
+  checkmarkCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#E60000',
     justifyContent: 'center',
     alignItems: 'center',
+    marginBottom: spacing.md,
   },
-  headerTitle: {
-    fontFamily: fonts.semiBold,
+  title: {
+    fontFamily: fonts.bold,
     fontSize: 20,
-    lineHeight: 24,
-    fontWeight: '600',
-    color: '#000000',
+    color: colors.textPrimary,
   },
   divider: {
     height: 1,
-    backgroundColor: '#eeeeee',
-    marginTop: 16,
-    marginBottom: 0,
-  },
-  detailsSection: {
-    marginBottom: 0,
+    backgroundColor: '#E8E8E8',
+    marginVertical: spacing.md,
   },
   detailRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    minHeight: 24,
-    marginTop: 16,
+    paddingVertical: spacing.sm,
   },
-  detailLabel: {
-    fontFamily: fonts.body,
-    fontSize: 11,
-    lineHeight: 13,
-    fontWeight: '400',
-    color: '#000000',
+  label: {
+    fontFamily: fonts.bodyLight,
+    fontSize: 14,
+    color: colors.textSecondary,
   },
-  detailValue: {
-    fontFamily: fonts.semiBold,
-    fontSize: 11,
-    lineHeight: 13,
-    fontWeight: '600',
-    color: '#000000',
-  },
-  paymentMethod: {
+  valueRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: spacing.sm,
   },
-  applePayIcon: {
-    width: 31,
-    height: 31,
+  value: {
+    fontFamily: fonts.semiBold,
+    fontSize: 14,
+    color: colors.textPrimary,
   },
   totalRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 0,
-    marginTop: 12,
+    paddingVertical: spacing.sm,
   },
   totalLabel: {
-    fontFamily: fonts.semiBold,
-    fontSize: 14,
-    lineHeight: 17,
-    fontWeight: '600',
-    color: '#1a1a1a',
-  },
-  totalValue: {
     fontFamily: fonts.bold,
     fontSize: 16,
-    lineHeight: 19,
-    fontWeight: '700',
-    color: '#1a1a1a',
+    color: colors.textPrimary,
+  },
+  totalAmount: {
+    fontFamily: fonts.bold,
+    fontSize: 18,
+    color: colors.textPrimary,
   },
 });

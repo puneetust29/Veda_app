@@ -303,6 +303,48 @@ export const api = {
       }),
     }),
 
+  createBillPaymentIntent: (billEventId: string, amountCents: number, currency: string, paymentMethodId: string) =>
+    authedFetch<{
+      client_secret: string;
+      ephemeral_key_secret: string;
+      customer_id: string;
+      publishable_key: string;
+    }>('/payments/bill/intent', {
+      method: 'POST',
+      body: JSON.stringify({
+        bill_event_id: billEventId,
+        amount_cents: amountCents,
+        currency: currency,
+        payment_method_id: paymentMethodId,
+      }),
+    }),
+
+  confirmBillPayment: (billEventId: string, paymentIntentId: string) =>
+    authedFetch<{
+      id: string;
+      status: string;
+      bill_event_id: string;
+      paid_at: string;
+      amount: number;
+    }>('/payments/bill/confirm', {
+      method: 'POST',
+      body: JSON.stringify({
+        bill_event_id: billEventId,
+        payment_intent_id: paymentIntentId,
+      }),
+    }),
+
+  getBillPaymentStatus: (billEventId: string) =>
+    authedFetch<{
+      id: string;
+      status: string;
+      bill_event_id: string;
+      paid_at: string;
+      amount: number;
+      bill_details: any;
+      payment_intent_id: string;
+    } | null>(`/payments/bill/${billEventId}`, { method: 'GET' }).catch(() => null),
+
   getActiveInsurance: () =>
     authedFetch<{
       purchases: Array<{
@@ -322,6 +364,21 @@ export const api = {
       last4: string | null;
       id: string | null;
     }>('/payments/customer-payment-methods', {
+      method: 'GET',
+    }),
+
+  getActiveBills: () =>
+    authedFetch<{
+      bills: Array<{
+        id: string;
+        bill_event_id: string;
+        status: string;
+        paid_at: string;
+        amount: number;
+        bill_details: any;
+        payment_intent_id: string;
+      }>;
+    }>('/payments/bills', {
       method: 'GET',
     }),
 };

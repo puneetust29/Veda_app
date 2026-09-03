@@ -11,14 +11,26 @@ type InsurancePurchase = {
   plan_details: any;
 };
 
+type BillPayment = {
+  id: string;
+  bill_event_id: string;
+  status: string;
+  paid_at: string;
+  amount: number;
+  bill_details: any;
+  payment_intent_id: string;
+};
+
 type SubscriptionInsuranceContextValue = {
   subscriptions: Subscription[] | null;
   activeInsurance: { purchases: InsurancePurchase[] } | null;
+  activeBills: { bills: BillPayment[] } | null;
   loading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
   refreshSubscriptions: () => Promise<void>;
   refreshInsurance: () => Promise<void>;
+  refreshBills: () => Promise<void>;
   invalidate: () => void;
 };
 
@@ -31,6 +43,7 @@ export function SubscriptionInsuranceProvider({ children }: { children: ReactNod
   const [activeInsurance, setActiveInsurance] = useState<{ purchases: InsurancePurchase[] } | null>(
     null,
   );
+  const [activeBills, setActiveBills] = useState<{ bills: BillPayment[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,12 +57,14 @@ export function SubscriptionInsuranceProvider({ children }: { children: ReactNod
     try {
       setLoading(true);
       setError(null);
-      const [subs, insurance] = await Promise.all([
+      const [subs, insurance, bills] = await Promise.all([
         api.listSubscriptions().catch(() => []),
         api.getActiveInsurance().catch(() => ({ purchases: [] })),
+        api.getActiveBills().catch(() => ({ bills: [] })),
       ]);
       setSubscriptions(subs);
       setActiveInsurance(insurance);
+      setActiveBills(bills);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load subscription data');
     } finally {
@@ -75,9 +90,19 @@ export function SubscriptionInsuranceProvider({ children }: { children: ReactNod
     }
   };
 
+  const refreshBillsOnly = async () => {
+    try {
+      const bills = await api.getActiveBills();
+      setActiveBills(bills);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load bill payment data');
+    }
+  };
+
   const invalidateData = () => {
     setSubscriptions(null);
     setActiveInsurance(null);
+    setActiveBills(null);
     setError(null);
   };
 
@@ -85,14 +110,16 @@ export function SubscriptionInsuranceProvider({ children }: { children: ReactNod
     () => ({
       subscriptions,
       activeInsurance,
+      activeBills,
       loading,
       error,
       refresh: refreshAll,
       refreshSubscriptions: refreshSubscriptionsOnly,
       refreshInsurance: refreshInsuranceOnly,
+      refreshBills: refreshBillsOnly,
       invalidate: invalidateData,
     }),
-    [subscriptions, activeInsurance, loading, error],
+    [subscriptions, activeInsurance, activeBills, loading, error],
   );
 
   return (

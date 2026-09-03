@@ -18,7 +18,7 @@ import CheckableTag from '../common/CheckableTag';
 import { useSubscriptionInsurance } from '../../context/SubscriptionInsuranceContext';
 import { colors, fonts, spacing } from '../../theme';
 import type { CalendarEvent } from '../../types';
-import { arrowWhite, chipDevices, chipMap } from './figmaSvgs';
+import { arrowWhite, chipDevices, chipMap, dotPending } from './figmaSvgs';
 
 type Props = {
   flights: CalendarEvent[];
@@ -30,6 +30,10 @@ type Props = {
 };
 
 type TagKey = 'roaming' | 'insurance';
+
+function isBillPaid(billEventId: string, activeBills: { bills: any[] } | null): boolean {
+  return activeBills?.bills?.some((b) => b.bill_event_id === billEventId) ?? false;
+}
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 // Figma: 345px card on a 414px frame → 69px of horizontal chrome.
@@ -101,6 +105,7 @@ export default function AttentionCarousel({ flights, bills = [], activeRoamingEv
   // Per-flight, per-tag confirmation state for chips with no backend-tracked status.
   // Insurance status now comes from backend, so only track local confirmations if needed.
   const [confirmed, setConfirmed] = useState<Record<string, Set<TagKey>>>({}); // TODO: Consider removing if not needed
+  const { activeBills } = useSubscriptionInsurance();
 
   // Combine flights and bills, sorted by start_datetime
   const allEvents = [...flights, ...bills].sort((a, b) => {
@@ -153,6 +158,7 @@ export default function AttentionCarousel({ flights, bills = [], activeRoamingEv
             scrollX={scrollX}
             roamingActive={activeRoamingEventIds.has(event.id)}
             insuranceActive={activeInsuranceEventIds.has(event.id)}
+            billPaid={event.event_type === 'broadbandBill' ? isBillPaid(event.id, activeBills) : false}
             confirmedTags={confirmed[event.id] ?? new Set<TagKey>()}
             onToggleTag={(tag) => toggleTag(event.id, tag)}
             onPress={() => event.event_type === 'flight' ? onPressFlight(event) : onPressBill?.(event)}
@@ -192,6 +198,7 @@ function AttentionCard({
   scrollX,
   roamingActive,
   insuranceActive,
+  billPaid,
   confirmedTags,
   onToggleTag,
   onPress,
@@ -202,6 +209,7 @@ function AttentionCard({
   scrollX: Animated.Value;
   roamingActive: boolean;
   insuranceActive: boolean;
+  billPaid: boolean;
   confirmedTags: Set<TagKey>;
   onToggleTag: (tag: TagKey) => void;
   onPress: () => void;
@@ -249,29 +257,35 @@ function AttentionCard({
         {/* Content */}
         <View style={styles.content}>
           <Text style={styles.cardTitle} numberOfLines={2}>
-            Pay this month's household bills
+            {billPaid ? 'Bill Payment Complete' : 'Pay this month\'s household bills'}
           </Text>
           <Text style={styles.cardSubtitle} numberOfLines={2}>
-            I've gathered everything that's due this month.
+            {billPaid ? `Paid on ${new Date(event.start_datetime).toLocaleDateString()}` : 'I\'ve gathered everything that\'s due this month.'}
           </Text>
 
-          {/* Bill Provider Tag */}
-          <View style={styles.billCategoriesRow}>
-            <View style={[styles.billCategory, styles.billCategoryHighlight]}>
-              <Text style={[styles.billCategoryLabel, styles.billCategoryLabelHighlight]}>
-                {billProvider}
-              </Text>
+          {/* Bill Provider Tag with Checkmark */}
+          <View style={styles.billTagRow}>
+            <View style={styles.billTag}>
+              <Text style={styles.billTagLabel}>{billProvider}</Text>
+              {billPaid ? (
+                <Ionicons name="checkmark-circle" size={14} color={colors.success} />
+              ) : (
+                <SvgXml xml={dotPending} width={14} height={14} />
+              )}
             </View>
           </View>
         </View>
 
         {/* Footer with amount and button */}
         <TouchableOpacity
-          style={[styles.ctaRow]}
-          onPress={onPress}
-          activeOpacity={0.8}
+          style={[styles.ctaRow, billPaid && styles.ctaRowDisabled]}
+          onPress={billPaid ? undefined : onPress}
+          activeOpacity={billPaid ? 1 : 0.8}
+          disabled={billPaid}
         >
-          <Text style={styles.ctaText}>Review & Pay</Text>
+          <Text style={[styles.ctaText, billPaid && styles.ctaTextDisabled]}>
+            {billPaid ? 'Payment Complete' : 'Review & Pay'}
+          </Text>
           <View style={styles.ctaButton}>
             <SvgXml xml={arrowWhite} width={14} height={14} />
           </View>
@@ -467,5 +481,26 @@ const styles = StyleSheet.create({
   },
   billCategoryLabelHighlight: {
     color: 'white',
+  },
+  billTagRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+    flexWrap: 'wrap',
+  },
+  billTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: colors.chipTint,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  billTagLabel: {
+    fontFamily: fonts.semiBold,
+    fontSize: 11,
+    lineHeight: 16.5,
+    color: colors.textPrimary,
   },
 });
