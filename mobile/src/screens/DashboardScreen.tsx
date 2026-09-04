@@ -204,6 +204,12 @@ export default function DashboardScreen({ navigation }: Props) {
       label: 'Gmail',
       onPress: () => navigation.navigate('Gmail'),
     },
+    {
+      id: 'contacts',
+      icon: 'person-outline',
+      label: 'Contacts',
+      onPress: () => navigation.navigate('Contacts'),
+    },
     ...(DEV_CATALOG_ENABLED
       ? [
           {
