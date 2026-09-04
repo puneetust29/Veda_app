@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { colors, radii, spacing } from '../../theme';
+import { colors, radii } from '../../theme';
 
 type Props = {
   length?: number;
@@ -72,9 +72,10 @@ export default function OtpInput({ length = 6, value, onChange, disabled, varian
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', gap: spacing.sm, justifyContent: 'space-between' },
+  row: { flexDirection: 'row', justifyContent: 'space-between' },
   box: {
-    width: 52,
+    flex: 1,
+    maxWidth: 52,
     height: 56,
     borderRadius: radii.sm,
     backgroundColor: colors.fieldFill,

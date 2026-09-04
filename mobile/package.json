@@ -9,7 +9,7 @@
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-navigation/native": "^7.3.16",
     "@react-navigation/native-stack": "^7.18.8",
-    "@stripe/stripe-react-native": "^0.35.0",
+    "@stripe/stripe-react-native": "^0.53.1",
     "@svgr/plugin-svgo": "^8.1.0",
     "expo": "~54.0.37",
     "expo-calendar": "~15.0.8",
@@ -35,17 +35,17 @@
   },
   "scripts": {
     "start": "expo start",
-    "start:local": "cp .env.local .env && expo start",
-    "start:dev": "cp .env.dev .env && expo start",
-    "android": "expo start --android",
-    "android:local": "cp .env.local .env && expo start --localhost --android",
-    "android:dev": "cp .env.dev .env && expo start --android",
-    "ios": "expo start --ios",
-    "ios:local": "cp .env.local .env && expo start --ios",
-    "ios:dev": "cp .env.dev .env && expo start --ios",
+    "start:local": "copy .env.local .env && expo start",
+    "start:dev": "copy .env.dev .env && expo start",
+    "android": "expo run:android",
+    "android:local": "copy .env.local .env && expo start --localhost --android",
+    "android:dev": "copy .env.dev .env && expo start --android",
+    "ios": "expo run:ios",
+    "ios:local": "copy .env.local .env && expo start --ios",
+    "ios:dev": "copy .env.dev .env && expo start --ios",
     "web": "expo start --web",
-    "web:local": "cp .env.local .env && expo start --web",
-    "web:dev": "cp .env.dev .env && expo start --web"
+    "web:local": "copy .env.local .env && expo start --web",
+    "web:dev": "copy .env.dev .env && expo start --web"
   },
   "private": true
 }
