@@ -4,7 +4,6 @@ import { ActivityIndicator, View } from 'react-native';
 
 import { useAuth } from '../context/AuthContext';
 import ChatScreen from '../screens/ChatScreen';
-import ContactsScreen from '../screens/ContactsScreen';
 import DashboardScreen from '../screens/DashboardScreen';
 import DeviceCalendarScreen from '../screens/DeviceCalendarScreen';
 import FlightDetailScreen from '../screens/FlightDetailScreen';
@@ -86,11 +85,6 @@ export default function RootNavigator() {
               name="Gmail"
               component={GmailScreen}
               options={{ headerShown: true, title: 'Gmail', headerBackTitle: '' }}
-            />
-            <Stack.Screen
-              name="Contacts"
-              component={ContactsScreen}
-              options={{ headerShown: true, title: 'Contacts', headerBackTitle: '' }}
             />
             <Stack.Screen name="Dev" component={DevNavigator} />
           </>

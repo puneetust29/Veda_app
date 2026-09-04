@@ -3,7 +3,6 @@ import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
 
 const DOT_DELAY_MS = 120;
 const CYCLE_DURATION = 1200;
-const FADE_DURATION = 400;
 const SHIMMER_CYCLE = 1600;
 
 export type StreamItem = {
@@ -12,7 +11,7 @@ export type StreamItem = {
   state?: 'active' | 'done';
 };
 
-function ShimmerText({ children, fadeValue, translateValue }: { children: string; fadeValue: Animated.Value; translateValue: Animated.Value }) {
+function ShimmerText({ children }: { children: string }) {
   const shimmerValue = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -28,61 +27,18 @@ function ShimmerText({ children, fadeValue, translateValue }: { children: string
     return () => animation.stop();
   }, [shimmerValue]);
 
-  const shimmerOpacity = shimmerValue.interpolate({
+  // Animate text with shimmer effect: darker → lighter → darker (matching Conversation.tsx)
+  const textOpacity = shimmerValue.interpolate({
     inputRange: [0, 0.5, 1],
     outputRange: [0.4, 1, 0.4],
   });
 
   return (
-    <Animated.View style={[{ transform: [{ translateY: translateValue }] }]}>
-      <Animated.View style={[{ opacity: Animated.multiply(shimmerOpacity, fadeValue), flex: 1 }]}>
-        <Text style={styles.label}>
-          {children}
-        </Text>
-      </Animated.View>
+    <Animated.View style={[{ flex: 1, opacity: textOpacity }]}>
+      <Text style={styles.label}>
+        {children}
+      </Text>
     </Animated.View>
-  );
-}
-
-function AnimatedLoadingDots({ animationValue }: { animationValue: Animated.Value }) {
-  return (
-    <View style={styles.iconContainer}>
-      <View style={styles.dotsBox}>
-        {[0, 1, 2].map((dotIndex) => {
-          const delay = dotIndex * DOT_DELAY_MS;
-          const inputRange = [
-            (delay - 200) / CYCLE_DURATION,
-            delay / CYCLE_DURATION,
-            (delay + 400) / CYCLE_DURATION,
-            (delay + 600) / CYCLE_DURATION,
-          ].map((v) => Math.max(0, Math.min(1, v)));
-
-          return (
-            <Animated.View
-              key={dotIndex}
-              style={[
-                styles.dot,
-                { left: dotIndex * 8 },
-                {
-                  opacity: animationValue.interpolate({
-                    inputRange,
-                    outputRange: [0.3, 1, 1, 0.3],
-                  }),
-                  transform: [
-                    {
-                      scale: animationValue.interpolate({
-                        inputRange,
-                        outputRange: [0.8, 1.2, 1.2, 0.8],
-                      }),
-                    },
-                  ],
-                },
-              ]}
-            />
-          );
-        })}
-      </View>
-    </View>
   );
 }
 
@@ -92,52 +48,24 @@ type Props = {
 };
 
 export default function LoadingStream({ items, isSingleItem = false }: Props) {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const fadeValue = useRef(new Animated.Value(1)).current;
-  const translateValue = useRef(new Animated.Value(0)).current;
-  const dotsAnimationValue = useRef(new Animated.Value(0)).current;
+  const [visibleStreams, setVisibleStreams] = useState<StreamItem[]>([]);
+  const animationValue = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // For single items, show immediately without transitions
+    // For single items, show immediately without delays
     if (isSingleItem) {
-      setCurrentIndex(0);
-      fadeValue.setValue(1);
-      translateValue.setValue(0);
+      setVisibleStreams(items);
       return;
     }
 
     const timers: ReturnType<typeof setTimeout>[] = [];
     let cumulativeDelay = 0;
 
-    items.forEach((stream, index) => {
+    items.forEach((stream) => {
       const delay = stream.delayMs || 0;
       cumulativeDelay += delay;
       const timer = setTimeout(() => {
-
-        // Fade out current text
-        Animated.timing(fadeValue, {
-          toValue: 0,
-          duration: FADE_DURATION / 2,
-          useNativeDriver: false,
-        }).start(() => {
-          // Reset translate for new text
-          translateValue.setValue(20);
-          // Update to new text
-          setCurrentIndex(index);
-          // Fade in and slide up new text
-          Animated.parallel([
-            Animated.timing(fadeValue, {
-              toValue: 1,
-              duration: FADE_DURATION / 2,
-              useNativeDriver: false,
-            }),
-            Animated.timing(translateValue, {
-              toValue: 0,
-              duration: FADE_DURATION / 2,
-              useNativeDriver: true,
-            }),
-          ]).start();
-        });
+        setVisibleStreams((prev) => [...prev, stream]);
       }, cumulativeDelay);
       timers.push(timer);
     });
@@ -145,11 +73,11 @@ export default function LoadingStream({ items, isSingleItem = false }: Props) {
     return () => {
       timers.forEach((timer) => clearTimeout(timer));
     };
-  }, [items, isSingleItem, fadeValue, translateValue]);
+  }, [items, isSingleItem]);
 
   useEffect(() => {
     const animation = Animated.loop(
-      Animated.timing(dotsAnimationValue, {
+      Animated.timing(animationValue, {
         toValue: 1,
         duration: CYCLE_DURATION,
         easing: Easing.linear,
@@ -158,16 +86,56 @@ export default function LoadingStream({ items, isSingleItem = false }: Props) {
     );
     animation.start();
     return () => animation.stop();
-  }, [dotsAnimationValue]);
-
-  const currentStream = items[currentIndex];
+  }, [animationValue]);
 
   return (
     <View style={[styles.container, isSingleItem && styles.singleItemContainer]}>
-      <View style={[styles.streamItem, isSingleItem && styles.singleStreamItem]}>
-        <AnimatedLoadingDots animationValue={dotsAnimationValue} />
-        {currentStream && <ShimmerText fadeValue={fadeValue} translateValue={translateValue}>{currentStream.text}</ShimmerText>}
-      </View>
+      {visibleStreams.map((stream, idx) => (
+        <View key={idx} style={[styles.streamItem, isSingleItem && styles.singleStreamItem]}>
+          {stream.state === 'active' || (idx === visibleStreams.length - 1 && !stream.state) ? (
+            <View style={styles.iconContainer}>
+              <View style={styles.dotsBox}>
+                {[0, 1, 2].map((dotIndex) => {
+                  const delay = dotIndex * DOT_DELAY_MS;
+                  const inputRange = [
+                    (delay - 200) / CYCLE_DURATION,
+                    delay / CYCLE_DURATION,
+                    (delay + 400) / CYCLE_DURATION,
+                    (delay + 600) / CYCLE_DURATION,
+                  ].map((v) => Math.max(0, Math.min(1, v)));
+
+                  return (
+                    <Animated.View
+                      key={dotIndex}
+                      style={[
+                        styles.dot,
+                        { left: dotIndex * 8 },
+                        {
+                          opacity: animationValue.interpolate({
+                            inputRange,
+                            outputRange: [0.3, 1, 1, 0.3],
+                          }),
+                          transform: [
+                            {
+                              scale: animationValue.interpolate({
+                                inputRange,
+                                outputRange: [0.8, 1.2, 1.2, 0.8],
+                              }),
+                            },
+                          ],
+                        },
+                      ]}
+                    />
+                  );
+                })}
+              </View>
+            </View>
+          ) : (
+            <Text style={styles.checkmark}>✓</Text>
+          )}
+          <ShimmerText>{stream.text}</ShimmerText>
+        </View>
+      ))}
     </View>
   );
 }
@@ -213,5 +181,6 @@ const styles = StyleSheet.create({
     top: 1.5,
     backgroundColor: '#D32F2F',
   },
-  label: { color: '#1F1F1F', fontSize: 16, flexShrink: 1, fontWeight: '500' },
+  checkmark: { color: '#4CAF50', fontWeight: '700', marginRight: 10, width: 18, textAlign: 'center', fontSize: 14 },
+  label: { color: '#1F1F1F', fontSize: 14, flexShrink: 1, fontWeight: '500' },
 });
