@@ -1,6 +1,6 @@
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing } from '../../theme';
+import { colors, spacing, radii, typography } from '../../theme';
 
 type Prediction = { place_id: string; description: string };
 
@@ -44,8 +44,7 @@ const styles = StyleSheet.create({
     gap: spacing.lg,
   },
   title: {
-    fontSize: 12,
-    fontWeight: '700',
+    ...typography.small,
     color: colors.brand,
     textTransform: 'uppercase',
     letterSpacing: 0.8,
@@ -57,11 +56,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.brandTint,
-    borderRadius: 16,
+    borderRadius: radii.lg,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.lg,
     borderWidth: 1.5,
-    borderColor: '#ffccc7',
+    borderColor: colors.pinkBorder,
     gap: spacing.lg,
     shadowColor: colors.brand,
     shadowOffset: { width: 0, height: 3 },
@@ -72,7 +71,7 @@ const styles = StyleSheet.create({
   icon: {
     width: 44,
     height: 44,
-    borderRadius: 12,
+    borderRadius: radii.md,
     backgroundColor: colors.brand,
     justifyContent: 'center',
     alignItems: 'center',
@@ -81,9 +80,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   text: {
-    fontSize: 15,
+    ...typography.bodyBold,
     color: colors.textPrimary,
-    fontWeight: '600',
     lineHeight: 20,
   },
 });

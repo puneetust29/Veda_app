@@ -19,7 +19,7 @@ import { nextId } from '../lib/chatThread';
 import { getCachedReverseGeocode } from '../lib/geocodeCache';
 import { calculateDistance } from '../lib/distanceCalculator';
 import type { RecommendationCardPayload, RootStackParamList, ChatItem } from '../types';
-import { colors, spacing, typography } from '../theme';
+import { colors, spacing, radii, typography } from '../theme';
 import DashboardHeader from '../components/dashboard/DashboardHeader';
 import { useAuth } from '../context/AuthContext';
 
@@ -100,6 +100,8 @@ export default function TaxiChatScreen({ navigation }: Props) {
     try {
       setPhase('loading');
       setDraft('');
+      search('');
+      setDisplayPredictions([]);
 
       setItems((prev) => [
         ...prev,
@@ -439,10 +441,10 @@ export default function TaxiChatScreen({ navigation }: Props) {
           <View style={styles.inputContainer}>
             <TextInput
               style={styles.input}
-              placeholder="Search destination…"
+              placeholder="Where would you like to go?"
               value={draft}
               onChangeText={handleDestinationSearch}
-              placeholderTextColor="#999"
+              placeholderTextColor={colors.textMuted}
               editable={!autocompleteLoading}
             />
             <TouchableOpacity
@@ -472,7 +474,7 @@ const styles = StyleSheet.create({
   },
   inputSection: {
     borderTopWidth: 1,
-    borderTopColor: '#eee',
+    borderTopColor: colors.border,
   },
   inputContainer: {
     flexDirection: 'row',
@@ -484,20 +486,27 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
+    borderColor: colors.border,
+    borderRadius: radii.md,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
+    ...typography.body,
     fontSize: 14,
-    backgroundColor: '#f9f9f9',
+    color: colors.textPrimary,
+    backgroundColor: colors.surface,
   },
   sendButton: {
     backgroundColor: colors.brand,
-    borderRadius: 8,
+    borderRadius: radii.md,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: colors.brand,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 3,
   },
   sendButtonDisabled: {
     opacity: 0.5,
