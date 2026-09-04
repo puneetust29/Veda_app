@@ -12,12 +12,29 @@ _ROUTES_URL = "https://routes.googleapis.com/directions/v2:computeRoutes"
 _PLACES_URL = "https://places.googleapis.com/v1/places:searchNearby"
 
 
-def geocode(address: str, api_key: str) -> Optional[dict]:
-    """Return {"lat": float, "lng": float} for address, or None on failure."""
+def geocode(address: str, api_key: str, latitude: Optional[float] = None, longitude: Optional[float] = None) -> Optional[dict]:
+    """Return {"lat": float, "lng": float} for address, or None on failure.
+
+    Optionally provide latitude/longitude to bias results toward a location.
+    First tries with bounds; if no results, retries without bounds to allow distant matches.
+    """
     try:
+        params = {"address": address, "key": api_key}
+        use_bounds = False
+        if latitude is not None and longitude is not None:
+            radius_deg = 0.5
+            south = latitude - radius_deg
+            north = latitude + radius_deg
+            west = longitude - radius_deg
+            east = longitude + radius_deg
+            params["bounds"] = f"{south},{west}|{north},{east}"
+            use_bounds = True
+            logger.info("    geocode bounds: south=%.4f west=%.4f north=%.4f east=%.4f", south, west, north, east)
+
+        logger.info("    geocode request: address='%s' params=%s", address, {k: v for k, v in params.items() if k != "key"})
         r = httpx.get(
             _GEOCODE_URL,
-            params={"address": address, "key": api_key},
+            params=params,
             timeout=8,
         )
         logger.info("    geocode HTTP %s for '%s'", r.status_code, address)
@@ -26,9 +43,32 @@ def geocode(address: str, api_key: str) -> Optional[dict]:
         status = data.get("status", "UNKNOWN")
         results = data.get("results", [])
         logger.info("    geocode API status=%s  results=%d", status, len(results))
+        if results:
+            logger.info("    geocode first result: %s", results[0].get("formatted_address", ""))
+            loc = results[0]["geometry"]["location"]
+            return {"lat": loc["lat"], "lng": loc["lng"]}
+
+        if not results and use_bounds and status == "ZERO_RESULTS":
+            logger.info("    geocode no local results; retrying without bounds for '%s'", address)
+            params_no_bounds = {"address": address, "key": api_key}
+            r = httpx.get(
+                _GEOCODE_URL,
+                params=params_no_bounds,
+                timeout=8,
+            )
+            r.raise_for_status()
+            data = r.json()
+            results = data.get("results", [])
+            logger.info("    geocode retry (no bounds) API status=%s  results=%d", data.get("status"), len(results))
+            if results:
+                logger.info("    geocode retry result: %s", results[0].get("formatted_address", ""))
+                loc = results[0]["geometry"]["location"]
+                return {"lat": loc["lat"], "lng": loc["lng"]}
+
         if not results:
             logger.warning("    geocode no results for: '%s' (status=%s)", address, status)
             return None
+
         loc = results[0]["geometry"]["location"]
         return {"lat": loc["lat"], "lng": loc["lng"]}
     except Exception as exc:
