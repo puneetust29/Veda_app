@@ -4,12 +4,12 @@
 
 insert into customers (phone_number, full_name, address, telecom_plan, account_number, otp)
 values ('+15550001111', 'Alex Morgan', '221B Baker Street, London, UK', 'Unlimited Plus', 'ACC-100234', NULL)
-on conflict (phone_number) do nothing;
+on conflict (phone_number) do update set otp = NULL;
 
 -- Test user for OTP verification testing
-insert into customers (phone_number, full_name, address, telecom_plan, account_number, otp)
-values ('+15550005555', 'Ranadheer G', '1 Market Street, San Francisco, CA, USA', 'Standard Mobile', '+15550005555', '500005')
-on conflict (phone_number) do update set otp = '500005';
+insert into customers (phone_number, full_name, address, telecom_plan, account_number, otp, emergency_contact_name, emergency_contact_phone)
+values ('+15550005555', 'Ranadheer G', '1 Market Street, San Francisco, CA, USA', 'Standard Mobile', '+15550005555', '500005', 'Mom', '+12127234567')
+on conflict (phone_number) do update set otp = '500005', emergency_contact_name = 'Mom', emergency_contact_phone = '+12127234567';
 
 -- Calendar events (mocked "calendar read") for Alex Morgan.
 insert into calendar_events (customer_id, title, event_type, origin, destination, start_datetime, end_datetime, raw_details)

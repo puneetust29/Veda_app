@@ -4,12 +4,15 @@ import { ActivityIndicator, View } from 'react-native';
 
 import { useAuth } from '../context/AuthContext';
 import ChatScreen from '../screens/ChatScreen';
+import ContactsScreen from '../screens/ContactsScreen';
 import DashboardScreen from '../screens/DashboardScreen';
 import DeviceCalendarScreen from '../screens/DeviceCalendarScreen';
 import FlightDetailScreen from '../screens/FlightDetailScreen';
 import GmailScreen from '../screens/GmailScreen';
+import DevNavigator from '../dev/DevNavigator';
 import RoamingPlansScreen from '../screens/RoamingPlansScreen';
 import SubscriptionsScreen from '../screens/SubscriptionsScreen';
+import VedaChatScreen from '../screens/VedaChatScreen';
 import OnboardingNavigator from './OnboardingNavigator';
 import type { RootStackParamList } from '../types';
 
@@ -35,44 +38,52 @@ export default function RootNavigator() {
 
   return (
     <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Navigator screenOptions={{ headerShown: false, headerBackTitleVisible: false }}>
         {showOnboarding ? (
           <Stack.Screen name="Onboarding" component={OnboardingNavigator} />
         ) : (
           <>
             <Stack.Screen name="Dashboard" component={DashboardScreen} />
+            <Stack.Screen name="Chat" component={ChatScreen} />
             <Stack.Screen
-              name="Chat"
-              component={ChatScreen}
+              name="VedaChat"
+              component={VedaChatScreen}
               options={{
-                headerShown: false,
+                headerShown: true,
+                title: 'Ask Veda',
               }}
             />
             <Stack.Screen
               name="FlightDetail"
               component={FlightDetailScreen}
-              options={{ headerShown: true, title: '' }}
+              options={{ headerShown: true, title: '', headerBackTitle: '' }}
             />
             <Stack.Screen
               name="Subscriptions"
               component={SubscriptionsScreen}
-              options={{ headerShown: true, title: '' }}
+              options={{ headerShown: true, title: '', headerBackTitle: '' }}
             />
             <Stack.Screen
               name="RoamingPlans"
               component={RoamingPlansScreen}
-              options={{ headerShown: true, title: 'Available Plans' }}
+              options={{ headerShown: true, title: 'Available Plans', headerBackTitle: '' }}
             />
             <Stack.Screen
               name="DeviceCalendar"
               component={DeviceCalendarScreen}
-              options={{ headerShown: true, title: 'Calendars' }}
+              options={{ headerShown: true, title: 'Calendars', headerBackTitle: '' }}
             />
             <Stack.Screen
               name="Gmail"
               component={GmailScreen}
-              options={{ headerShown: true, title: 'Gmail' }}
+              options={{ headerShown: true, title: 'Gmail', headerBackTitle: '' }}
             />
+            <Stack.Screen
+              name="Contacts"
+              component={ContactsScreen}
+              options={{ headerShown: true, title: 'Contacts', headerBackTitle: '' }}
+            />
+            <Stack.Screen name="Dev" component={DevNavigator} />
           </>
         )}
       </Stack.Navigator>

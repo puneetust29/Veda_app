@@ -6,13 +6,14 @@ import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native
 
 import type { DropdownMenuItem } from '../components/common/DropdownMenu';
 import DashboardLoadingSkeleton from '../components/common/ShimmerLoader';
-import AskVintoButton from '../components/dashboard/AskVintoButton';
+import AskVedaButton from '../components/dashboard/AskVedaButton';
 import AttentionCarousel from '../components/dashboard/AttentionCarousel';
 import DashboardHeader from '../components/dashboard/DashboardHeader';
 import GreetingWeather from '../components/dashboard/GreetingWeather';
 import SuggestionGrid, { type Suggestion } from '../components/dashboard/SuggestionGrid';
 import { useAuth } from '../context/AuthContext';
 import { useSubscriptionInsurance } from '../context/SubscriptionInsuranceContext';
+import { DEV_CATALOG_ENABLED } from '../dev/devFlags';
 import { api } from '../lib/api';
 import { readDeviceCalendarEvents } from '../lib/deviceCalendar';
 import { FALLBACK_WEATHER, getDeviceWeatherSummary } from '../lib/weather';
@@ -144,7 +145,15 @@ export default function DashboardScreen({ navigation }: Props) {
     setRefreshing(false);
   };
 
-  const upcomingFlights = events.filter((event) => event.event_type === 'flight');
+  const upcomingFlights = events
+    .filter((event) => event.event_type === 'flight')
+    .sort((a, b) => {
+      const isLondon = (e: typeof a) =>
+        (e.origin ?? '').toLowerCase().includes('london') ||
+        (e.destination ?? '').toLowerCase().includes('london');
+      return Number(isLondon(b)) - Number(isLondon(a));
+    });
+  console.log('[Dashboard] upcomingFlights order:', upcomingFlights.map((e, i) => `#${i+1} "${e.title}" origin=${e.origin} dest=${e.destination} start=${e.start_datetime} end=${e.end_datetime}`));
   const firstName = customer?.full_name?.split(' ')[0] ?? 'there';
 
   // "Connect apps" tiles are visual placeholders for integrations that
@@ -194,6 +203,22 @@ export default function DashboardScreen({ navigation }: Props) {
       label: 'Gmail',
       onPress: () => navigation.navigate('Gmail'),
     },
+    {
+      id: 'contacts',
+      icon: 'person-outline',
+      label: 'Contacts',
+      onPress: () => navigation.navigate('Contacts'),
+    },
+    ...(DEV_CATALOG_ENABLED
+      ? [
+          {
+            id: 'dev-integrations',
+            icon: 'flask-outline' as const,
+            label: 'Integrations (Dev)',
+            onPress: () => navigation.navigate('Dev'),
+          },
+        ]
+      : []),
     { id: 'sign-out', icon: 'log-out-outline', label: 'Sign out', onPress: signOut, destructive: true },
   ];
 
@@ -234,14 +259,18 @@ export default function DashboardScreen({ navigation }: Props) {
               activeInsuranceEventIds={
                 new Set((activeInsurance?.purchases ?? []).map((p) => p.calendar_event_id))
               }
-              onPressFlight={(event) => navigation.navigate('Chat', { event })}
+              onPressFlight={(event) => {
+                const idx = upcomingFlights.findIndex((f) => f.id === event.id);
+                console.log(`[Dashboard] opened card #${idx + 1} "${event.title}" origin=${event.origin} dest=${event.destination} start=${event.start_datetime}`);
+                navigation.navigate('Chat', { event });
+              }}
             />
 
             <SuggestionGrid suggestions={suggestions} />
           </ScrollView>
         )}
 
-        <AskVintoButton />
+        <AskVedaButton onPress={() => navigation.navigate('VedaChat')} />
       </View>
     </View>
   );
@@ -249,8 +278,6 @@ export default function DashboardScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.headerGradientEnd },
-  // White content sheet that overlaps the red header with a 24px-radius top
-  // edge (Figma node 1:35346).
   sheet: {
     flex: 1,
     marginTop: -24,

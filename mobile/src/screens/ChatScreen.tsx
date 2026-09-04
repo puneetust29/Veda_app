@@ -1,7 +1,7 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import ChatItemView from '../components/chat/ChatItemView';
 import DashboardHeader from '../components/dashboard/DashboardHeader';
@@ -26,12 +26,21 @@ function isInsuranceAlreadyPurchased(items: any[], currentIdx: number): boolean 
 export default function ChatScreen({ route, navigation }: Props) {
   const { event } = route.params;
   const { customer } = useAuth();
+  console.log('[ChatScreen] opened for event:', event.title, '| origin:', event.origin, '| dest:', event.destination, '| start:', event.start_datetime);
   const { items, phase, confirm, decline, retry, sendMessage, handleInsurancePurchased, workflowState, continueWorkflow } = useWorkflowChat(event);
   const scrollViewRef = useRef<ScrollView>(null);
   const [draft, setDraft] = useState('');
-  const [continueClicked, setContinueClicked] = useState(false);
+  const itemCountRef = useRef(0);
 
   const firstName = customer?.full_name?.split(' ')[0] ?? 'User';
+  const insets = useSafeAreaInsets();
+
+  useEffect(() => {
+    if (items.length > itemCountRef.current) {
+      itemCountRef.current = items.length;
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }
+  }, [items]);
 
   return (
     <View style={styles.container}>
@@ -41,7 +50,7 @@ export default function ChatScreen({ route, navigation }: Props) {
         onPressClose={() => navigation.goBack()}
         menuItems={[]}
       />
-      <SafeAreaView style={styles.content} edges={['bottom']}>
+      <View style={styles.content}>
       {/* <View style={styles.tripHeader}>
         <Text style={styles.title}>{event.title}</Text>
         <Text style={styles.subtitle}>
@@ -57,16 +66,14 @@ export default function ChatScreen({ route, navigation }: Props) {
         ref={scrollViewRef}
         style={styles.thread}
         contentContainerStyle={styles.threadContent}
-        onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
       >
         {items.length === 0 && phase === 'idle' ? (
           <LoadingStream items={INITIAL_STREAM_EVENTS} />
         ) : null}
         {items.map((item, idx) => {
           // Skip hotel booking component
-          if (item.kind === 'hotel') {
-            return null;
-          }
+          if (item.kind === 'hotel') return null;
+
 
           // Skip rendering confirmation items for roaming plans - they're combined with the card
           if (item.kind === 'confirmation' && item.risk === 'commit') {
@@ -82,11 +89,9 @@ export default function ChatScreen({ route, navigation }: Props) {
               item={item}
               onConfirm={confirm}
               onDecline={decline}
-              onInsurancePurchased={item.kind === 'travel_insurance' && isInsuranceAlreadyPurchased(items, idx) ? undefined : handleInsurancePurchased}
-              onContinuePrep={item.kind === 'trip_preparation' && !continueClicked ? () => {
-                setContinueClicked(true);
-                continueWorkflow();
-              } : undefined}
+              onInsurancePurchased={handleInsurancePurchased}
+              onContinuePrep={continueWorkflow}
+              continuePrepLoading={phase === 'streaming'}
               // Pass the next item if it's a confirmation for a roaming card
               nextItem={
                 item.kind === 'card' && item.card.kind === 'roaming_plan' && items[idx + 1]?.kind === 'confirmation'
@@ -113,7 +118,7 @@ export default function ChatScreen({ route, navigation }: Props) {
         </View>
       )}
 
-      <View style={styles.inputContainer}>
+      <View style={[styles.inputContainer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
         <TextInput
           style={styles.input}
           placeholder="Ask a follow-up question…"
@@ -133,7 +138,7 @@ export default function ChatScreen({ route, navigation }: Props) {
           <Text style={styles.sendButtonText}>Send</Text>
         </TouchableOpacity>
       </View>
-      </SafeAreaView>
+      </View>
     </View>
   );
 }
@@ -177,7 +182,7 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: '#E8E8E8',
     gap: 8,

@@ -8,20 +8,23 @@ import MessageBubble from './MessageBubble';
 import PaymentCompleteCard from './PaymentCompleteCard';
 import RecommendationCard from './RecommendationCard';
 import LoadingStream from './LoadingStream';
+import WhatsAppShareCard from './WhatsAppShareCard';
 import TravelInsuranceCardChat from './TravelInsuranceCardChat';
 import TripPreparationCard from './TripPreparationCard';
 import TripChecklistCard from './TripChecklistCard';
 
+
 type Props = {
   item: ChatItem;
-  onConfirm: (actionId: string) => void;
-  onDecline: (actionId: string) => void;
+  onConfirm?: (actionId: string) => void;
+  onDecline?: (actionId: string) => void;
   onInsurancePurchased?: (data: any) => void;
   onContinuePrep?: () => void;
+  continuePrepLoading?: boolean;
   nextItem?: ChatItem;
 };
 
-function ChatItemViewImpl({ item, onConfirm, onDecline, onInsurancePurchased, onContinuePrep, nextItem }: Props) {
+function ChatItemViewImpl({ item, onConfirm, onDecline, onInsurancePurchased, onContinuePrep, continuePrepLoading, nextItem }: Props) {
   switch (item.kind) {
     case 'text':
       return <MessageBubble text={item.text} tone={item.role} />;
@@ -36,10 +39,12 @@ function ChatItemViewImpl({ item, onConfirm, onDecline, onInsurancePurchased, on
           hasHotelBooking={item.hasHotelBooking}
           hasRoamingActive={item.hasRoamingActive}
           hasInsuranceActive={item.hasInsuranceActive}
+          loading={continuePrepLoading}
           onContinue={() => onContinuePrep?.()}
         />
       );
     case 'card':
+      if (item.card.kind === 'uber_ride') return null; // dev-only
       return (
         <RecommendationCard
           card={item.card}
@@ -56,6 +61,11 @@ function ChatItemViewImpl({ item, onConfirm, onDecline, onInsurancePurchased, on
           recommendations={item.hotel.recommendations}
         />
       );
+    case 'transport':
+    case 'maps':
+      return null; // dev-only — rendered in Integration (Dev) screens only
+    case 'whatsapp_share':
+      return <WhatsAppShareCard text={item.text} contactName={item.contactName} contactPhone={item.contactPhone} />;
     case 'travel_insurance':
       return (
         <TravelInsuranceCardChat
@@ -65,7 +75,7 @@ function ChatItemViewImpl({ item, onConfirm, onDecline, onInsurancePurchased, on
         />
       );
     case 'confirmation':
-      return <ConfirmationPrompt item={item} onConfirm={onConfirm} onDecline={onDecline} />;
+      return <ConfirmationPrompt item={item} onConfirm={onConfirm!} onDecline={onDecline!} />;
     case 'receipt':
       return null; // Don't show receipt cards in chat
     case 'confirmation_success':

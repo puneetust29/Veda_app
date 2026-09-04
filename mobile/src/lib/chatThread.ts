@@ -22,8 +22,12 @@ function friendlyErrorMessage(code: string): string {
   switch (code) {
     case 'no_plan_found':
       return "I couldn't find a suitable roaming plan for this trip.";
+    case 'agent_error':
+      return 'An error occurred while processing your request. Please try again.';
+    case 'no_agent_matched':
+      return 'No agent could handle your request. Please try again.';
     default:
-      return 'Something went wrong while working on your request.';
+      return `Something went wrong while working on your request (${code}).`;
   }
 }
 
@@ -41,6 +45,11 @@ function markActiveStatusesDone(items: ChatItem[]): ChatItem[] {
 
 function removeAllStatuses(items: ChatItem[]): ChatItem[] {
   const filtered = items.filter((item) => item.kind !== 'status');
+  return filtered.length < items.length ? filtered : items;
+}
+
+function removeTransient(items: ChatItem[]): ChatItem[] {
+  const filtered = items.filter((item) => !(item.kind === 'text' && item.transient));
   return filtered.length < items.length ? filtered : items;
 }
 
@@ -95,13 +104,28 @@ export function applyStreamEvent(items: ChatItem[], event: AgentStreamEvent): Ch
       ];
 
     case 'recommendation_ready': {
-      const withoutStatus = removeAllStatuses(items);
-      return [...withoutStatus, { id: nextId(), createdAt: Date.now(), kind: 'card', card: event.data.card }];
+      // uber_ride is dev-only — ignore in the main chat flow
+      if (event.data.card.kind === 'uber_ride') return items;
+      const clean = removeTransient(removeAllStatuses(items));
+      return [...clean, { id: nextId(), createdAt: Date.now(), kind: 'card', card: event.data.card }];
     }
 
     case 'hotel_result': {
-      const withoutStatus = removeAllStatuses(items);
-      return [...withoutStatus, { id: nextId(), createdAt: Date.now(), kind: 'hotel', hotel: event.data }];
+      const clean = removeTransient(removeAllStatuses(items));
+      return [...clean, { id: nextId(), createdAt: Date.now(), kind: 'hotel', hotel: event.data }];
+    }
+
+    case 'transport_result':
+      // dev-only — not shown in main chat flow
+      return items;
+
+    case 'maps_result':
+      // dev-only — not shown in main chat flow
+      return items;
+
+    case 'share_draft': {
+      const withDone = markActiveStatusesDone(items);
+      return [...withDone, { id: nextId(), createdAt: Date.now(), kind: 'whatsapp_share', text: event.data.text }];
     }
 
     case 'confirmation_required': {

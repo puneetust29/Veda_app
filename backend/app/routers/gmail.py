@@ -1,5 +1,7 @@
 import html
 import json
+from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
@@ -46,12 +48,12 @@ def gmail_status(customer: dict = Depends(get_current_customer)) -> dict:
 class GmailConnectRequest(BaseModel):
     """Body for POST /gmail/connect."""
 
-    app_redirect: str | None = None
+    app_redirect: Optional[str] = None
 
 
 @router.post("/connect")
 def gmail_connect(
-    payload: GmailConnectRequest | None = None,
+    payload: Optional[GmailConnectRequest] = None,
     customer: dict = Depends(get_current_customer),
 ) -> dict:
     """Begin the Gmail consent flow. The client opens `authorization_url` in a browser."""
@@ -65,9 +67,9 @@ def gmail_connect(
 
 @router.get("/callback", response_class=HTMLResponse)
 def gmail_callback(
-    state: str | None = None,
-    code: str | None = None,
-    error: str | None = None,
+    state: Optional[str] = None,
+    code: Optional[str] = None,
+    error: Optional[str] = None,
 ) -> HTMLResponse:
     """Where Google redirects the browser after Gmail consent.
 
@@ -104,7 +106,7 @@ Redirecting...""",
 
 
 def _callback_page(
-    heading: str, message: str, *, ok: bool = True, app_redirect: str | None = None
+    heading: str, message: str, *, ok: bool = True, app_redirect: Optional[str] = None
 ) -> HTMLResponse:
     """Render the end of the Gmail consent flow, then bounce back into the mobile app."""
     colour = "#137333" if ok else "#b00020"
@@ -163,6 +165,32 @@ def list_gmail_messages(
         }
     except Exception as exc:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc))
+
+
+class GmailSendRequest(BaseModel):
+    """Body for POST /gmail/send."""
+
+    to: str
+    subject: str
+    body: str
+
+
+@router.post("/send")
+def send_gmail_message(
+    payload: GmailSendRequest,
+    customer: dict = Depends(get_current_customer),
+) -> dict:
+    """Send a plain-text email from the customer's connected Gmail account."""
+    _require_gmail_configured()
+    try:
+        result = google_gmail.send_message(
+            customer["id"], to=payload.to, subject=payload.subject, body=payload.body
+        )
+        return {"sent": True, "gmail_message_id": result.get("id")}
+    except google_gmail.GmailNotConnected as exc:
+        raise _not_connected() from exc
+    except (google_gmail.GmailError, google_oauth.GoogleOAuthError) as exc:
+        raise _upstream_failed(exc) from exc
 
 
 @router.post("/sync")

@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Calendar from 'expo-calendar';
+import * as Contacts from 'expo-contacts';
 import * as Linking from 'expo-linking';
 import * as Location from 'expo-location';
 import { useCallback, useMemo, useState } from 'react';
@@ -221,9 +222,11 @@ export default function AppPermissionsScreen({ navigation }: Props) {
   const { planTier } = useOnboarding();
   const [devicePermission, setDevicePermission] = useState<Calendar.PermissionStatus | null>(null);
   const [locationPermission, setLocationPermission] = useState<Location.PermissionStatus | null>(null);
+  const [contactsPermission, setContactsPermission] = useState<Contacts.PermissionStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [deviceBusy, setDeviceBusy] = useState(false);
   const [locationBusy, setLocationBusy] = useState(false);
+  const [contactsBusy, setContactsBusy] = useState(false);
 
   // cosmetic app toggles — appId -> enabled
   const [enabled, setEnabled] = useState<Record<string, boolean>>({});
@@ -234,12 +237,14 @@ export default function AppPermissionsScreen({ navigation }: Props) {
   const allConnected = enabledCount === totalApps && totalApps > 0;
 
   const loadPermissions = useCallback(async () => {
-    const [devicePermissions, locationPermissions] = await Promise.all([
+    const [devicePermissions, locationPermissions, contactsPermissions] = await Promise.all([
       Calendar.getCalendarPermissionsAsync(),
       Location.getForegroundPermissionsAsync(),
+      Contacts.getPermissionsAsync(),
     ]);
     setDevicePermission(devicePermissions.status);
     setLocationPermission(locationPermissions.status);
+    setContactsPermission(contactsPermissions.status);
   }, []);
 
   useFocusEffect(
@@ -302,6 +307,28 @@ export default function AppPermissionsScreen({ navigation }: Props) {
     }
   };
 
+  const handleGrantContacts = async () => {
+    setContactsBusy(true);
+    try {
+      const { status } = await Contacts.requestPermissionsAsync();
+      setContactsPermission(status);
+      if (status === Contacts.PermissionStatus.DENIED) {
+        Alert.alert(
+          'Contacts access denied',
+          'Open Settings to allow Veda to access your contacts for sharing trip details.',
+          [
+            { text: 'Not now', style: 'cancel' },
+            { text: 'Open Settings', onPress: () => Linking.openSettings() },
+          ],
+        );
+      }
+    } catch (err) {
+      Alert.alert('Could not request access', err instanceof Error ? err.message : String(err));
+    } finally {
+      setContactsBusy(false);
+    }
+  };
+
   const handleToggleDeviceCalendar = (nextValue: boolean) => {
     if (nextValue) {
       void handleGrantDeviceCalendar();
@@ -328,6 +355,23 @@ export default function AppPermissionsScreen({ navigation }: Props) {
       Alert.alert(
         'Manage Location access',
         'To turn this off, open Settings and disable Location access for Veda.',
+        [
+          { text: 'Not now', style: 'cancel' },
+          { text: 'Open Settings', onPress: () => Linking.openSettings() },
+        ],
+      );
+    }
+  };
+
+  const handleToggleContacts = (nextValue: boolean) => {
+    if (nextValue) {
+      void handleGrantContacts();
+      return;
+    }
+    if (contactsPermission === Contacts.PermissionStatus.GRANTED) {
+      Alert.alert(
+        'Manage Contacts access',
+        'To turn this off, open Settings and disable Contacts access for Veda.',
         [
           { text: 'Not now', style: 'cancel' },
           { text: 'Open Settings', onPress: () => Linking.openSettings() },
@@ -467,7 +511,7 @@ export default function AppPermissionsScreen({ navigation }: Props) {
               )}
             </View>
 
-            <View style={[styles.appRow, styles.appRowLast]}>
+            <View style={[styles.appRow]}>
               <View style={styles.appLabel}>
                 <View style={[styles.appIconChip, { backgroundColor: brandIcons.locationGreen }]}>
                   <Ionicons name="location-outline" size={16} color={colors.white} />
@@ -480,6 +524,23 @@ export default function AppPermissionsScreen({ navigation }: Props) {
                 <AnimatedToggle
                   value={locationPermission === Location.PermissionStatus.GRANTED}
                   onValueChange={handleToggleLocation}
+                />
+              )}
+            </View>
+
+            <View style={[styles.appRow, styles.appRowLast]}>
+              <View style={styles.appLabel}>
+                <View style={[styles.appIconChip, { backgroundColor: '#007AFF' }]}>
+                  <Ionicons name="person-outline" size={16} color={colors.white} />
+                </View>
+                <Text style={styles.appText}>Contacts</Text>
+              </View>
+              {contactsBusy ? (
+                <ActivityIndicator />
+              ) : (
+                <AnimatedToggle
+                  value={contactsPermission === Contacts.PermissionStatus.GRANTED}
+                  onValueChange={handleToggleContacts}
                 />
               )}
             </View>
