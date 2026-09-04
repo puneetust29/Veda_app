@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 
+import ChatHeader from '../components/chat/ChatHeader';
 import ChatItemView from '../components/chat/ChatItemView';
 import LoadingStream from '../components/chat/LoadingStream';
 import RecommendationCard from '../components/chat/RecommendationCard';
@@ -20,6 +21,8 @@ import { getCachedReverseGeocode } from '../lib/geocodeCache';
 import { calculateDistance } from '../lib/distanceCalculator';
 import type { RecommendationCardPayload, RootStackParamList, ChatItem } from '../types';
 import { colors, spacing, typography } from '../theme';
+import DashboardHeader from '../components/dashboard/DashboardHeader';
+import { useAuth } from '../context/AuthContext';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'TaxiChat'>;
 
@@ -30,6 +33,7 @@ type PickupLocation = { label: string; latitude: number | null; longitude: numbe
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
 
 export default function TaxiChatScreen({ navigation }: Props) {
+  const { customer } = useAuth();
   const scrollViewRef = useRef<ScrollView>(null);
   const [draft, setDraft] = useState('');
   const [phase, setPhase] = useState<ScreenPhase>('input');
@@ -52,6 +56,7 @@ export default function TaxiChatScreen({ navigation }: Props) {
 
   const { predictions, loading: autocompleteLoading, search } = usePlacesAutocomplete();
   const { predictions: pickupPredictions, loading: pickupLoading, search: searchPickup } = usePlacesAutocomplete();
+  const firstName = customer?.full_name?.split(' ')[0] ?? 'User';
 
   const handleDestinationSearch = (text: string) => {
     setDraft(text);
@@ -74,6 +79,11 @@ export default function TaxiChatScreen({ navigation }: Props) {
       setPhase('loading');
       setDraft('');
 
+      setItems((prev) => [
+        ...prev,
+        { id: nextId(), createdAt: Date.now(), kind: 'text', role: 'user', text: messageToExtract },
+      ]);
+
       const result = await api.extractDestination(messageToExtract);
 
       if (!result.is_relevant) {
@@ -91,25 +101,21 @@ export default function TaxiChatScreen({ navigation }: Props) {
       if (__DEV__) console.log('[TaxiChat] Extracted destination:', result.destination);
 
       if (pickupLocation?.latitude != null && pickupLocation?.longitude != null) {
-        const coordResult = await api.getPlaceCoordinates(result.destination);
-        if (coordResult.error || coordResult.latitude == null || coordResult.longitude == null) {
-          setErrorMessage(coordResult.message || 'Could not find location coordinates.');
-          setPhase('error');
-          return;
-        }
+        const coordResult = await api.getPlaceCoordinates(result.destination, pickupLocation.latitude, pickupLocation.longitude);
+        if (coordResult.latitude != null && coordResult.longitude != null) {
+          const distance = calculateDistance(
+            pickupLocation.latitude,
+            pickupLocation.longitude,
+            coordResult.latitude,
+            coordResult.longitude,
+          );
 
-        const distance = calculateDistance(
-          pickupLocation.latitude,
-          pickupLocation.longitude,
-          coordResult.latitude,
-          coordResult.longitude,
-        );
-
-        const THRESHOLD_KM = 50.0;
-        if (distance > THRESHOLD_KM) {
-          setErrorMessage(`${result.destination} is more than ${THRESHOLD_KM}km from your pickup location. Try a closer destination or change your pickup location.`);
-          setPhase('error');
-          return;
+          const THRESHOLD_KM = 50.0;
+          if (distance > THRESHOLD_KM) {
+            setErrorMessage(`${result.destination} is more than ${THRESHOLD_KM}km from your pickup location. Try a closer destination or change your pickup location.`);
+            setPhase('error');
+            return;
+          }
         }
       }
 
@@ -145,7 +151,7 @@ export default function TaxiChatScreen({ navigation }: Props) {
       let destLng: number | null = null;
 
       if (pickupLocation?.latitude != null && pickupLocation?.longitude != null) {
-        const coordResult = await api.getPlaceCoordinates(description);
+        const coordResult = await api.getPlaceCoordinates(description, pickupLocation.latitude, pickupLocation.longitude);
         if (coordResult.error || coordResult.latitude == null || coordResult.longitude == null) {
           setErrorMessage(coordResult.message || 'Could not find location coordinates.');
           setPhase('error');
@@ -274,6 +280,12 @@ export default function TaxiChatScreen({ navigation }: Props) {
   };
 
   useEffect(() => {
+    navigation.setOptions({
+      headerShown: false,
+    });
+  }, [navigation]);
+
+  useEffect(() => {
     scrollViewRef.current?.scrollToEnd({ animated: true });
   }, [items, phase]);
 
@@ -299,14 +311,17 @@ export default function TaxiChatScreen({ navigation }: Props) {
   useEffect(() => {
     if (__DEV__) console.log('[TaxiChat] Predictions updated:', predictions);
     setDisplayPredictions(predictions);
-    if (predictions.length > 0 && phase === 'loading') {
-      setPhase('input');
-    }
-  }, [predictions, phase]);
+  }, [predictions]);
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
-      {(phase === 'input' || phase === 'error') && (
+    <View style={styles.container}>
+      <DashboardHeader
+        avatarInitial={firstName.charAt(0).toUpperCase()}
+        onPressHistory={() => navigation.goBack()}
+        onPressClose={() => navigation.goBack()}
+        menuItems={[]}
+      />
+      {(phase === 'input' || phase === 'error' || phase === 'loading') && (
         <PickupLocationRow
           label={pickupLocation?.label ?? 'Current location (default)'}
           onChangePress={() => setPickerVisible(true)}
@@ -322,14 +337,14 @@ export default function TaxiChatScreen({ navigation }: Props) {
           <ChatItemView key={item.id} item={item} />
         ))}
 
-        {phase === 'input' && (
+        {(phase === 'input' || (phase === 'loading' && displayPredictions.length > 0)) && (
           <DestinationSuggestions
             predictions={displayPredictions}
             onSelect={handleSelectPrediction}
           />
         )}
 
-        {phase === 'loading' && (
+        {phase === 'loading' && displayPredictions.length === 0 && (
           <LoadingStream
             items={[
               { text: 'Extracting destination…', delayMs: 500 },
@@ -365,7 +380,7 @@ export default function TaxiChatScreen({ navigation }: Props) {
         onPredictionSelect={handleSelectPickupPrediction}
       />
 
-      {phase === 'input' && (
+      {(phase === 'input' || (phase === 'loading' && displayPredictions.length > 0)) && (
         <View style={styles.inputSection}>
           <View style={styles.inputContainer}>
             <TextInput
@@ -390,12 +405,12 @@ export default function TaxiChatScreen({ navigation }: Props) {
           </View>
         </View>
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+  container: { flex: 1, backgroundColor: colors.background, paddingBottom: spacing.lg },
   thread: { flex: 1 },
   threadContent: { padding: spacing.lg, paddingBottom: spacing.md },
   cardContainer: {

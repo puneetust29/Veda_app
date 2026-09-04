@@ -24,6 +24,7 @@ import {
   tileFood,
   tileHealth,
   tileMap,
+  tileTaxi,
 } from '../components/dashboard/figmaSvgs';
 import { colors, fonts, spacing } from '../theme';
 import type { CalendarEvent, RootStackParamList, WeatherSummary } from '../types';
@@ -153,12 +154,15 @@ export default function DashboardScreen({ navigation }: Props) {
         (e.destination ?? '').toLowerCase().includes('london');
       return Number(isLondon(b)) - Number(isLondon(a));
     });
-  console.log('[Dashboard] upcomingFlights order:', upcomingFlights.map((e, i) => `#${i+1} "${e.title}" origin=${e.origin} dest=${e.destination} start=${e.start_datetime} end=${e.end_datetime}`));
+  console.log('[Dashboard] upcomingFlights order:', upcomingFlights.map((e, i) => `#${i + 1} "${e.title}" origin=${e.origin} dest=${e.destination} start=${e.start_datetime} end=${e.end_datetime}`));
   const firstName = customer?.full_name?.split(' ')[0] ?? 'there';
 
   // "Connect apps" tiles are visual placeholders for integrations that
   // aren't wired up yet; the rest route into existing screens/nav entries.
   const suggestions: Suggestion[] = [
+    {
+      id: 'taxi', iconXml: tileTaxi, label: 'Book a taxi', onPress: () => navigation.navigate('TaxiChat'),
+    },
     { id: 'school-fees', iconXml: tileMap, label: 'Pay school fees' },
     { id: 'health-checkup', iconXml: tileHealth, label: 'Book annual health checkup' },
     { id: 'broadband', iconXml: tileBuildings, label: 'Renew home broadband' },
@@ -184,7 +188,6 @@ export default function DashboardScreen({ navigation }: Props) {
       label: 'Order food',
       connectAppIcons: [{ source: ellipse1 }, { source: ellipse3 }],
     },
-    { id: 'taxi', iconXml: tileMap, label: 'Book a taxi', onPress: () => navigation.navigate('TaxiChat') },
   ];
 
   // No dedicated profile/settings screen exists in the Figma design yet, so
@@ -206,13 +209,13 @@ export default function DashboardScreen({ navigation }: Props) {
     },
     ...(DEV_CATALOG_ENABLED
       ? [
-          {
-            id: 'dev-integrations',
-            icon: 'flask-outline' as const,
-            label: 'Integrations (Dev)',
-            onPress: () => navigation.navigate('Dev'),
-          },
-        ]
+        {
+          id: 'dev-integrations',
+          icon: 'flask-outline' as const,
+          label: 'Integrations (Dev)',
+          onPress: () => navigation.navigate('Dev'),
+        },
+      ]
       : []),
     { id: 'sign-out', icon: 'log-out-outline', label: 'Sign out', onPress: signOut, destructive: true },
   ];

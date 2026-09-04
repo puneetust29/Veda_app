@@ -350,18 +350,24 @@ export const api = {
     );
   },
 
-  getPlaceCoordinates: (destination: string) =>
-    authedFetch<{
+  getPlaceCoordinates: (destination: string, latitude?: number, longitude?: number) => {
+    const params = new URLSearchParams({ destination });
+    if (latitude !== undefined && longitude !== undefined) {
+      params.append('latitude', latitude.toString());
+      params.append('longitude', longitude.toString());
+    }
+    return authedFetch<{
       latitude?: number;
       longitude?: number;
       error?: string;
       message?: string;
     }>(
-      `/places/coordinates?destination=${encodeURIComponent(destination)}`,
+      `/places/coordinates?${params.toString()}`,
       {
         method: 'GET',
       },
-    ),
+    );
+  },
 
   extractDestination: (message: string) =>
     authedFetch<{

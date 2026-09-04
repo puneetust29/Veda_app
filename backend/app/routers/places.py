@@ -71,6 +71,8 @@ def places_autocomplete(
 @router.get("/coordinates")
 def get_place_coordinates(
     destination: str = Query(..., description="Destination name to geocode"),
+    latitude: float | None = Query(None, description="Optional latitude for location bias"),
+    longitude: float | None = Query(None, description="Optional longitude for location bias"),
     _customer: dict = Depends(get_current_customer),
 ):
     """Return coordinates for a given destination."""
@@ -83,7 +85,9 @@ def get_place_coordinates(
         return {"error": "geocode_failed", "message": "Google Maps API key not configured"}
 
     try:
-        latlng = geocode(destination, api_key)
+        print(f"[Places] geocoding '{destination}' with bias: lat={latitude}, lng={longitude}")
+        latlng = geocode(destination, api_key, latitude, longitude)
+        print(f"[Places] geocode result: {latlng}")
         if not latlng:
             return {"error": "geocode_failed", "message": f"Could not geocode destination: {destination}"}
 
@@ -113,20 +117,24 @@ def extract_destination(
         structured_llm = llm.with_structured_output(DestinationExtraction)
 
         prompt = (
-            "You are a taxi/Uber booking assistant. Your role is to help users book rides to specific destinations.\n\n"
+            "You are a taxi/Uber booking assistant. Your role is to help users book rides.\n\n"
             "For each user message:\n"
             "1. Determine if it's relevant to booking a taxi/ride (on-topic)\n"
-            "2. Extract the destination city if mentioned\n\n"
+            "2. Extract both pickup location and destination if mentioned\n\n"
+            "Patterns to handle:\n"
+            "- 'from X to Y' → pickup_location='X', destination='Y'\n"
+            "- 'to Y' or 'I want to go to Y' → pickup_location=null (use current location), destination='Y'\n"
+            "- Just 'Y' when context is clear → pickup_location=null, destination='Y'\n\n"
             "If the message is off-topic (e.g., asking about weather, restaurants, general questions unrelated to booking), "
-            "set is_relevant=false and provide a brief redirect message like: "
-            "'I can only help with taxi bookings. Please tell me where you'd like to go.'\n"
+            "set is_relevant=false and provide a brief redirect message.\n"
             "If on-topic but no destination found, set destination='' but keep is_relevant=true.\n"
-            "If on-topic and destination found, set is_relevant=true and destination to the city name, redirect_message=null.\n\n"
+            "If on-topic and destination found, set is_relevant=true and destination to the location name.\n"
+            "If pickup location is explicitly mentioned, extract it; otherwise set to null.\n\n"
             f"User message: '{message}'"
         )
 
         result = structured_llm.invoke(prompt)
-        print(f"[Places] Extracted: destination='{result.destination}' is_relevant={result.is_relevant}")
+        print(f"[Places] Extracted: pickup='{result.pickup_location}' destination='{result.destination}' is_relevant={result.is_relevant}")
         return result.model_dump()
     except Exception as e:
         print(f"[Places] Extraction error: {str(e)}")
