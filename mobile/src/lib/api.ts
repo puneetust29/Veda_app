@@ -372,6 +372,7 @@ export const api = {
   extractDestination: (message: string) =>
     authedFetch<{
       destination: string;
+      pickup_location?: string | null;
       is_relevant: boolean;
       redirect_message?: string;
       error?: string;
