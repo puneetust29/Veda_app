@@ -11,7 +11,7 @@ from app.config import get_settings
 def _llm():
     settings = get_settings()
     if settings.anthropic_api_key:
-        return ChatAnthropic(model=settings.anthropic_model, api_key=settings.anthropic_api_key, temperature=0)
+        return ChatAnthropic(model=settings.anthropic_model, api_key=settings.anthropic_api_key)
     raise RuntimeError("No LLM key configured — set ANTHROPIC_API_KEY or OPENAI_API_KEY in backend/.env")
 
 

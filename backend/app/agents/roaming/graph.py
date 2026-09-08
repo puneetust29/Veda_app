@@ -22,7 +22,7 @@ def _llm():
     settings = get_settings()
     if settings.anthropic_api_key:
         log.info("[llm] using Anthropic model=%s", settings.anthropic_model)
-        return ChatAnthropic(model=settings.anthropic_model, api_key=settings.anthropic_api_key, temperature=0)
+        return ChatAnthropic(model=settings.anthropic_model, api_key=settings.anthropic_api_key)
     if settings.openai_api_key:
         from langchain_openai import ChatOpenAI
         log.info("[llm] using OpenAI model=%s", settings.openai_model)

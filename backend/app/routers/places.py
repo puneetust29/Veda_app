@@ -113,7 +113,7 @@ def extract_destination(
         return {"destination": "", "is_relevant": False, "error": "Anthropic API key not configured"}
 
     try:
-        llm = ChatAnthropic(model=settings.anthropic_model, api_key=api_key, temperature=0)
+        llm = ChatAnthropic(model=settings.anthropic_model, api_key=api_key)
         structured_llm = llm.with_structured_output(DestinationExtraction)
 
         prompt = (
