@@ -9,6 +9,11 @@ type Props = {
 };
 
 export default function MessageBubble({ text, tone }: Props) {
+  // Don't render if text is empty
+  if (!text || !text.trim()) {
+    return null;
+  }
+
   const isAgent = tone === 'agent';
 
   return (
@@ -69,7 +74,7 @@ const styles = StyleSheet.create({
     maxWidth: '90%',
   },
   userBubble: {
-    backgroundColor: '#D32F2F',
+    backgroundColor: '#F00405',
     alignSelf: 'flex-end',
     borderWidth: 0,
   },
