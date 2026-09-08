@@ -127,11 +127,11 @@ export default function ChatScreen({ route, navigation }: Props) {
               {/* Show payment complete if already paid */}
               {paidBillData ? (
                 <PaymentCompleteCard
-                  paymentMethodBrand={paymentMethodBrand}
-                  paymentMethodLast4={paymentMethodLast4}
-                  transactionId={paidBillData.payment_intent_id}
-                  amount={paidBillData.amount}
-                  currency={paidBillData.bill_details?.bill_currency || 'USD'}
+                  insuranceId={paidBillData.payment_intent_id}
+                  insuranceAmount={paidBillData.amount}
+                  insuranceCurrency={paidBillData.bill_details?.bill_currency || 'USD'}
+                  cardBrand={paymentMethodBrand}
+                  cardLast4={paymentMethodLast4}
                 />
               ) : paymentMethodId ? (
                 <BillPaymentCard
