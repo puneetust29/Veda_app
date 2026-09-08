@@ -8,6 +8,7 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
+      "bundleIdentifier": "com.ust.veda",
       "supportsTablet": true,
       "infoPlist": {
         "NSCalendarsUsageDescription": "Veda reads your calendar to detect upcoming flights and suggest roaming plans before you travel.",
@@ -16,6 +17,7 @@
       }
     },
     "android": {
+      "package": "com.ust.veda",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",

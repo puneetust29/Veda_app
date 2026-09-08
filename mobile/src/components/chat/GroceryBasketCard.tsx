@@ -1,15 +1,19 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Image, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import type { GroceryBasketPayload } from '../../types';
 import { api } from '../../lib/api';
+import { log } from '../../lib/logger';
 import { colors } from '../../theme/colors';
 import { radii, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import AsdaLoginSheet from './AsdaLoginSheet';
+import CheckoutWebView from './CheckoutWebView';
 
-const ASDA_SESSION_KEY = 'asda_session_saved';
+type CheckoutSession = {
+  sessionId: string;
+  firstUrl: string;
+  instruction: Record<string, unknown>;
+};
 
 type Props = {
   basket: GroceryBasketPayload;
@@ -32,35 +36,108 @@ export default function GroceryBasketCard({ basket }: Props) {
   const hasProducts = basket.items.length > 0;
   const [checkoutState, setCheckoutState] = useState<CheckoutState>('idle');
   const [autoStatus, setAutoStatus] = useState<AutoOrderStatus | null>(null);
-  const [showLoginSheet, setShowLoginSheet] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+  const [checkoutSession, setCheckoutSession] = useState<CheckoutSession | null>(null);
+
+  useEffect(() => {
+    log.info('BASKET', 'card rendered', {
+      supermarket: basket.supermarket,
+      mode: basket.checkout_mode,
+      items: basket.items.length,
+      missing: basket.missing_items.length,
+      total: basket.total_formatted,
+      has_skus: !!(basket.auto_checkout_skus?.length),
+      checkout_url: basket.checkout_url?.slice(0, 80),
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function handleOrderForMe() {
-    if (basket.supermarket === 'asda.com') {
-      const saved = await AsyncStorage.getItem(ASDA_SESSION_KEY);
-      if (!saved) {
-        setShowLoginSheet(true);
-        return;
-      }
-    }
-    startAutoOrder();
-  }
+    log.start('BASKET', 'handleOrderForMe', {
+      mode: basket.checkout_mode,
+      supermarket: basket.supermarket,
+      skus: basket.auto_checkout_skus?.length ?? 0,
+    });
 
-  function handleLoginSuccess() {
-    AsyncStorage.setItem(ASDA_SESSION_KEY, 'true').catch(() => null);
-    setShowLoginSheet(false);
+    if (basket.checkout_mode === 'automated' && basket.auto_checkout_skus?.length) {
+      log.info('BASKET', 'routing → startAutoOrder (automated/server-side)');
+      startAutoOrder();
+      return;
+    }
+    if (basket.checkout_mode === 'mcheckout' && basket.auto_checkout_skus?.length) {
+      log.info('BASKET', 'routing → mcheckout WebView');
+      setCheckoutState('opening');
+      const done = log.timer('BASKET', 'createCheckoutSession');
+      try {
+        const resp = await api.createCheckoutSession(
+          basket.supermarket,
+          basket.auto_checkout_skus,
+        );
+        if (resp.error) {
+          log.fail('BASKET', 'createCheckoutSession error', { error: resp.error });
+          setAutoStatus({ text: resp.error, done: true, success: false });
+          setCheckoutState('idle');
+          return;
+        }
+        done({ session_id: resp.session_id, first_url: resp.first_url });
+        log.ok('BASKET', 'checkout session created', {
+          session_id: resp.session_id,
+          first_url: resp.first_url,
+          instruction_type: resp.instruction ? Object.keys(resp.instruction)[0] : 'none',
+        });
+        setCheckoutSession({
+          sessionId: resp.session_id,
+          firstUrl: resp.first_url,
+          instruction: resp.instruction,
+        });
+      } catch (e) {
+        done({ error: String(e) });
+        log.fail('BASKET', 'createCheckoutSession threw', { error: String(e) });
+        setAutoStatus({ text: 'Failed to start checkout', done: true, success: false });
+      } finally {
+        setCheckoutState('idle');
+      }
+      return;
+    }
+    if (basket.supermarket === 'asda.com' && basket.checkout_url) {
+      log.info('BASKET', 'routing → WebBrowser fallback (Asda mcheckout URL)', {
+        url: basket.checkout_url.slice(0, 80),
+      });
+      setCheckoutState('opening');
+      try {
+        const result = await WebBrowser.openBrowserAsync(basket.checkout_url, {
+          presentationStyle: WebBrowser.WebBrowserPresentationStyle.FORM_SHEET,
+        });
+        log.info('BASKET', 'WebBrowser closed', { type: result.type });
+      } catch (e) {
+        log.fail('BASKET', 'WebBrowser error', { error: String(e) });
+      } finally {
+        setCheckoutState('idle');
+      }
+      return;
+    }
+    log.info('BASKET', 'routing → startAutoOrder (default)');
     startAutoOrder();
   }
 
   async function startAutoOrder() {
-    if (!basket.auto_checkout_skus?.length) return;
+    if (!basket.auto_checkout_skus?.length) {
+      log.warn('BASKET', 'startAutoOrder called with no skus');
+      return;
+    }
     abortRef.current?.abort();
     const ctrl = new AbortController();
     abortRef.current = ctrl;
 
     setCheckoutState('auto_ordering');
-    setAutoStatus({ text: 'Connecting to Asda…', done: false, success: false });
-    console.log('[GroceryBasketCard] auto-order START | supermarket:', basket.supermarket, '| skus:', basket.auto_checkout_skus.length);
+    setAutoStatus({ text: `Connecting to ${basket.supermarket_name}…`, done: false, success: false });
+
+    log.start('BASKET', 'auto-order stream', {
+      supermarket: basket.supermarket,
+      skus: basket.auto_checkout_skus.length,
+      mode: basket.checkout_mode,
+    });
+    const streamDone = log.timer('BASKET', 'auto-order total duration');
 
     try {
       await api.streamGroceryAutoCheckout({
@@ -68,10 +145,16 @@ export default function GroceryBasketCard({ basket }: Props) {
         skus: basket.auto_checkout_skus,
         signal: ctrl.signal,
         onEvent: (event) => {
-          console.log('[GroceryBasketCard] auto-checkout event:', event);
           if (event.kind === 'status' && event.text) {
+            log.info('BASKET', 'auto-order status update', { text: event.text });
             setAutoStatus({ text: event.text, done: false, success: false });
           } else if (event.kind === 'done') {
+            streamDone({ success: event.success, message: event.message });
+            if (event.success) {
+              log.ok('BASKET', 'auto-order complete — order placed');
+            } else {
+              log.fail('BASKET', 'auto-order complete — failed', { message: event.message });
+            }
             setAutoStatus({
               text: event.success ? '✓ Order placed successfully!' : `Failed: ${event.message}`,
               done: true,
@@ -81,18 +164,23 @@ export default function GroceryBasketCard({ basket }: Props) {
           }
         },
         onError: (err) => {
-          console.error('[GroceryBasketCard] auto-checkout error:', err);
+          streamDone({ error: String(err) });
+          log.fail('BASKET', 'auto-order stream error', { error: String(err) });
           setAutoStatus({ text: 'Something went wrong. Please try again.', done: true, success: false });
           setCheckoutState('idle');
         },
         onClose: () => {
+          log.info('BASKET', 'auto-order stream closed');
           setCheckoutState('idle');
         },
       });
     } catch (err) {
       if ((err as any)?.name !== 'AbortError') {
-        console.error('[GroceryBasketCard] auto-order catch:', err);
+        streamDone({ error: String(err) });
+        log.fail('BASKET', 'auto-order caught exception', { error: String(err) });
         setAutoStatus({ text: 'Connection failed. Please try again.', done: true, success: false });
+      } else {
+        log.info('BASKET', 'auto-order aborted by user');
       }
       setCheckoutState('idle');
     }
@@ -101,45 +189,39 @@ export default function GroceryBasketCard({ basket }: Props) {
   async function openCheckout() {
     const url = basket.checkout_url;
     if (!url) {
-      console.warn('[GroceryBasketCard] openCheckout — no checkout_url available');
+      log.warn('BASKET', 'openCheckout — no checkout_url');
       return;
     }
-    console.log('[GroceryBasketCard] openCheckout START');
-    console.log('[GroceryBasketCard] checkout_url:', url);
-    console.log('[GroceryBasketCard] mode:', basket.checkout_mode);
-    console.log('[GroceryBasketCard] supermarket:', basket.supermarket);
-    console.log('[GroceryBasketCard] items_count:', basket.items.length);
-    console.log('[GroceryBasketCard] total:', basket.total_formatted);
+
+    log.start('BASKET', 'openCheckout', {
+      mode: basket.checkout_mode,
+      supermarket: basket.supermarket,
+      items: basket.items.length,
+      total: basket.total_formatted,
+      url: url.slice(0, 80),
+    });
 
     setCheckoutState('opening');
     try {
       if (basket.checkout_mode === 'oneshot' || basket.checkout_mode === 'session') {
-        // Pepesto hosted checkout page — real web URL, opens in-app sheet
-        // User reviews basket, logs into supermarket, pays directly on Pepesto's page
-        console.log('[GroceryBasketCard] opening Pepesto hosted checkout sheet (mode:', basket.checkout_mode, ')');
+        log.info('BASKET', 'opening Pepesto hosted checkout sheet', { mode: basket.checkout_mode });
         const result = await WebBrowser.openBrowserAsync(url, {
           presentationStyle: WebBrowser.WebBrowserPresentationStyle.FORM_SHEET,
         });
-        console.log('[GroceryBasketCard] WebBrowser result:', result.type);
+        log.info('BASKET', 'WebBrowser sheet closed', { result: result.type });
       } else {
-        // Supermarket search fallback — opens in native browser or supermarket app
-        console.log('[GroceryBasketCard] opening supermarket search via Linking (mode:', basket.checkout_mode, ')');
+        log.info('BASKET', 'opening supermarket search via Linking', { mode: basket.checkout_mode });
         await Linking.openURL(url);
+        log.ok('BASKET', 'Linking.openURL dispatched');
       }
     } catch (err) {
-      console.error('[GroceryBasketCard] openCheckout ERROR:', err);
+      log.fail('BASKET', 'openCheckout error', { error: String(err) });
     } finally {
       setCheckoutState('idle');
     }
   }
 
   return (
-    <>
-    <AsdaLoginSheet
-      visible={showLoginSheet}
-      onSuccess={handleLoginSuccess}
-      onClose={() => setShowLoginSheet(false)}
-    />
     <View style={styles.card}>
       {/* Header */}
       <View style={styles.header}>
@@ -166,7 +248,11 @@ export default function GroceryBasketCard({ basket }: Props) {
               style={({ pressed }) => [styles.itemRow, pressed && styles.itemRowPressed]}
               onPress={() => {
                 if (item.product_url) {
-                  console.log('[GroceryBasketCard] opening product:', item.product_url);
+                  log.info('BASKET', 'item tapped — opening product URL', {
+                    item: item.item_name,
+                    product: item.product_name,
+                    url: item.product_url.slice(0, 80),
+                  });
                   Linking.openURL(item.product_url);
                 }
               }}
@@ -229,43 +315,73 @@ export default function GroceryBasketCard({ basket }: Props) {
         </View>
       )}
 
-      {/* Auto-order button (primary) — shown when automated checkout is available */}
-      {basket.checkout_mode === 'automated' && basket.auto_checkout_skus?.length ? (
+      {/* Asda hint — Pepesto opens with a default store; user needs to switch */}
+      {basket.supermarket === 'asda.com' && basket.checkout_mode === 'automated' && (
+        <View style={styles.hintContainer}>
+          <Text style={styles.hintText}>
+            Tap below to checkout. On the next screen, tap "Switch Store" and select Asda.
+          </Text>
+        </View>
+      )}
+
+      {/* Checkout button */}
+      {(basket.checkout_mode === 'automated' || basket.checkout_mode === 'mcheckout') && basket.auto_checkout_skus?.length ? (
         <Pressable
           style={({ pressed }) => [
             styles.autoOrderButton,
-            (pressed || checkoutState === 'auto_ordering') && styles.autoOrderButtonPressed,
+            (pressed || checkoutState === 'auto_ordering' || checkoutState === 'opening') && styles.autoOrderButtonPressed,
           ]}
           onPress={handleOrderForMe}
           disabled={checkoutState !== 'idle'}
           accessibilityRole="button"
-          accessibilityLabel={`Auto-order from ${basket.supermarket_name}`}
+          accessibilityLabel={`Order from ${basket.supermarket_name}`}
         >
           <Text style={styles.autoOrderText}>
-            {checkoutState === 'auto_ordering' ? 'Ordering…' : `Order for me →`}
+            {checkoutState === 'opening' ? 'Opening…' : checkoutState === 'auto_ordering' ? 'Ordering…' : `Order for me →`}
           </Text>
         </Pressable>
-      ) : null}
+      ) : (
+        <Pressable
+          style={({ pressed }) => [
+            styles.checkoutButton,
+            (pressed || checkoutState === 'opening') && styles.checkoutButtonPressed,
+          ]}
+          onPress={openCheckout}
+          disabled={checkoutState !== 'idle'}
+          accessibilityRole="button"
+          accessibilityLabel={`Shop at ${basket.supermarket_name}`}
+        >
+          <Text style={styles.checkoutText}>
+            {checkoutState === 'opening'
+              ? 'Opening…'
+              : `View basket on Pepesto →`}
+          </Text>
+        </Pressable>
+      )}
 
-      {/* Checkout button (secondary fallback) */}
-      <Pressable
-        style={({ pressed }) => [
-          basket.checkout_mode === 'automated' ? styles.checkoutButtonSecondary : styles.checkoutButton,
-          (pressed || checkoutState === 'opening') && styles.checkoutButtonPressed,
-        ]}
-        onPress={openCheckout}
-        disabled={checkoutState !== 'idle'}
-        accessibilityRole="button"
-        accessibilityLabel={`Shop at ${basket.supermarket_name}`}
-      >
-        <Text style={basket.checkout_mode === 'automated' ? styles.checkoutTextSecondary : styles.checkoutText}>
-          {checkoutState === 'opening'
-            ? 'Opening…'
-            : `View basket on Pepesto →`}
-        </Text>
-      </Pressable>
+      {checkoutSession && (
+        <CheckoutWebView
+          visible
+          sessionId={checkoutSession.sessionId}
+          firstUrl={checkoutSession.firstUrl}
+          firstInstruction={checkoutSession.instruction}
+          onDone={(success, message) => {
+            log.info('BASKET', 'CheckoutWebView done', { success, message });
+            if (success) {
+              log.ok('BASKET', 'order placed via WebView checkout');
+            } else {
+              log.fail('BASKET', 'WebView checkout failed', { message });
+            }
+            setCheckoutSession(null);
+            setAutoStatus({ text: success ? '✓ Order placed!' : message, done: true, success });
+          }}
+          onClose={() => {
+            log.info('BASKET', 'CheckoutWebView closed by user');
+            setCheckoutSession(null);
+          }}
+        />
+      )}
     </View>
-    </>
   );
 }
 
@@ -393,6 +509,17 @@ const styles = StyleSheet.create({
     ...typography.small,
     color: colors.textMuted,
     fontStyle: 'italic',
+  },
+  hintContainer: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    backgroundColor: '#FFF8E1',
+  },
+  hintText: {
+    ...typography.small,
+    color: '#6D5D00',
+    textAlign: 'center',
+    lineHeight: 18,
   },
   autoStatus: {
     paddingHorizontal: spacing.lg,

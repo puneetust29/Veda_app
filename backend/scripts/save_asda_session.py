@@ -17,7 +17,6 @@ Then restart the backend.
 """
 import json
 import os
-import subprocess
 import sys
 import time
 
@@ -48,7 +47,7 @@ def wait_for_chrome(timeout: int = 10) -> bool:
         deadline = time.time() + timeout
         while time.time() < deadline:
             try:
-                urllib.request.urlopen(f"http://localhost:{CDP_PORT}/json", timeout=1)
+                urllib.request.urlopen(f"http://127.0.0.1:{CDP_PORT}/json", timeout=1)
                 return True
             except Exception:
                 time.sleep(0.5)
@@ -58,41 +57,21 @@ def wait_for_chrome(timeout: int = 10) -> bool:
 
 
 def main() -> None:
-    chrome_path = find_chrome()
+    find_chrome()  # validate Chrome exists
 
     print("=" * 60)
     print("  Asda session setup")
     print("=" * 60)
     print()
-    print("IMPORTANT: Quit Chrome completely before continuing.")
-    print("           (Chrome menu → Quit Google Chrome)")
+    print("Step 1 — Quit Chrome completely (Cmd+Q), then run this")
+    print("         command in a NEW terminal tab to reopen it:")
     print()
-    input("Press Enter once Chrome is fully closed… ")
+    print(f'  open -a "Google Chrome" --args --remote-debugging-port={CDP_PORT} https://www.asda.com/account')
     print()
-
-    # Launch Chrome with a debug port only — NO Playwright flags,
-    # so navigator.webdriver is not set and Cloudflare Turnstile passes.
-    user_data_dir = os.path.expanduser("~/Library/Application Support/Google/Chrome")
-    proc = subprocess.Popen(
-        [
-            chrome_path,
-            f"--remote-debugging-port={CDP_PORT}",
-            f"--user-data-dir={user_data_dir}",
-            "--no-first-run",
-            "--no-default-browser-check",
-            "https://www.asda.com/account",
-        ],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
-
-    print("Chrome is opening — log in to Asda normally.")
-    print("Cloudflare's verification will complete as it does in a regular browser.")
+    print("Step 2 — Chrome will open. Make sure you are logged in to Asda.")
     print()
-
-    if not wait_for_chrome():
-        proc.terminate()
-        sys.exit("Chrome didn't start in time. Try again.")
+    input("Step 3 — Press Enter here once you are logged in and on the Asda page… ")
+    print()
 
     input("Press Enter AFTER you have successfully signed in to Asda… ")
     print()
@@ -108,12 +87,11 @@ def main() -> None:
         with sync_playwright() as pw:
             # connect_over_cdp attaches to the already-running Chrome without
             # injecting automation flags — Cloudflare already finished by now.
-            browser = pw.chromium.connect_over_cdp(f"http://localhost:{CDP_PORT}")
+            browser = pw.chromium.connect_over_cdp(f"http://127.0.0.1:{CDP_PORT}")
             contexts = browser.contexts
 
             if not contexts:
-                proc.terminate()
-                sys.exit("No browser context found. Make sure you're logged in and try again.")
+                sys.exit("No browser context found. Make sure Chrome is open and you're logged in to Asda.")
 
             ctx = contexts[0]
 
@@ -150,10 +128,7 @@ def main() -> None:
             browser.disconnect()
 
     except Exception as e:
-        proc.terminate()
         sys.exit(f"Failed to save session: {e}")
-
-    proc.terminate()
 
     if cookie_count == 0:
         print("WARNING: No cookies were captured. Make sure you were fully logged in before pressing Enter.")

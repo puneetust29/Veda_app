@@ -50,6 +50,9 @@ class Settings(BaseSettings):
     # Pepesto grocery API (optional — grocery agent uses /predirect for free without it)
     pepesto_api_key: str = ""
 
+    # Browserless.io cloud browser (Option 2 from Pepesto — handles Cloudflare)
+    browserless_api_key: str = ""
+
     # Supermarket credentials (used by Pepesto for automated checkout)
     asda_email: str = ""
     asda_password: str = ""

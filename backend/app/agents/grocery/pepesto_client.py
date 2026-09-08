@@ -7,6 +7,7 @@ work without a key (/predirect) are always available.
 from __future__ import annotations
 
 import logging
+import time
 from typing import Any, Optional
 
 import httpx
@@ -32,14 +33,25 @@ class PepetoClient:
         if auth_required and not self._api_key:
             raise RuntimeError(f"Pepesto API key required for {path}. Set PEPESTO_API_KEY in backend/.env")
         url = f"{PEPESTO_BASE}/{path.lstrip('/')}"
-        logger.info("[pepesto] POST %s | auth=%s | payload=%r", url, auth_required, payload)
+        payload_summary = {k: (str(v)[:80] if isinstance(v, str) else v) for k, v in payload.items()}
+        logger.info("[pepesto] ▶ POST %s | auth=%s | payload=%r", url, auth_required, payload_summary)
+        t0 = time.perf_counter()
         resp = httpx.post(url, json=payload, headers=self._headers, timeout=TIMEOUT)
-        logger.info("[pepesto] %s → HTTP %d | body_size=%d bytes", path, resp.status_code, len(resp.content))
-        if not resp.is_success:
-            logger.error("[pepesto] %s error | status=%d | body=%r", path, resp.status_code, resp.text[:500])
+        elapsed_ms = int((time.perf_counter() - t0) * 1000)
+        if resp.is_success:
+            logger.info(
+                "[pepesto] ✅ %s → HTTP %d | body_size=%d bytes | elapsed=%dms",
+                path, resp.status_code, len(resp.content), elapsed_ms,
+            )
+        else:
+            logger.error(
+                "[pepesto] ❌ %s → HTTP %d | body_size=%d bytes | elapsed=%dms | body=%r",
+                path, resp.status_code, len(resp.content), elapsed_ms, resp.text[:500],
+            )
         resp.raise_for_status()
         data = resp.json()
-        logger.info("[pepesto] %s parsed | top_keys=%s", path, list(data.keys()) if isinstance(data, dict) else type(data).__name__)
+        top_keys = list(data.keys()) if isinstance(data, dict) else type(data).__name__
+        logger.info("[pepesto] %s parsed | top_keys=%s", path, top_keys)
         return data
 
     # ── Free endpoints (no API key needed) ─────────────────────────────────
@@ -149,6 +161,25 @@ class PepetoClient:
             payload["return_url"] = return_url
         return self._post("mcheckout", payload)
 
+    def search(self, supermarket_domain: str, products: list[str]) -> dict:
+        """Async product search across broader inventory. Returns search_session_id."""
+        return self._post("search", {
+            "supermarket_domain": supermarket_domain,
+            "products": products,
+        })
+
+    def retrieve(self, search_session_id: str) -> dict:
+        """Poll for async /search results. Returns status + products when ready."""
+        return self._post("retrieve", {"search_session_id": search_session_id})
+
+    def catalog(self, supermarket_domain: str) -> dict:
+        """Full SKU dump for a supermarket. Costs credits."""
+        return self._post("catalog", {"supermarket_domain": supermarket_domain})
+
+    def promotions(self, supermarket_domain: str) -> dict:
+        """Promotional products for a retailer."""
+        return self._post("promotions", {"supermarket_domain": supermarket_domain})
+
     def checkout(
         self,
         session_id: str,
@@ -164,12 +195,21 @@ class PepetoClient:
         if screenshot_b64:
             payload["screenshot"] = screenshot_b64
         url = f"{PEPESTO_BASE}/checkout"
-        logger.info("[pepesto] POST checkout | has_screenshot=%s | payload_size~=%d chars",
-                    bool(screenshot_b64), len(str(payload)))
+        logger.info("[pepesto] ▶ POST checkout | session_id=%s | has_screenshot=%s | payload_size~=%d chars",
+                    session_id, bool(screenshot_b64), len(str(payload)))
+        t0 = time.perf_counter()
         resp = httpx.post(url, json=payload, headers=self._headers, timeout=CHECKOUT_TIMEOUT)
-        logger.info("[pepesto] checkout → HTTP %d | body_size=%d bytes", resp.status_code, len(resp.content))
-        if not resp.is_success:
-            logger.error("[pepesto] checkout error | status=%d | body=%r", resp.status_code, resp.text[:500])
+        elapsed_ms = int((time.perf_counter() - t0) * 1000)
+        if resp.is_success:
+            logger.info(
+                "[pepesto] ✅ checkout → HTTP %d | body_size=%d bytes | elapsed=%dms",
+                resp.status_code, len(resp.content), elapsed_ms,
+            )
+        else:
+            logger.error(
+                "[pepesto] ❌ checkout → HTTP %d | body_size=%d bytes | elapsed=%dms | body=%r",
+                resp.status_code, len(resp.content), elapsed_ms, resp.text[:500],
+            )
         resp.raise_for_status()
         data = resp.json()
         logger.info("[pepesto] checkout parsed | top_keys=%s", list(data.keys()) if isinstance(data, dict) else type(data).__name__)

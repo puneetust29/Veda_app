@@ -320,7 +320,7 @@ export type GroceryBasketPayload = {
   missing_items: string[];
   total_formatted?: string | null;
   checkout_url: string;
-  checkout_mode: 'predirect' | 'products' | 'oneshot' | 'session' | 'automated';
+  checkout_mode: 'predirect' | 'products' | 'oneshot' | 'session' | 'automated' | 'mcheckout';
   auto_checkout_skus?: GroceryBasketSku[] | null;
   message: string;
 };

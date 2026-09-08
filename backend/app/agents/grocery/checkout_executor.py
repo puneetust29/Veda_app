@@ -430,12 +430,29 @@ async () => {{
         from playwright.sync_api import sync_playwright
 
         self._emit("Starting automated checkout…")
+        run_t0 = time.time()
+        logger.info(
+            "[checkout_exec] ▶ run START | session_id=%s | supermarket=%s | has_creds=%s | has_auth_state=%s | has_browserless=%s",
+            self.session_id, self.supermarket, bool(self._creds),
+            bool(self._auth_state_path), bool(get_settings().browserless_api_key),
+        )
 
         with sync_playwright() as pw:
-            browser = pw.chromium.launch(
-                headless=True,
-                args=["--no-sandbox", "--disable-dev-shm-usage"],
-            )
+            settings = get_settings()
+            if settings.browserless_api_key:
+                # Browserless v2 Playwright endpoint
+                ws_url = (
+                    f"wss://production-sfo.browserless.io/playwright/chromium"
+                    f"?token={settings.browserless_api_key}"
+                )
+                logger.info("[checkout_exec] connecting to browserless.io via Playwright WS…")
+                self._emit("Connecting to cloud browser…")
+                browser = pw.chromium.connect(ws_url, timeout=30_000)
+            else:
+                browser = pw.chromium.launch(
+                    headless=True,
+                    args=["--no-sandbox", "--disable-dev-shm-usage"],
+                )
             ctx_kwargs: dict = {
                 "viewport": {"width": 1280, "height": 800},
                 "user_agent": (
@@ -455,20 +472,41 @@ async () => {{
 
             prev_result = ""
             prev_error = ""
+            login_stuck_count = 0
 
             try:
                 for i in range(MAX_ITERATIONS):
+                    iter_t0 = time.time()
+                    current_url = page.url or "blank"
                     logger.info(
-                        "[checkout_exec] ── iteration %d/%d | url=%s | result=%r | error=%r",
-                        i + 1, MAX_ITERATIONS, page.url or "blank",
+                        "[checkout_exec] ── iteration %d/%d | url=%s | prev_result=%r | prev_error=%r",
+                        i + 1, MAX_ITERATIONS, current_url,
                         prev_result[:80], prev_error[:80],
                     )
 
+                    # Abort early if stuck on login page (Cloudflare blocks headless browsers)
+                    if "login.asda.com" in current_url:
+                        login_stuck_count += 1
+                        logger.warning(
+                            "[checkout_exec] ⚠️  on login.asda.com — stuck_count=%d (Cloudflare Turnstile likely blocking)",
+                            login_stuck_count,
+                        )
+                        if login_stuck_count >= 3:
+                            msg = "Session expired — please sign in to Asda again in the app"
+                            logger.error("[checkout_exec] ❌ stuck on login page for %d iterations, aborting", login_stuck_count)
+                            self._emit(msg)
+                            total_ms = int((time.time() - run_t0) * 1000)
+                            logger.info("[checkout_exec] ■ run END | outcome=login_stuck | iterations=%d | total_ms=%d", i + 1, total_ms)
+                            return {"success": False, "message": msg, "iterations": i + 1}
+                    else:
+                        login_stuck_count = 0
+
                     logger.info("[checkout_exec] taking screenshot…")
                     screenshot = _screenshot_b64(page)
-                    logger.info("[checkout_exec] screenshot done | calling Pepesto /checkout…")
+                    logger.info("[checkout_exec] screenshot ready | calling Pepesto /checkout…")
                     self._emit(f"Step {i + 1}: checking with Pepesto…")
 
+                    api_t0 = time.time()
                     try:
                         response = self.client.checkout(
                             session_id=self.session_id,
@@ -476,40 +514,68 @@ async () => {{
                             prev_error=prev_error,
                             screenshot_b64=screenshot,
                         )
-                        logger.info("[checkout_exec] /checkout response received | keys=%s", list(response.keys()))
+                        api_ms = int((time.time() - api_t0) * 1000)
+                        logger.info("[checkout_exec] /checkout response | keys=%s | api_ms=%d", list(response.keys()), api_ms)
                     except Exception as api_err:
-                        logger.error("[checkout_exec] /checkout API call failed: %r", api_err)
+                        api_ms = int((time.time() - api_t0) * 1000)
+                        logger.error("[checkout_exec] ❌ /checkout API call failed | api_ms=%d | error=%r", api_ms, api_err)
                         self._emit(f"API error: {api_err}")
+                        total_ms = int((time.time() - run_t0) * 1000)
+                        logger.info("[checkout_exec] ■ run END | outcome=api_error | iterations=%d | total_ms=%d", i + 1, total_ms)
                         return {"success": False, "error": str(api_err), "iterations": i + 1}
 
-                    # Pepesto wraps the response in "proto" on some endpoints
                     proto = response.get("proto", response)
                     instruction = proto.get("Instruction", {})
+                    instr_type = list(instruction.keys())[0] if instruction else "none"
+                    logger.info("[checkout_exec] instruction type: %s", instr_type)
 
                     if not instruction:
-                        # Check for a top-level terminal status
                         status = proto.get("status", "")
                         if status in ("done", "complete", "success", "order_placed"):
                             self._emit("Order placed successfully!")
+                            total_ms = int((time.time() - run_t0) * 1000)
+                            logger.info(
+                                "[checkout_exec] ✅ run END | outcome=order_placed (status field) | iterations=%d | total_ms=%d",
+                                i + 1, total_ms,
+                            )
                             return {"success": True, "message": "Order placed", "iterations": i + 1}
-                        logger.warning("[checkout_exec] No Instruction in response: %r", proto)
+                        logger.warning("[checkout_exec] ⚠️  no Instruction in response | proto=%r", str(proto)[:200])
+                        total_ms = int((time.time() - run_t0) * 1000)
+                        logger.info("[checkout_exec] ■ run END | outcome=no_instruction | iterations=%d | total_ms=%d", i + 1, total_ms)
                         return {"success": False, "error": "No instruction received from Pepesto", "iterations": i + 1}
 
+                    instr_t0 = time.time()
                     prev_result, prev_error = self._execute_instruction(page, instruction)
+                    instr_ms = int((time.time() - instr_t0) * 1000)
+                    iter_ms = int((time.time() - iter_t0) * 1000)
+                    logger.info(
+                        "[checkout_exec] iteration %d done | instr=%s | result=%r | error=%r | instr_ms=%d | iter_ms=%d",
+                        i + 1, instr_type, prev_result[:80], prev_error[:80], instr_ms, iter_ms,
+                    )
 
                     if prev_result == "__DONE__":
                         self._emit("Order placed successfully!")
+                        total_ms = int((time.time() - run_t0) * 1000)
+                        logger.info(
+                            "[checkout_exec] ✅ run END | outcome=order_placed (instruction) | iterations=%d | total_ms=%d",
+                            i + 1, total_ms,
+                        )
                         return {"success": True, "message": "Order placed", "iterations": i + 1}
 
                     if prev_error:
-                        # Send the error back to Pepesto — it may be able to recover
-                        logger.warning("[checkout_exec] Instruction error (sending to Pepesto): %r", prev_error)
+                        logger.warning("[checkout_exec] ⚠️  instruction error — sending to Pepesto for recovery | error=%r", prev_error)
                         prev_result = ""
 
+                total_ms = int((time.time() - run_t0) * 1000)
+                logger.error(
+                    "[checkout_exec] ❌ run END | outcome=max_iterations | iterations=%d | total_ms=%d",
+                    MAX_ITERATIONS, total_ms,
+                )
                 return {"success": False, "error": "Max iterations reached without completion", "iterations": MAX_ITERATIONS}
 
             finally:
                 try:
                     browser.close()
+                    logger.info("[checkout_exec] browser closed")
                 except Exception:
                     pass

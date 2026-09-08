@@ -12,6 +12,7 @@ import base64
 import json
 import logging
 import re
+import time
 
 from langchain_anthropic import ChatAnthropic
 from langgraph.graph import END, StateGraph
@@ -63,7 +64,11 @@ _SUPERMARKET_MENTIONED = re.compile(
 
 
 def node_understand_intent(state: dict, writer: StreamWriter) -> dict:
-    logger.info("[grocery] node_understand_intent START | message=%r", state.get("user_message", "")[:100])
+    t0 = time.perf_counter()
+    logger.info(
+        "[grocery] ▶ node_understand_intent | customer=%s | message=%r",
+        state.get("customer_id"), state.get("user_message", "")[:100],
+    )
     writer({"kind": "status", "text": "Understanding your grocery list…"})
     llm = _llm().with_structured_output(GroceryIntent)
 
@@ -82,8 +87,13 @@ def node_understand_intent(state: dict, writer: StreamWriter) -> dict:
         state.get("customer_id"), intent.items, intent.supermarket, intent.reply_to_user[:80], supermarket_mentioned,
     )
 
+    elapsed_ms = int((time.perf_counter() - t0) * 1000)
+
     if not supermarket_mentioned:
-        # Ask the user which supermarket they prefer
+        logger.info(
+            "[grocery] ✅ node_understand_intent done | elapsed=%dms | items=%r | no_supermarket → asking user",
+            elapsed_ms, intent.items,
+        )
         writer({"kind": "text", "role": "agent", "text": f"I've got your list: {', '.join(intent.items)}. Which supermarket would you like?"})
         writer({
             "kind": "choice",
@@ -91,6 +101,10 @@ def node_understand_intent(state: dict, writer: StreamWriter) -> dict:
             "choices": _SUPERMARKET_CHOICES,
         })
     else:
+        logger.info(
+            "[grocery] ✅ node_understand_intent done | elapsed=%dms | items=%r | supermarket=%s → proceeding",
+            elapsed_ms, intent.items, intent.supermarket,
+        )
         writer({"kind": "text", "role": "agent", "text": intent.reply_to_user})
 
     return {
@@ -103,9 +117,14 @@ def node_understand_intent(state: dict, writer: StreamWriter) -> dict:
 
 
 def node_build_basket(state: dict, writer: StreamWriter) -> dict:
+    t0 = time.perf_counter()
     logger.info(
-        "[grocery] node_build_basket START | items=%r | supermarket=%s | has_key=%s",
-        state.get("items", []), state.get("supermarket_domain"), bool(get_settings().pepesto_api_key),
+        "[grocery] ▶ node_build_basket | customer=%s | items=%r | supermarket=%s | has_pepesto_key=%s | has_browserless=%s",
+        state.get("customer_id"),
+        state.get("items", []),
+        state.get("supermarket_domain"),
+        bool(get_settings().pepesto_api_key),
+        bool(get_settings().browserless_api_key),
     )
     writer({"kind": "status", "text": f"Building your basket at {state.get('supermarket_name', 'Tesco')}…"})
 
@@ -183,12 +202,33 @@ def node_build_basket(state: dict, writer: StreamWriter) -> dict:
                 if p.get("session_token")
             ]
 
-            # Use /oneshot to get Pepesto's hosted checkout URL (real web page,
-            # not an app redirect). User reviews basket on Pepesto's page and
-            # can pay on Pepesto's hosted UI — shown in Veda's in-app browser sheet.
+            # Get a hosted checkout URL from Pepesto.
+            # /mcheckout creates a session (free) and returns a mobile_hosted_url.
+            # /oneshot returns a web checkout URL (fallback — has wrong shop ID for Asda).
+            redirect_url = ""
+            mcheckout_url = ""
+            mcheckout_session_id = ""
+            if auto_checkout_skus:
+                logger.info("[grocery] calling /mcheckout | supermarket=%s | skus=%d", supermarket_domain, len(auto_checkout_skus))
+                try:
+                    mcheckout_result = client.mcheckout(
+                        supermarket_domain=supermarket_domain,
+                        skus=auto_checkout_skus,
+                        return_url="veda://grocery-done",
+                    )
+                    logger.info("[grocery] /mcheckout response keys: %s", list(mcheckout_result.keys()))
+                    mcheckout_url = mcheckout_result.get("mobile_hosted_url", "")
+                    mcheckout_session_id = mcheckout_result.get("session_id", "")
+                    if not mcheckout_session_id and mcheckout_url:
+                        from urllib.parse import urlparse, parse_qs
+                        mcheckout_session_id = parse_qs(urlparse(mcheckout_url).query).get("sid", [""])[0]
+                    logger.info("[grocery] /mcheckout session_id: %s | url: %s", mcheckout_session_id, mcheckout_url)
+                except Exception as mcheckout_err:
+                    logger.error("[grocery] /mcheckout FAILED: %r", mcheckout_err)
+
+            # Use /oneshot as fallback for the web-based checkout URL
             shopping_list_text = ", ".join(items)
             logger.info("[grocery] calling /oneshot | supermarket=%s | list=%r", supermarket_domain, shopping_list_text)
-            redirect_url = ""
             try:
                 oneshot_result = client.oneshot(
                     supermarket_domain=supermarket_domain,
@@ -197,21 +237,30 @@ def node_build_basket(state: dict, writer: StreamWriter) -> dict:
                 logger.info("[grocery] /oneshot response keys: %s", list(oneshot_result.keys()))
                 redirect_url = oneshot_result.get("redirect_url", "")
                 logger.info("[grocery] /oneshot redirect_url: %s", redirect_url if redirect_url else "EMPTY")
-                if redirect_url:
-                    checkout_url = redirect_url
-                    logger.info("[grocery] checkout via Pepesto hosted page (oneshot)")
-                else:
-                    checkout_url = supermarket_search_url(supermarket_domain, [p["item_name"] for p in product_items] or items)
-                    logger.warning("[grocery] no redirect_url in oneshot response — falling back to search URL")
             except Exception as oneshot_err:
-                logger.error("[grocery] /oneshot FAILED: %r — falling back to search URL", oneshot_err)
-                checkout_url = supermarket_search_url(supermarket_domain, [p["item_name"] for p in product_items] or items)
+                logger.error("[grocery] /oneshot FAILED: %r", oneshot_err)
 
-            # Use automated mode when we have SKUs (session tokens) for all matched items;
-            # fall back to oneshot or products URL otherwise.
-            if auto_checkout_skus:
+            # Prefer /mcheckout URL (targets Asda correctly), fall back to /oneshot
+            if mcheckout_url:
+                checkout_url = mcheckout_url
+                logger.info("[grocery] checkout via /mcheckout mobile URL")
+            elif redirect_url:
+                checkout_url = redirect_url
+                logger.info("[grocery] checkout via /oneshot hosted page")
+            else:
+                checkout_url = supermarket_search_url(supermarket_domain, [p["item_name"] for p in product_items] or items)
+                logger.warning("[grocery] no hosted URL — falling back to search URL")
+
+            # Determine checkout mode
+            # Prefer mcheckout (WebView on device) — Pepesto's recommended approach.
+            # Cloudflare blocks browserless.io for Asda, so only use automated as fallback.
+            has_browserless = bool(get_settings().browserless_api_key)
+            if auto_checkout_skus and mcheckout_url:
+                checkout_mode = "mcheckout"
+                logger.info("[grocery] checkout_mode=mcheckout | skus=%d | sid=%s", len(auto_checkout_skus), mcheckout_session_id)
+            elif auto_checkout_skus and has_browserless:
                 checkout_mode = "automated"
-                logger.info("[grocery] checkout_mode=automated | skus=%d", len(auto_checkout_skus))
+                logger.info("[grocery] checkout_mode=automated (browserless.io fallback) | skus=%d", len(auto_checkout_skus))
             elif redirect_url and checkout_url == redirect_url:
                 checkout_mode = "oneshot"
             else:
@@ -236,14 +285,22 @@ def node_build_basket(state: dict, writer: StreamWriter) -> dict:
         checkout_url=checkout_url,
         checkout_mode=checkout_mode,
         message=state.get("reply", ""),
-        auto_checkout_skus=auto_checkout_skus if checkout_mode == "automated" else None,
+        auto_checkout_skus=auto_checkout_skus if checkout_mode in ("automated", "mcheckout") else None,
     )
 
+    elapsed_ms = int((time.perf_counter() - t0) * 1000)
     logger.info(
-        "[grocery] basket built | mode=%s | items=%d | missing=%d | total=%s",
-        checkout_mode, len(product_items), len(missing_items), total_formatted,
+        "[grocery] ✅ node_build_basket done | elapsed=%dms | mode=%s | items=%d | missing=%d | total=%s | skus=%d",
+        elapsed_ms, checkout_mode, len(product_items), len(missing_items), total_formatted,
+        len(auto_checkout_skus),
     )
-    logger.info("[grocery] checkout_url (full): %s", checkout_url if checkout_url else "EMPTY")
+    logger.info("[grocery] checkout_url: %s", checkout_url if checkout_url else "EMPTY")
+    for idx, item in enumerate(product_items):
+        logger.info(
+            "[grocery]   item[%d] %r → %r | price=%s | has_url=%s | has_sku=%s",
+            idx, item.get("item_name"), item.get("product_name"),
+            item.get("price_formatted"), bool(item.get("product_url")), bool(item.get("session_token")),
+        )
 
     writer({
         "kind": "grocery_basket",

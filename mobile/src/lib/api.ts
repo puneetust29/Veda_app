@@ -1,4 +1,5 @@
 import { loadToken } from './authToken';
+import { log } from './logger';
 import { mockStreamRoamingConversation, mockStreamVedaConversation } from './mockStream';
 import { streamSse } from './sse';
 import type {
@@ -26,6 +27,12 @@ if (!API_BASE_URL) {
 }
 
 async function rawFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  const method = init?.method ?? 'GET';
+  const done = log.timer('API', `${method} ${path}`);
+  log.start('API', `${method} ${path}`, {
+    body: init?.body ? String(init.body).slice(0, 500) : undefined,
+  });
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     headers: {
@@ -36,14 +43,21 @@ async function rawFetch<T>(path: string, init?: RequestInit): Promise<T> {
 
   if (!response.ok) {
     const body = await response.text();
+    done({ status: response.status, ok: false });
+    log.fail('API', `${method} ${path}`, { status: response.status, body: body.slice(0, 300) });
     throw new Error(`${response.status} ${path}: ${body}`);
   }
-  return response.json() as Promise<T>;
+
+  const data = await response.json();
+  const ms = done({ status: response.status, ok: true });
+  log.ok('API', `${method} ${path}`, { status: response.status, ms });
+  return data as T;
 }
 
 async function authedFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const token = await loadToken();
   if (!token) {
+    log.fail('API', 'authedFetch — no token', { path });
     throw new Error('Not authenticated');
   }
 
@@ -337,6 +351,39 @@ export const api = {
       body: JSON.stringify({ local_storage: data.localStorage, cookies: data.cookies }),
     }),
 
+  // --- Grocery: WebView checkout session (Phase 2) ---
+  createCheckoutSession: (supermarketDomain: string, skus: GroceryBasketSku[]) =>
+    authedFetch<{
+      session_id: string;
+      first_url: string;
+      instruction: Record<string, unknown>;
+      error?: string;
+    }>('/grocery/checkout-session', {
+      method: 'POST',
+      body: JSON.stringify({ supermarket_domain: supermarketDomain, skus }),
+    }),
+
+  checkoutStep: (params: {
+    session_id: string;
+    screenshot_b64?: string;
+    prev_result?: string;
+    prev_error?: string;
+  }) =>
+    authedFetch<{
+      done: boolean;
+      success?: boolean;
+      message?: string;
+      instruction?: Record<string, unknown>;
+    }>('/grocery/checkout-step', {
+      method: 'POST',
+      body: JSON.stringify({
+        session_id: params.session_id,
+        screenshot_b64: params.screenshot_b64 || '',
+        prev_result: params.prev_result || '',
+        prev_error: params.prev_error || '',
+      }),
+    }),
+
   // --- Grocery automated checkout ---
   // Streams SSE status events while Pepesto's browser automation loop runs.
   // Events: {kind:"status",text:"..."} and a final {kind:"done",success:bool,message:"..."}
@@ -351,6 +398,13 @@ export const api = {
     const token = await loadToken();
     if (!token) throw new Error('Not authenticated');
 
+    const streamDone = log.timer('API', 'SSE /grocery/auto-checkout');
+    log.start('API', 'SSE /grocery/auto-checkout', {
+      supermarket: params.supermarketDomain,
+      skus: params.skus.length,
+    });
+
+    let eventCount = 0;
     return streamSse({
       url: `${API_BASE_URL}/grocery/auto-checkout`,
       method: 'POST',
@@ -366,13 +420,25 @@ export const api = {
       signal: params.signal,
       onFrame: (frame) => {
         try {
-          params.onEvent(JSON.parse(frame.data));
+          const event = JSON.parse(frame.data);
+          eventCount += 1;
+          log.info('API', `SSE event #${eventCount}`, { kind: event.kind, text: event.text, success: event.success, message: event.message });
+          if (event.kind === 'done') {
+            streamDone({ events: eventCount, success: event.success });
+          }
+          params.onEvent(event);
         } catch {
-          if (__DEV__) console.warn('[grocery/auto-checkout] bad frame', frame);
+          log.warn('API', 'SSE bad frame', { raw: frame.data?.slice(0, 100) });
         }
       },
-      onError: params.onError,
-      onClose: params.onClose,
+      onError: (err) => {
+        log.fail('API', 'SSE /grocery/auto-checkout error', { err: String(err), events: eventCount });
+        params.onError(err);
+      },
+      onClose: () => {
+        log.info('API', 'SSE /grocery/auto-checkout closed', { events: eventCount });
+        params.onClose();
+      },
     });
   },
 };

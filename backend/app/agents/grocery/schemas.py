@@ -56,7 +56,7 @@ class GroceryResultCard(BaseModel):
     missing_items: list[str] = Field(default_factory=list)
     total_formatted: Optional[str] = None
     checkout_url: str
-    checkout_mode: Literal["predirect", "products", "oneshot", "automated"] = "predirect"
+    checkout_mode: Literal["predirect", "products", "oneshot", "automated", "mcheckout"] = "predirect"
     message: str = ""
     # Present when checkout_mode == "automated": SKUs for the auto-checkout endpoint
     auto_checkout_skus: Optional[list[dict]] = None
