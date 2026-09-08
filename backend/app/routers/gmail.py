@@ -198,14 +198,14 @@ def sync_gmail_messages(
     max_results: int = 10,
     customer: dict = Depends(get_current_customer),
 ) -> dict:
-    """Fetch messages from Gmail API, store in database, and extract flights and hotels.
+    """Fetch messages from Gmail API, store in database, and extract flights, hotels, and bills.
 
     Supports incremental sync: reads last_gmail_synced_at from customers table and only
     fetches messages since last sync.
 
     Returns:
         {fetched, synced, flights_extracted, flight_duplicates, hotels_extracted,
-         hotel_duplicates, result_size_estimate, incremental_sync}
+         hotel_duplicates, bills_extracted, bill_duplicates, result_size_estimate, incremental_sync}
     """
     from datetime import datetime, timezone
 
@@ -251,11 +251,13 @@ def sync_gmail_messages(
                 email_rows, on_conflict="customer_id,gmail_message_id"
             ).execute()
 
-        # Extract flights and hotels from emails
+        # Extract flights, hotels, and bills from emails
         flights_extracted = 0
         hotels_extracted = 0
+        bills_extracted = 0
         flight_duplicates = 0
         hotel_duplicates = 0
+        bill_duplicates = 0
         for msg in messages:
             # Try to extract flight
             try:
@@ -312,6 +314,33 @@ def sync_gmail_messages(
                     file=sys.stderr,
                 )
 
+            # Try to extract bill
+            try:
+                bill = gmail_email_agent.parse_bill_email(msg, customer["id"])
+                if bill:
+                    # Check for duplicate
+                    if gmail_email_agent.check_duplicate_bill(
+                        customer["id"],
+                        bill.provider,
+                        bill.due_date,
+                    ):
+                        bill_duplicates += 1
+                    else:
+                        # Upsert bill to calendar_events (dedup at DB level on gmail_message_id)
+                        bill_row = bill.to_calendar_event()
+                        get_supabase().table("calendar_events").upsert(
+                            [bill_row], on_conflict="customer_id,gmail_message_id"
+                        ).execute()
+                        bills_extracted += 1
+            except Exception as e:
+                # Log error but don't fail entire sync
+                import sys
+
+                print(
+                    f"[WARN] Error extracting bill from email {msg.get('gmail_message_id')}: {e}",
+                    file=sys.stderr,
+                )
+
         # Update both last_gmail_synced_at (for incremental sync) and last_synced_at (general sync time)
         get_supabase().table("customers").update({
             "last_gmail_synced_at": datetime.now(timezone.utc).isoformat(),
@@ -325,6 +354,8 @@ def sync_gmail_messages(
             "flight_duplicates": flight_duplicates,
             "hotels_extracted": hotels_extracted,
             "hotel_duplicates": hotel_duplicates,
+            "bills_extracted": bills_extracted,
+            "bill_duplicates": bill_duplicates,
             "result_size_estimate": result.get("result_size_estimate", 0),
             "incremental_sync": last_synced_at is not None,
         }
