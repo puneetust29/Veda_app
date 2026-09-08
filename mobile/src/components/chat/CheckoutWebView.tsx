@@ -68,7 +68,6 @@ export default function CheckoutWebView({
   const sessionIdRef = useRef(sessionId);
   const currentUrlRef = useRef('');
   const loadErrorRef = useRef(false);
-  const postLoginRedirectDone = useRef(false);
 
   useEffect(() => {
     sessionIdRef.current = sessionId;
@@ -150,7 +149,7 @@ export default function CheckoutWebView({
                 if (msg.error) {
                   log.warn('CHECKOUT_WV', 'RunJs JS error', { func, error: msg.error });
                 } else {
-                  log.info('CHECKOUT_WV', 'RunJs result', { func, result_preview: result.slice(0, 100) });
+                  log.info('CHECKOUT_WV', 'RunJs result FULL', { func, result_len: result.length, result });
                 }
                 instrDone({ func, result_len: result.length, error: msg.error || '' });
                 resolve({ result, error: msg.error || '' });
@@ -195,9 +194,17 @@ export default function CheckoutWebView({
         const currentContent = spec.current_content || '';
         const interval = spec.check_interval_msec || 1400;
 
+        log.info('CHECKOUT_WV', 'AwaitJsOutChange FULL spec', {
+          func,
+          js_len: js.length,
+          current_content_full: currentContent,
+          check_interval_msec: interval,
+        });
+
         setStatus('Waiting for page update…');
         const deadline = Date.now() + 20000;
         let lastResult = currentContent;
+        let pollCount = 0;
 
         while (Date.now() < deadline && activeRef.current) {
           const { result } = await new Promise<{ result: string; error: string }>((resolve) => {
@@ -231,12 +238,21 @@ export default function CheckoutWebView({
             webViewRef.current?.injectJavaScript(wrappedJs);
           });
 
-          if (result && result !== currentContent && result !== 'unknown') {
+          pollCount += 1;
+          const changed = !!result && result !== currentContent && result !== 'unknown';
+          log.info('CHECKOUT_WV', `AwaitJsOutChange poll #${pollCount}`, {
+            changed,
+            result_len: result.length,
+            result_full: result,
+          });
+
+          if (changed) {
             return { result, error: '' };
           }
           lastResult = result || lastResult;
           await new Promise((r) => setTimeout(r, interval));
         }
+        log.warn('CHECKOUT_WV', 'AwaitJsOutChange deadline reached without change', { polls: pollCount });
         return { result: lastResult, error: '' };
       }
 
@@ -367,11 +383,12 @@ export default function CheckoutWebView({
 
         const instrType = response.instruction ? Object.keys(response.instruction)[0] ?? 'empty' : 'none';
         stepDone({ done: response.done, success: response.success, instruction: instrType });
-        log.info('CHECKOUT_WV', `step ${i + 1} response`, {
+        log.info('CHECKOUT_WV', `step ${i + 1} response FULL`, {
           done: response.done,
           success: response.success,
           message: response.message,
           instruction_type: instrType,
+          instruction_full: JSON.stringify(response.instruction),
         });
 
         if (response.done) {
@@ -442,27 +459,6 @@ export default function CheckoutWebView({
       if (loginDetected) {
         log.warn('CHECKOUT_WV', 'login page detected — Cloudflare Turnstile may block', { url: nav.url });
         setStatus('Please sign in to continue');
-      }
-
-      // After login, Asda redirects to /account settings — redirect ONCE to the grocery page
-      if (
-        !nav.loading &&
-        !loginDetected &&
-        nav.url.includes('/account') &&
-        !nav.url.includes('/account/login') &&
-        !postLoginRedirectDone.current
-      ) {
-        postLoginRedirectDone.current = true;
-        const targetUrl = 'https://www.asda.com/groceries/';
-        log.warn('CHECKOUT_WV', 'post-login redirect to account page — navigating to grocery homepage (once)', {
-          from: nav.url,
-          to: targetUrl,
-        });
-        setStatus('Redirecting to groceries…');
-        webViewRef.current?.injectJavaScript(
-          `window.location.href = ${JSON.stringify(targetUrl)}; true;`,
-        );
-        return;
       }
 
       if (!loginDetected && !nav.loading && loopStartedRef.current === false) {

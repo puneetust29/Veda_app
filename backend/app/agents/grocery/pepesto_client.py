@@ -195,8 +195,11 @@ class PepetoClient:
         if screenshot_b64:
             payload["screenshot"] = screenshot_b64
         url = f"{PEPESTO_BASE}/checkout"
-        logger.info("[pepesto] ▶ POST checkout | session_id=%s | has_screenshot=%s | payload_size~=%d chars",
-                    session_id, bool(screenshot_b64), len(str(payload)))
+        logger.info(
+            "[pepesto] ▶ POST checkout | session_id=%s | has_screenshot=%s | payload_size~=%d chars | "
+            "prev_error=%r | prev_result_full=%r",
+            session_id, bool(screenshot_b64), len(str(payload)), prev_error, prev_result,
+        )
         t0 = time.perf_counter()
         resp = httpx.post(url, json=payload, headers=self._headers, timeout=CHECKOUT_TIMEOUT)
         elapsed_ms = int((time.perf_counter() - t0) * 1000)
@@ -212,5 +215,9 @@ class PepetoClient:
             )
         resp.raise_for_status()
         data = resp.json()
-        logger.info("[pepesto] checkout parsed | top_keys=%s", list(data.keys()) if isinstance(data, dict) else type(data).__name__)
+        logger.info(
+            "[pepesto] checkout parsed | top_keys=%s | full_body=%r",
+            list(data.keys()) if isinstance(data, dict) else type(data).__name__,
+            data,
+        )
         return data

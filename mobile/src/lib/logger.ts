@@ -29,12 +29,14 @@ function tag(module: LogModule, icon: string): string {
   return `[VEDA:${module}] ${icon}`;
 }
 
+const MAX_LOG_LEN = 4000;
+
 function serialize(v: unknown): string {
   if (v === null || v === undefined) return String(v);
-  if (typeof v === 'string') return v.length > 300 ? v.slice(0, 300) + '…' : v;
+  if (typeof v === 'string') return v.length > MAX_LOG_LEN ? v.slice(0, MAX_LOG_LEN) + '…' : v;
   try {
     const s = JSON.stringify(v);
-    return s.length > 300 ? s.slice(0, 300) + '…' : s;
+    return s.length > MAX_LOG_LEN ? s.slice(0, MAX_LOG_LEN) + '…' : s;
   } catch {
     return String(v);
   }

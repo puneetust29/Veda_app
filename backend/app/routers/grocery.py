@@ -125,9 +125,10 @@ async def checkout_step(
     t0 = time.perf_counter()
     customer_id = customer.get("id", "?")
     logger.info(
-        "[grocery/checkout-step] ▶ START | customer=%s | session_id=%s | has_screenshot=%s | prev_result_len=%d | prev_error=%r",
+        "[grocery/checkout-step] ▶ START | customer=%s | session_id=%s | has_screenshot=%s | prev_result_len=%d | prev_error=%r | prev_result=%r",
         customer_id, body.session_id, bool(body.screenshot_b64),
         len(body.prev_result), body.prev_error[:80] if body.prev_error else "",
+        body.prev_result[:600],
     )
 
     settings = get_settings()
@@ -146,6 +147,12 @@ async def checkout_step(
     proto = result.get("proto", result)
     instruction = proto.get("Instruction", {})
     elapsed_ms = int((time.perf_counter() - t0) * 1000)
+
+    non_instruction_keys = {k: v for k, v in proto.items() if k != "Instruction"}
+    logger.info(
+        "[grocery/checkout-step] pepesto proto (minus Instruction) | elapsed=%dms | keys=%s",
+        elapsed_ms, json.dumps(non_instruction_keys, default=str)[:2000],
+    )
 
     status = proto.get("status", "")
     if status in ("done", "complete", "success", "order_placed"):
@@ -166,12 +173,23 @@ async def checkout_step(
             return {"done": True, "success": False, "message": msg}
 
     instr_type = list(instruction.keys())[0] if instruction else "none"
-    # Log full instruction detail for debugging
-    import json as _json
-    instr_preview = _json.dumps(instruction, default=str)[:500]
+    # Log full instruction detail for debugging. Strip the (huge, obfuscated) `js`
+    # source from the log but keep every other field verbatim so we can see
+    # current_content / check_interval_msec / spec metadata etc.
+    def _redact_js(obj):
+        if isinstance(obj, dict):
+            return {
+                k: (f"<js {len(v)} chars>" if k == "js" and isinstance(v, str) else _redact_js(v))
+                for k, v in obj.items()
+            }
+        if isinstance(obj, list):
+            return [_redact_js(v) for v in obj]
+        return obj
+
+    instr_for_log = _redact_js(instruction)
     logger.info(
-        "[grocery/checkout-step] → next instruction | type=%s | elapsed=%dms | detail=%s",
-        instr_type, elapsed_ms, instr_preview,
+        "[grocery/checkout-step] → next instruction | type=%s | elapsed=%dms | full=%s",
+        instr_type, elapsed_ms, json.dumps(instr_for_log, default=str),
     )
     return {"done": False, "instruction": instruction}
 
