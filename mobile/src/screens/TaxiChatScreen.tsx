@@ -340,7 +340,11 @@ export default function TaxiChatScreen({ navigation }: Props) {
   useEffect(() => {
     const initializeLocation = async () => {
       try {
-        const permission = await Location.getForegroundPermissionsAsync();
+        let permission = await Location.getForegroundPermissionsAsync();
+        if (permission.status === Location.PermissionStatus.UNDETERMINED) {
+          permission = await Location.requestForegroundPermissionsAsync();
+        }
+
         if (permission.status === Location.PermissionStatus.GRANTED) {
           const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
           const { latitude, longitude } = position.coords;
@@ -371,7 +375,7 @@ export default function TaxiChatScreen({ navigation }: Props) {
       />
       {(phase === 'input' || phase === 'error' || phase === 'loading') && (
         <PickupLocationRow
-          label={pickupLocation?.label ?? 'Current location (default)'}
+          label={pickupLocation?.label ?? 'Current location'}
           onChangePress={() => setPickerVisible(true)}
         />
       )}
