@@ -54,10 +54,8 @@ function removeTransient(items: ChatItem[]): ChatItem[] {
 }
 
 function replaceActiveStatus(items: ChatItem[], newStatus: ChatItem): ChatItem[] {
-  // Remove the last active status item and add the new one
-  const filtered = items.filter(
-    (item) => !(item.kind === 'status' && item.state === 'active'),
-  );
+  // Remove the last status item (active or done) and add the new one
+  const filtered = items.filter((item) => item.kind !== 'status');
   return [...filtered, newStatus];
 }
 

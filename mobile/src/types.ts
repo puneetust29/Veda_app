@@ -158,6 +158,7 @@ export type RootStackParamList = {
   FlightDetail: { event: CalendarEvent };
   Chat: { event: CalendarEvent };
   VedaChat: undefined;
+  TaxiChat: undefined;
   Subscriptions: undefined;
   RoamingPlans: undefined;
   // Single merged calendar screen: reads every calendar expo-calendar exposes
@@ -165,6 +166,7 @@ export type RootStackParamList = {
   // those accounts in the OS Settings app) and displays them together.
   DeviceCalendar: undefined;
   Gmail: undefined;
+  Contacts: undefined;
   // Dev-only integrations catalog (see dev/devFlags.ts and dev/DevNavigator.tsx)
   // -- a self-contained nested navigator; its own screens/params live in
   // dev/types.ts, not here.

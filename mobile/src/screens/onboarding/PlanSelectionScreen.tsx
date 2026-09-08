@@ -738,10 +738,12 @@ function CardFace({
   level,
   mono = false,
   style,
+  showComingSoon = false,
 }: {
   level: AccessLevel;
   mono?: boolean;
   style?: StyleProp<ViewStyle>;
+  showComingSoon?: boolean;
 }) {
   const headerGradient = mono ? CARD_HEADER_GRADIENT_MONO : CARD_HEADER_GRADIENT;
 
@@ -752,8 +754,10 @@ function CardFace({
           <Ionicons name={level.headerIcon} size={18} color={colors.white} />
           <Text style={styles.cardHeaderText}>{level.title}</Text>
         </View>
-        <View style={styles.appCount}>
-          <Text style={styles.appCountText}>{level.appCount}</Text>
+        <View style={[styles.appCount, showComingSoon && styles.appCountComingSoon]}>
+          <Text style={[!showComingSoon && styles.appCountText, showComingSoon && styles.appCountComingSoonText]}>
+            {showComingSoon ? 'Coming soon' : level.appCount}
+          </Text>
         </View>
       </LinearGradient>
 
@@ -900,21 +904,18 @@ function FannedCard({
         onLayout={(e: LayoutChangeEvent) => onMeasureHeight(e.nativeEvent.layout.height)}
       >
         {/* Colour face sets the card height. */}
-        <CardFace level={level} style={cardH > 0 ? { height: cardH } : undefined} />
+        <CardFace level={level} style={cardH > 0 ? { height: cardH } : undefined} showComingSoon={level.id !== 'lite'} />
 
         {/* Mono face rides on top and fades out when this card is selected. */}
         <Animated.View
           style={[StyleSheet.absoluteFill, { opacity: skin }]}
           pointerEvents="none"
         >
-          <CardFace level={level} mono style={styles.cardFaceFill} />
+          <CardFace level={level} mono style={styles.cardFaceFill} showComingSoon={level.id !== 'lite'} />
         </Animated.View>
 
         {level.id !== 'lite' && (
-          <View style={styles.cardOverlay} pointerEvents="none">
-            <Ionicons name="time-outline" size={24} color={colors.textSecondary} />
-            <Text style={styles.cardOverlayText}>Coming soon</Text>
-          </View>
+          <View style={styles.cardRedOverlay} pointerEvents="none" />
         )}
       </TouchableOpacity>
     </Animated.View>
@@ -1098,11 +1099,29 @@ export default function PlanSelectionScreen({ navigation }: Props) {
         style={[styles.actions, { paddingBottom: Math.max(insets.bottom, 10) }]}
         onLayout={onActionsLayout}
       >
-        <TouchableOpacity style={styles.cta} onPress={() => navigation.navigate('AppPermissions')}>
-          <Text style={styles.ctaText}>Select {TIER_LABELS[planTier]} &amp; Continue</Text>
+        <TouchableOpacity
+          style={[
+            styles.cta,
+            (planTier === 'balanced' || planTier === 'complete') && styles.ctaDisabled,
+          ]}
+          onPress={() => planTier === 'lite' && navigation.navigate('AppPermissions')}
+          disabled={planTier === 'balanced' || planTier === 'complete'}
+        >
+          <Text style={styles.ctaText}>
+            {planTier === 'lite'
+              ? `Select ${TIER_LABELS[planTier]} & Continue`
+              : 'Notify Me'}
+          </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.skipButton} onPress={() => navigation.navigate('Consent')}>
+        <TouchableOpacity
+          style={[
+            styles.skipButton,
+            (planTier === 'balanced' || planTier === 'complete') && styles.skipButtonDisabled,
+          ]}
+          onPress={() => planTier === 'lite' && navigation.navigate('Consent')}
+          disabled={planTier === 'balanced' || planTier === 'complete'}
+        >
           <Text style={styles.skipText}>Skip for now</Text>
         </TouchableOpacity>
       </View>
@@ -1295,6 +1314,17 @@ const styles = StyleSheet.create({
 
   appCountText: { ...typography.small, color: colors.white, fontSize: 11, lineHeight: 14 },
 
+  appCountComingSoon: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: radii.pill,
+    borderWidth: 1.5,
+    borderColor: withOpacity(colors.white, 0.6),
+    backgroundColor: '#5a3a33',
+  },
+
+  appCountComingSoonText: { color: 'rgba(255, 255, 255, 1)', fontSize: 12, fontWeight: '500', lineHeight: 14 },
+
   cardBody: {
     flex: 1,
     backgroundColor: PINK_BODY,
@@ -1352,6 +1382,18 @@ const styles = StyleSheet.create({
   },
 
   cardOverlayText: { ...typography.bodyBold, color: colors.textSecondary, fontSize: 14 },
+
+  cardRedOverlay: {
+    position: 'absolute',
+    top: 59,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: withOpacity('#f00405', 0.3),
+    borderBottomLeftRadius: 22,
+    borderBottomRightRadius: 22,
+    zIndex: 999,
+  },
 
   category: {
     width: '48.7%',
@@ -1440,6 +1482,10 @@ const styles = StyleSheet.create({
 
   ctaText: { color: colors.white, fontSize: 16, fontWeight: '700', textAlign: 'center' },
 
+  ctaDisabled: {
+    opacity: 0.5,
+  },
+
   skipButton: {
     height: 56,
     backgroundColor: '#f3f3f3',
@@ -1447,6 +1493,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: spacing.md,
+  },
+
+  skipButtonDisabled: {
+    opacity: 0.4,
   },
 
   skipText: { color: colors.textPrimary, fontSize: 16, fontWeight: '600' },
