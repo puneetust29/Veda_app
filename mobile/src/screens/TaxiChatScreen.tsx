@@ -340,10 +340,7 @@ export default function TaxiChatScreen({ navigation }: Props) {
   useEffect(() => {
     const initializeLocation = async () => {
       try {
-        let permission = await Location.getForegroundPermissionsAsync();
-        if (permission.status === Location.PermissionStatus.UNDETERMINED) {
-          permission = await Location.requestForegroundPermissionsAsync();
-        }
+        const permission = await Location.getForegroundPermissionsAsync();
 
         if (permission.status === Location.PermissionStatus.GRANTED) {
           const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
