@@ -2,6 +2,7 @@
 so the graph module stays focused on topology/control-flow."""
 
 import json
+from typing import Optional
 
 
 def recommend_prompt(
@@ -9,7 +10,7 @@ def recommend_prompt(
     trip_duration_days: int,
     roaming_catalog: list,
     judge_feedback: str = "",
-    suggested_plan: dict | None = None,
+    suggested_plan: Optional[dict] = None,
 ) -> str:
     feedback_note = ""
     if judge_feedback:

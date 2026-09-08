@@ -40,7 +40,7 @@ async function getReadableLocation(latitude: number, longitude: number): Promise
     const location = places.length ? formatLocation(places[0]) : FALLBACK_WEATHER.location;
     locationCache.set(key, location);
     return location;
-  } catch (e){
+  } catch (e) {
     console.warn('Failed to reverse geocode location, using fallback',);
     locationCache.set(key, FALLBACK_WEATHER.location);
     return FALLBACK_WEATHER.location;

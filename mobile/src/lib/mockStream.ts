@@ -19,7 +19,14 @@ export type MockStreamParams = {
   priorPlan?: RoamingPlan;
   priorReasoning?: string;
   priorJudgeFeedback?: string;
+  includeInitialStreams?: boolean;
 };
+
+export const INITIAL_STREAM_EVENTS: Array<{ delayMs: number; text: string }> = [
+  { delayMs: 400, text: 'Thinking' },
+  { delayMs: 500, text: 'Looking into it' },
+  { delayMs: 600, text: 'Assembling the answers' },
+];
 
 const MOCK_PLAN: RoamingPlan = {
   id: 'mock-plan-jp-7d-5gb',
@@ -133,6 +140,73 @@ export async function mockStreamRoamingConversation(params: MockStreamParams): P
 
   try {
     const events = params.message ? followupScriptedEvents(params.message) : scriptedEvents(params.calendarEventId);
+    for (const { delayMs, event } of events) {
+      await delay(delayMs, params.signal);
+      params.onEvent(event);
+    }
+    close();
+  } catch (err) {
+    if (params.signal.aborted) {
+      close();
+      return;
+    }
+    params.onError(err);
+    close();
+  }
+}
+
+export type MockVedaChatParams = {
+  message: string;
+  history?: Array<{ role: 'user' | 'agent'; text: string }>;
+  signal: AbortSignal;
+  onEvent: (event: AgentStreamEvent) => void;
+  onError: (err: unknown) => void;
+  onClose: () => void;
+};
+
+function vedaScriptedEvents(message: string): Array<{ delayMs: number; event: AgentStreamEvent }> {
+  const isOffTopic = message.toLowerCase().includes('weather') || message.toLowerCase().includes('recipe');
+  const hasSendKeyword = message.toLowerCase().includes('tell') || message.toLowerCase().includes('message');
+
+  const reply = isOffTopic
+    ? 'I can only help with travel plans and Veda app features. For other questions, please ask elsewhere.'
+    : 'That sounds great! I can help you with your travel plans. Let me know if you need information about roaming plans, calendar sync, or anything else Veda-related.';
+
+  const events: Array<{ delayMs: number; event: AgentStreamEvent }> = [
+    { delayMs: 50, event: { type: 'run_started', data: { run_id: `mock-run-${Date.now()}`, agents: ['veda_agent'] } } },
+    {
+      delayMs: 600,
+      event: {
+        type: 'text',
+        data: { role: 'agent', text: reply },
+      },
+    },
+  ];
+
+  if (hasSendKeyword) {
+    events.push({
+      delayMs: 400,
+      event: {
+        type: 'share_draft',
+        data: { text: "Hi there! Just wanted to let you know I've landed safely. I'm all set with my roaming plan and ready to explore!" },
+      },
+    });
+  }
+
+  events.push({ delayMs: 200, event: { type: 'done', data: { status: 'ok_no_action' } } });
+  return events;
+}
+
+export async function mockStreamVedaConversation(params: MockVedaChatParams): Promise<void> {
+  let closed = false;
+  const close = () => {
+    if (closed) return;
+    closed = true;
+    params.onClose();
+  };
+
+  try {
+    const events = vedaScriptedEvents(params.message);
     for (const { delayMs, event } of events) {
       await delay(delayMs, params.signal);
       params.onEvent(event);

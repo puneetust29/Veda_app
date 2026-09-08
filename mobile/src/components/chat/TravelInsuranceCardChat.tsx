@@ -6,7 +6,7 @@ import TravelInsuranceCard from '../recommendations/cards/TravelInsuranceCard';
 import PaymentSummaryCard from './PaymentSummaryCard';
 import CoverageDetailsCard from './CoverageDetailsCard';
 import MessageBubble from './MessageBubble';
-import StatusLine from './StatusLine';
+import LoadingStream from './LoadingStream';
 import { api } from '../../lib/api';
 
 type Props = {
@@ -91,7 +91,7 @@ export default function TravelInsuranceCardChat({
           tone="agent"
         />
         {paymentMethodLoading && (
-          <StatusLine label="Looking into your payment method…" state="active" />
+          <LoadingStream items={[{ text: 'Looking into your payment method…', state: 'active' }]} isSingleItem />
         )}
         {!paymentMethodLoading && (
           <PaymentSummaryCard

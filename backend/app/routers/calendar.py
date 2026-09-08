@@ -2,6 +2,7 @@ import html
 import json
 import logging
 from datetime import datetime, timedelta
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import HTMLResponse
@@ -158,12 +159,12 @@ class GoogleConnectRequest(BaseModel):
     omitted or rejected values fall back to GOOGLE_POST_AUTH_REDIRECT.
     """
 
-    app_redirect: str | None = None
+    app_redirect: Optional[str] = None
 
 
 @router.post("/google/connect")
 def google_connect(
-    payload: GoogleConnectRequest | None = None,
+    payload: Optional[GoogleConnectRequest] = None,
     customer: dict = Depends(get_current_customer),
 ) -> dict:
     """Begin the consent flow. The client opens `authorization_url` in a browser."""
@@ -177,9 +178,9 @@ def google_connect(
 
 @router.get("/google/callback", response_class=HTMLResponse)
 def google_callback(
-    state: str | None = None,
-    code: str | None = None,
-    error: str | None = None,
+    state: Optional[str] = None,
+    code: Optional[str] = None,
+    error: Optional[str] = None,
 ) -> HTMLResponse:
     """Where Google redirects the browser after consent.
 
@@ -221,7 +222,7 @@ Redirecting...""",
 
 
 def _callback_page(
-    heading: str, message: str, *, ok: bool = True, app_redirect: str | None = None
+    heading: str, message: str, *, ok: bool = True, app_redirect: Optional[str] = None
 ) -> HTMLResponse:
     """Render the end of the consent flow, then bounce back into the mobile app.
 

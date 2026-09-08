@@ -1,11 +1,12 @@
 """Prompts for travel insurance recommendation and judgment."""
+from typing import Optional
 
 
 def recommend_prompt(
     destination_country: str,
     trip_duration_days: int,
     insurance_catalog: list[dict],
-    suggested_plan: dict | None = None,
+    suggested_plan: Optional[dict] = None,
 ) -> str:
     """Build the recommendation prompt for the insurance agent's LLM."""
     catalog_str = "\n".join(

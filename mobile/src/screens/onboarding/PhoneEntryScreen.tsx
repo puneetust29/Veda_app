@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useCallback, useRef, useState } from 'react';
-import { FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, Keyboard } from 'react-native';
 
 import OnboardingBanner from '../../components/onboarding/OnboardingBanner';
 import StepHeader from '../../components/onboarding/StepHeader';
@@ -55,8 +55,11 @@ export default function PhoneEntryScreen({ navigation }: Props) {
   const isValid = localNumber.replace(/\s/g, '').length >= 10;
 
   const handleContinue = () => {
+    Keyboard.dismiss();
     setPhoneNumber(`${selectedCountry.code}${localNumber.replace(/\s/g, '')}`);
-    navigation.navigate('OtpVerification');
+    setTimeout(() => {
+      navigation.navigate('OtpVerification');
+    }, 0)
   };
 
   return (

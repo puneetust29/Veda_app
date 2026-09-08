@@ -1,5 +1,5 @@
 import { loadToken } from './authToken';
-import { mockStreamRoamingConversation } from './mockStream';
+import { mockStreamRoamingConversation, mockStreamVedaConversation } from './mockStream';
 import { streamSse } from './sse';
 import type {
   AgentStreamEvent,
@@ -25,34 +25,45 @@ if (!API_BASE_URL) {
 }
 
 async function rawFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      ...init?.headers,
-    },
-  });
+  try {
+    const response = await fetch(`${API_BASE_URL}${path}`, {
+      ...init,
+      headers: {
+        'Content-Type': 'application/json',
+        ...init?.headers,
+      },
+    });
 
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(`${response.status} ${path}: ${body}`);
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(`${response.status} ${path}: ${body}`);
+    }
+    const json = await response.json() as T;
+    return json;
+  } catch (error) {
+    if (__DEV__) console.error('[rawFetch] Error fetching', path, ':', error);
+    throw error;
   }
-  return response.json() as Promise<T>;
 }
 
 async function authedFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const token = await loadToken();
-  if (!token) {
-    throw new Error('Not authenticated');
-  }
+  try {
+    const token = await loadToken();
+    if (!token) {
+      throw new Error('Not authenticated');
+    }
 
-  return rawFetch<T>(path, {
-    ...init,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      ...init?.headers,
-    },
-  });
+    return await rawFetch<T>(path, {
+      ...init,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        ...init?.headers,
+      },
+    });
+  } catch (error) {
+    if (__DEV__) console.error('[authedFetch] Error:', error);
+    throw error;
+  }
 }
 
 export const api = {
@@ -148,6 +159,11 @@ export const api = {
       `/gmail/sync?max_results=${maxResults}`,
       { method: 'POST' },
     ),
+  sendGmail: (params: { to: string; subject: string; body: string }) =>
+    authedFetch<{ sent: boolean; gmail_message_id?: string }>('/gmail/send', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    }),
   streamRoamingConversation: async (params: {
     calendarEventId: string;
     signal: AbortSignal;
@@ -158,6 +174,7 @@ export const api = {
     priorPlan?: RoamingPlan;
     priorReasoning?: string;
     priorJudgeFeedback?: string;
+    deviceLocation?: { latitude: number; longitude: number; label?: string } | null;
   }): Promise<void> => {
     if (process.env.EXPO_PUBLIC_CHAT_MOCK === '1') {
       return mockStreamRoamingConversation(params);
@@ -175,6 +192,56 @@ export const api = {
       body.prior_reasoning = params.priorReasoning;
       body.prior_judge_feedback = params.priorJudgeFeedback;
     }
+    if (params.deviceLocation) {
+      body.device_location = params.deviceLocation;
+    }
+
+    return streamSse({
+      url: `${API_BASE_URL}/chat/stream`,
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        Accept: 'text/event-stream',
+      },
+      body: JSON.stringify(body),
+      signal: params.signal,
+      onFrame: (frame) => {
+        try {
+          const event = JSON.parse(frame.data);
+          if (__DEV__) console.log('[stream] event:', event.type, JSON.stringify(event.data));
+          params.onEvent(event);
+        } catch {
+          if (__DEV__) console.warn('[stream] bad frame', frame);
+        }
+      },
+      onError: params.onError,
+      onClose: params.onClose,
+    });
+  },
+
+  streamVedaConversation: async (params: {
+    message: string;
+    history?: Array<{ role: 'user' | 'agent'; text: string }>;
+    signal: AbortSignal;
+    onEvent: (event: AgentStreamEvent) => void;
+    onError: (err: unknown) => void;
+    onClose: () => void;
+  }): Promise<void> => {
+    if (process.env.EXPO_PUBLIC_CHAT_MOCK === '1') {
+      return mockStreamVedaConversation(params);
+    }
+
+    const token = await loadToken();
+    if (!token) {
+      throw new Error('Not authenticated');
+    }
+
+    const body = {
+      capability: 'general_assistant',
+      message: params.message,
+      history: params.history || [],
+    };
 
     return streamSse({
       url: `${API_BASE_URL}/chat/stream`,
@@ -268,4 +335,51 @@ export const api = {
     }>('/payments/customer-payment-methods', {
       method: 'GET',
     }),
+
+  autocompletePlaces: (input: string, latitude?: number, longitude?: number) => {
+    const params = new URLSearchParams({ input });
+    if (latitude !== undefined && longitude !== undefined) {
+      params.append('latitude', latitude.toString());
+      params.append('longitude', longitude.toString());
+    }
+    return authedFetch<{ predictions: Array<{ place_id: string; description: string }> }>(
+      `/places/autocomplete?${params.toString()}`,
+      {
+        method: 'GET',
+      },
+    );
+  },
+
+  getPlaceCoordinates: (destination: string, latitude?: number, longitude?: number) => {
+    const params = new URLSearchParams({ destination });
+    if (latitude !== undefined && longitude !== undefined) {
+      params.append('latitude', latitude.toString());
+      params.append('longitude', longitude.toString());
+    }
+    return authedFetch<{
+      latitude?: number;
+      longitude?: number;
+      error?: string;
+      message?: string;
+    }>(
+      `/places/coordinates?${params.toString()}`,
+      {
+        method: 'GET',
+      },
+    );
+  },
+
+  extractDestination: (message: string) =>
+    authedFetch<{
+      destination: string;
+      pickup_location?: string | null;
+      is_relevant: boolean;
+      redirect_message?: string;
+      error?: string;
+    }>(
+      `/places/extract-destination?message=${encodeURIComponent(message)}`,
+      {
+        method: 'POST',
+      },
+    ),
 };

@@ -1,7 +1,7 @@
 name: workflow_agent
 version: 0.1.0
 description: Orchestrates roaming and insurance agents in a sequential workflow.
-enabled: true
+enabled: false
 priority: 5
 capabilities: [workflow]
 triggers:

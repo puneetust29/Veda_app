@@ -1,5 +1,6 @@
 """Stripe payment processing for travel insurance."""
 from datetime import datetime, timezone
+from typing import Optional
 from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
@@ -28,7 +29,7 @@ class TravelInsuranceIntentResponse(BaseModel):
 class InsurancePurchaseRequest(BaseModel):
     plan_id: int
     payment_intent_id: str
-    calendar_event_id: str | None = None
+    calendar_event_id: Optional[str] = None
 
 
 class InsurancePurchaseResponse(BaseModel):
@@ -52,9 +53,9 @@ class ActiveInsuranceResponse(BaseModel):
 
 
 class PaymentMethodResponse(BaseModel):
-    brand: str | None = None
-    last4: str | None = None
-    id: str | None = None
+    brand: Optional[str] = None
+    last4: Optional[str] = None
+    id: Optional[str] = None
 
 
 @router.get("/customer-payment-methods", response_model=PaymentMethodResponse)

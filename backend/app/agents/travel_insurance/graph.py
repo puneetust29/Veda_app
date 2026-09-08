@@ -36,10 +36,9 @@ class TravelInsuranceAgentState(TypedDict, total=False):
 
 def _llm():
     settings = get_settings()
-    return ChatAnthropic(
-        model=settings.anthropic_model,
-        api_key=settings.anthropic_api_key,
-    )
+    if settings.anthropic_api_key:
+        return ChatAnthropic(model=settings.anthropic_model, api_key=settings.anthropic_api_key, temperature=0)
+    raise RuntimeError("No LLM key configured — set ANTHROPIC_API_KEY or OPENAI_API_KEY in backend/.env")
 
 
 def _format_date(date_str: str) -> str:
@@ -105,7 +104,7 @@ def route_after_fetch_catalog(state: TravelInsuranceAgentState) -> str:
     return "empty" if not state.get("insurance_catalog") else "has_plans"
 
 
-def _next_tier_plan(catalog: list[dict], trip_duration_days: int) -> dict | None:
+def _next_tier_plan(catalog: list[dict], trip_duration_days: int) -> Optional[dict]:
     """Shortest plan whose coverageDurationDays covers the trip; else longest available."""
     covering = [p for p in catalog if p.get("coverageDurationDays", 0) >= trip_duration_days]
     if covering:

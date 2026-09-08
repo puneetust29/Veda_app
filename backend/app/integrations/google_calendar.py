@@ -259,9 +259,19 @@ def _token_is_fresh(connection: dict) -> bool:
     )
 
 
+_FRACTIONAL_SECONDS = re.compile(r"\.(\d+)")
+
+
 def _parse_ts(value: str) -> datetime:
-    # Postgres hands back +00:00; older rows may use the Z form.
-    parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    # Postgres hands back +00:00; older rows may use the Z form. It also
+    # trims trailing zeros from fractional seconds, which can leave a digit
+    # count fromisoformat() rejects on Python < 3.11 (it only accepts 0, 3,
+    # or 6 digits there) -- pad/truncate to 6 so any value Postgres emits
+    # parses regardless of interpreter version.
+    value = _FRACTIONAL_SECONDS.sub(
+        lambda m: "." + m.group(1)[:6].ljust(6, "0"), value.replace("Z", "+00:00")
+    )
+    parsed = datetime.fromisoformat(value)
     return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
 
 

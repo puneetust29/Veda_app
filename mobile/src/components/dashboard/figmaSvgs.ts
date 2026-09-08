@@ -202,6 +202,24 @@ export const tileFood = `<svg preserveAspectRatio="none" overflow="visible" widt
 </defs>
 </svg>`;
 
+export const tileTaxi = `<svg preserveAspectRatio="none" overflow="visible" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Taxi" clip-path="url(#clip0_0_156)">
+<g id="Vector">
+</g>
+<path id="Vector_2" d="M8.5 6.5V5.3H11.5V6.5" stroke="#FF0000" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="Vector_3" d="M2 13.5V11.5C2 10.9477 2.44772 10.5 3 10.5H6.7L7.2 7.3C7.29 6.85 7.7 6.5 8.2 6.5H11.8C12.3 6.5 12.71 6.85 12.8 7.3L13.3 10.5H17C17.5523 10.5 18 10.9477 18 11.5V13.5" stroke="#FF0000" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="Vector_4" d="M2 13.5H18" stroke="#FF0000" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="Vector_5" d="M6.9 10.5H13.1M10 10.5V6.9" stroke="#FF0000" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="Vector_6" d="M7 13.5C7 14.3284 6.32843 15 5.5 15C4.67157 15 4 14.3284 4 13.5C4 12.6716 4.67157 12 5.5 12C6.32843 12 7 12.6716 7 13.5Z" stroke="#FF0000" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="Vector_7" d="M16 13.5C16 14.3284 15.3284 15 14.5 15C13.6716 15 13 14.3284 13 13.5C13 12.6716 13.6716 12 14.5 12C15.3284 12 16 12.6716 16 13.5Z" stroke="#FF0000" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+<defs>
+<clipPath id="clip0_0_156">
+<rect width="20" height="20" fill="white"/>
+</clipPath>
+</defs>
+</svg>`;
+
 
 // Concentric decorative rings behind the red header (Figma node 1:35333).
 export const headerRings = `<svg preserveAspectRatio="none" width="775.552" height="1035.95" overflow="visible" viewBox="0 0 775.552 1035.95" fill="none" xmlns="http://www.w3.org/2000/svg">

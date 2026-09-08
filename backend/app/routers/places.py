@@ -1,0 +1,146 @@
+"""Places API endpoints for autocomplete and place search."""
+from __future__ import annotations
+
+import httpx
+from langchain_anthropic import ChatAnthropic
+from fastapi import APIRouter, Depends, Query
+
+from app.agents.uber.schemas import DestinationExtraction
+from app.config import get_settings
+from app.deps import get_current_customer
+
+router = APIRouter(prefix="/places", tags=["places"])
+
+
+@router.get("/autocomplete")
+def places_autocomplete(
+    input: str = Query(..., description="Input text to autocomplete"),
+    latitude: float | None = Query(None, description="User latitude for location bias"),
+    longitude: float | None = Query(None, description="User longitude for location bias"),
+    _customer: dict = Depends(get_current_customer),
+):
+    """Return Google Places autocomplete predictions for the given input."""
+    settings = get_settings()
+    api_key = settings.google_maps_api_key
+
+    if not api_key:
+        return {"error": "Google Maps API key not configured", "predictions": []}
+
+    url = "https://places.googleapis.com/v1/places:autocomplete"
+    headers = {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": api_key,
+    }
+    payload = {
+        "input": input,
+    }
+
+    if latitude is not None and longitude is not None:
+        payload["locationBias"] = {
+            "circle": {
+                "center": {
+                    "latitude": latitude,
+                    "longitude": longitude,
+                },
+                "radius": 50000.0,
+            }
+        }
+
+    try:
+        with httpx.Client() as client:
+            response = client.post(url, json=payload, headers=headers, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+
+        predictions = []
+        if "suggestions" in data:
+            for suggestion in data.get("suggestions", []):
+                place_prediction = suggestion.get("placePrediction", {})
+                predictions.append({
+                    "place_id": place_prediction.get("placeId", ""),
+                    "description": place_prediction.get("text", {}).get("text", ""),
+                })
+
+        print(f"[Places] Got {len(predictions)} predictions for '{input}'")
+        return {"predictions": predictions}
+    except Exception as e:
+        print(f"[Places] Error: {str(e)}")
+        return {"error": str(e), "predictions": []}
+
+
+@router.get("/coordinates")
+def get_place_coordinates(
+    destination: str = Query(..., description="Destination name to geocode"),
+    latitude: float | None = Query(None, description="Optional latitude for location bias"),
+    longitude: float | None = Query(None, description="Optional longitude for location bias"),
+    _customer: dict = Depends(get_current_customer),
+):
+    """Return coordinates for a given destination."""
+    from app.agents.maps.maps_client import geocode
+
+    settings = get_settings()
+    api_key = settings.google_maps_api_key
+
+    if not api_key:
+        return {"error": "geocode_failed", "message": "Google Maps API key not configured"}
+
+    try:
+        print(f"[Places] geocoding '{destination}' with bias: lat={latitude}, lng={longitude}")
+        latlng = geocode(destination, api_key, latitude, longitude)
+        print(f"[Places] geocode result: {latlng}")
+        if not latlng:
+            return {"error": "geocode_failed", "message": f"Could not geocode destination: {destination}"}
+
+        return {
+            "latitude": latlng["lat"],
+            "longitude": latlng["lng"],
+        }
+    except Exception as e:
+        print(f"[Places] Geocode error: {str(e)}")
+        return {"error": "geocode_failed", "message": str(e)}
+
+
+@router.post("/extract-destination")
+def extract_destination(
+    message: str = Query(..., description="User message to extract destination from"),
+    _customer: dict = Depends(get_current_customer),
+):
+    """Extract destination from user message and validate relevance using Claude."""
+    settings = get_settings()
+    api_key = settings.anthropic_api_key
+
+    if not api_key:
+        return {"destination": "", "is_relevant": False, "error": "Anthropic API key not configured"}
+
+    try:
+        llm = ChatAnthropic(model=settings.anthropic_model, api_key=api_key, temperature=0)
+        structured_llm = llm.with_structured_output(DestinationExtraction)
+
+        prompt = (
+            "You are a taxi/Uber booking assistant. Your role is to help users book rides.\n\n"
+            "For each user message:\n"
+            "1. Determine if it's relevant to booking a taxi/ride (on-topic)\n"
+            "2. Extract both pickup location and destination if mentioned\n\n"
+            "Patterns to handle:\n"
+            "- 'from X to Y' → pickup_location='X', destination='Y'\n"
+            "- 'to Y' or 'I want to go to Y' → pickup_location=null (use current location), destination='Y'\n"
+            "- Just 'Y' when context is clear → pickup_location=null, destination='Y'\n\n"
+            "If the message is off-topic (e.g., asking about weather, restaurants, general questions unrelated to booking), "
+            "set is_relevant=false and provide a brief redirect message.\n"
+            "If on-topic but no destination found, set destination='' but keep is_relevant=true.\n"
+            "If on-topic and destination found, set is_relevant=true and destination to the location name.\n"
+            "If pickup location is explicitly mentioned, extract it; otherwise set to null.\n\n"
+            f"User message: '{message}'"
+        )
+
+        result = structured_llm.invoke(prompt)
+        print(f"[Places] Extracted: pickup='{result.pickup_location}' destination='{result.destination}' is_relevant={result.is_relevant}")
+        return result.model_dump()
+    except Exception as e:
+        print(f"[Places] Extraction error: {str(e)}")
+        return {
+            "destination": "",
+            "is_relevant": False,
+            "error": str(e),
+            "redirect_message": "I can only help with taxi/ride bookings. Please tell me where you'd like to go."
+        }

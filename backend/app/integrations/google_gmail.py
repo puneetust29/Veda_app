@@ -236,8 +236,18 @@ def _token_is_fresh(connection: dict) -> bool:
     )
 
 
+_FRACTIONAL_SECONDS = re.compile(r"\.(\d+)")
+
+
 def _parse_ts(value: str) -> datetime:
-    parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    # Postgres/PostgREST trims trailing zeros from fractional seconds, which
+    # can leave a digit count fromisoformat() rejects on Python < 3.11 (it
+    # only accepts 0, 3, or 6 digits there). Pad/truncate to 6 so any value
+    # Postgres emits parses regardless of interpreter version.
+    value = _FRACTIONAL_SECONDS.sub(
+        lambda m: "." + m.group(1)[:6].ljust(6, "0"), value.replace("Z", "+00:00")
+    )
+    parsed = datetime.fromisoformat(value)
     return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
 
 
@@ -323,6 +333,19 @@ def list_messages(
         "result_size_estimate": payload.get("resultSizeEstimate", 0),
         "next_page_token": payload.get("nextPageToken"),
     }
+
+
+def send_message(customer_id: str, *, to: str, subject: str, body: str) -> dict:
+    """Send a plain-text email from the customer's connected Gmail account."""
+    import base64
+    from email.mime.text import MIMEText
+
+    message = MIMEText(body)
+    message["to"] = to
+    message["subject"] = subject
+    raw = base64.urlsafe_b64encode(message.as_bytes()).decode("ascii")
+
+    return _request(customer_id, "POST", "/users/me/messages/send", json={"raw": raw})
 
 
 def get_message(customer_id: str, message_id: str) -> dict:

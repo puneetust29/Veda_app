@@ -15,10 +15,13 @@ declares (`activate_roaming_plan`).
 from __future__ import annotations
 
 import asyncio
+import logging
 import pathlib
 import uuid
 
 from app.agents.base.contracts import AgentContext, AgentMode, AgentResult, BaseAgent
+
+logger = logging.getLogger(__name__)
 from app.agents.base.manifest import load_manifest
 from app.agents.base.runner import run_graph_streaming
 from app.agents.roaming.graph import follow_up_graph, recommend_graph, subscribe_graph
@@ -62,6 +65,9 @@ class RoamingAgent(BaseAgent):
 
     def execute(self, ctx: AgentContext, mode: AgentMode = "suggest") -> AgentResult:
         state = self._initial_state(ctx)
+        calendar_event = ctx.context.get("calendar_event") or {}
+        logger.info("[roaming_agent] execute mode=%s event_id=%s destination=%s is_follow_up=%s",
+                    mode, calendar_event.get("id"), calendar_event.get("destination"), bool(ctx.user_message))
 
         is_follow_up = mode == "converse" and bool(ctx.user_message)
         graph = follow_up_graph if is_follow_up else recommend_graph
@@ -113,9 +119,11 @@ class RoamingAgent(BaseAgent):
         cards = []
         proposed_actions = []
 
+        logger.info("[roaming_agent] result candidate_plan=%s judge_approved=%s reasoning=%r",
+                    candidate_plan.get("plan_name") if candidate_plan else None, judge_approved, reasoning[:120] if reasoning else "")
+
         if not candidate_plan:
-            # No candidate at all (empty catalog / graph never found anything) -- this
-            # mirrors today's 422 in the legacy /roaming/recommend route.
+            logger.warning("[roaming_agent] no candidate plan found for event_id=%s", calendar_event.get("id"))
             ctx.emit(build_error("no_plan_found", retryable=False))
             ctx.emit(build_done("ok_no_action"))
             return AgentResult(

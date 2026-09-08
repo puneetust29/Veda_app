@@ -72,9 +72,10 @@ export default function OtpInput({ length = 6, value, onChange, disabled, varian
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', gap: spacing.sm, justifyContent: 'space-between' },
+  row: { flexDirection: 'row', gap: spacing.sm },
   box: {
-    width: 52,
+    flex: 1,
+    maxWidth: 52,
     height: 56,
     borderRadius: radii.sm,
     backgroundColor: colors.fieldFill,

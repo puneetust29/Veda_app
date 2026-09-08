@@ -1,4 +1,9 @@
+import logging
+from typing import Optional
+
 from langchain_anthropic import ChatAnthropic
+
+log = logging.getLogger("app.agents.roaming")
 from langgraph.graph import END, StateGraph
 from langgraph.types import StreamWriter
 
@@ -15,10 +20,14 @@ MAX_RETRIES = 2
 
 def _llm():
     settings = get_settings()
-    return ChatAnthropic(
-        model=settings.anthropic_model,
-        api_key=settings.anthropic_api_key,
-    )
+    if settings.anthropic_api_key:
+        log.info("[llm] using Anthropic model=%s", settings.anthropic_model)
+        return ChatAnthropic(model=settings.anthropic_model, api_key=settings.anthropic_api_key, temperature=0)
+    if settings.openai_api_key:
+        from langchain_openai import ChatOpenAI
+        log.info("[llm] using OpenAI model=%s", settings.openai_model)
+        return ChatOpenAI(model=settings.openai_model, api_key=settings.openai_api_key, temperature=0)
+    raise RuntimeError("No LLM key configured — set ANTHROPIC_API_KEY or OPENAI_API_KEY in backend/.env")
 
 
 def node_extract_trip_context(state: RoamingAgentState, writer: StreamWriter) -> dict:
@@ -103,7 +112,7 @@ def route_after_fetch_catalog(state: RoamingAgentState) -> str:
     return "empty" if not state.get("roaming_catalog") else "has_plans"
 
 
-def _next_tier_plan(catalog: list[dict], trip_duration_days: int) -> dict | None:
+def _next_tier_plan(catalog: list[dict], trip_duration_days: int) -> Optional[dict]:
     """Shortest plan whose duration_days covers the trip; if the trip outlasts every
     plan in the catalog, fall back to the longest one available."""
     covering = [p for p in catalog if p["duration_days"] >= trip_duration_days]
