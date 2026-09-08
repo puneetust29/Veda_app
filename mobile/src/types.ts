@@ -22,7 +22,7 @@ export type CalendarEvent = {
   id: string;
   customer_id: string;
   title: string;
-  event_type: 'flight' | 'other';
+  event_type: 'flight' | 'hotel' | 'broadbandBill' | 'other';
   origin: string | null;
   destination: string | null;
   start_datetime: string;

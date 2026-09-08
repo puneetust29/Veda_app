@@ -83,12 +83,11 @@ function ChatItemViewImpl({ item, onConfirm, onDecline, onInsurancePurchased, on
     case 'payment_complete':
       return (
         <PaymentCompleteCard
-          insuranceId={item.insuranceId}
-          insuranceAmount={item.insuranceAmount}
-          insuranceCurrency={item.insuranceCurrency}
-          destination={item.destination}
-          cardBrand={item.cardBrand}
-          cardLast4={item.cardLast4}
+          transactionId={item.insuranceId}
+          amount={item.insuranceAmount ?? 0}
+          currency={item.insuranceCurrency ?? 'USD'}
+          paymentMethodBrand={item.cardBrand}
+          paymentMethodLast4={item.cardLast4}
         />
       );
     case 'trip_checklist':
