@@ -1,13 +1,35 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useStripe } from '@stripe/stripe-react-native';
 import { colors, fonts, spacing } from '../../theme';
 import { api } from '../../lib/api';
 import { useSubscriptionInsurance } from '../../context/SubscriptionInsuranceContext';
 import type { CalendarEvent } from '../../types';
 import PaymentProcessingCard from './PaymentProcessingCard';
+import VisaLogo from '../../../assets/payment/visa.svg';
+import MastercardLogo from '../../../assets/payment/mastercard.svg';
+import AmexLogo from '../../../assets/payment/amex.svg';
 
 type State = 'idle' | 'processing' | 'success' | 'error';
+
+type BillLineItem = {
+  name: string;
+  amount: number;
+};
+
+type BrandLogoConfig = {
+  Logo: React.ComponentType<any>;
+  width: number;
+  height: number;
+};
+
+const PAYMENT_BRAND_LOGOS: Record<string, BrandLogoConfig> = {
+  visa: { Logo: VisaLogo, width: 48, height: 16 },
+  mastercard: { Logo: MastercardLogo, width: 52, height: 34 },
+  'master card': { Logo: MastercardLogo, width: 52, height: 34 },
+  amex: { Logo: AmexLogo, width: 52, height: 34 },
+  'american express': { Logo: AmexLogo, width: 52, height: 34 },
+};
 
 const CURRENCY_SYMBOLS: Record<string, string> = {
   USD: '$',
@@ -49,6 +71,38 @@ export default function BillPaymentCard({
   const billAmount = rawDetails.bill_amount || 0;
   const billCurrency = rawDetails.bill_currency || 'USD';
   const currencySymbol = CURRENCY_SYMBOLS[billCurrency] || billCurrency;
+  const candidateItems = Array.isArray(rawDetails.bill_items)
+    ? rawDetails.bill_items
+    : Array.isArray(rawDetails.line_items)
+      ? rawDetails.line_items
+      : [];
+
+  const billLineItems: BillLineItem[] = candidateItems
+    .map((item: any) => {
+      const amount = Number(item?.amount ?? item?.bill_amount ?? 0);
+      const rawName = item?.name ?? item?.label ?? item?.bill_type ?? '';
+      const name = String(rawName || '').trim();
+
+      if (!name) {
+        return null;
+      }
+
+      return {
+        name: name.charAt(0).toUpperCase() + name.slice(1),
+        amount: Number.isFinite(amount) ? amount : 0,
+      };
+    })
+    .filter(Boolean) as BillLineItem[];
+
+  const fallbackItem: BillLineItem = {
+    name: billType.charAt(0).toUpperCase() + billType.slice(1),
+    amount: billAmount,
+  };
+
+  const displayItems = billLineItems.length > 0 ? billLineItems : [fallbackItem];
+  const totalAmount = displayItems.reduce((sum, item) => sum + item.amount, 0);
+  const normalizedBrand = (paymentMethodBrand || '').trim().toLowerCase();
+  const brandConfig = PAYMENT_BRAND_LOGOS[normalizedBrand];
 
   const handlePayment = async () => {
     try {
@@ -122,47 +176,56 @@ export default function BillPaymentCard({
 
   return (
     <View style={styles.card}>
-      {/* Title */}
-      <Text style={styles.title}>This month's bills</Text>
+      <View style={styles.titleSection}>
+        <Text style={styles.title}>This month's bills</Text>
+      </View>
 
-      {/* Divider */}
       <View style={styles.divider} />
 
       {/* Bills List */}
       <View style={styles.billsList}>
-        <View style={styles.billRow}>
-          <Text style={styles.billName}>{billType.charAt(0).toUpperCase() + billType.slice(1)}</Text>
-          <Text style={styles.billAmount}>
-            {currencySymbol}{billAmount.toFixed(2)}
-          </Text>
-        </View>
+        {displayItems.map((item, index) => (
+          <View
+            key={`${item.name}-${index}`}
+            style={[styles.billRow, index === displayItems.length - 1 && styles.billRowLast]}
+          >
+            <Text style={styles.billName}>{item.name}</Text>
+            <Text style={styles.billAmount}>
+              {currencySymbol}{item.amount.toFixed(2)}
+            </Text>
+          </View>
+        ))}
       </View>
 
-      {/* Divider */}
       <View style={styles.divider} />
 
       {/* Total */}
       <View style={styles.totalRow}>
         <Text style={styles.totalLabel}>Total</Text>
         <Text style={styles.totalAmount}>
-          {currencySymbol}{billAmount.toFixed(2)}
+          {currencySymbol}{totalAmount.toFixed(2)}
         </Text>
       </View>
 
-      {/* Divider */}
       <View style={styles.divider} />
 
       {/* Payment Method */}
       {paymentMethodBrand && paymentMethodLast4 && (
         <View style={styles.paymentMethod}>
+          <View style={styles.paymentBrandWrap}>
+            {brandConfig ? (
+              <brandConfig.Logo width={brandConfig.width} height={brandConfig.height} />
+            ) : (
+              <Text style={styles.paymentBrandLabel}>{paymentMethodBrand.toUpperCase()}</Text>
+            )}
+          </View>
           <Text style={styles.paymentMethodText}>
             Paying with {paymentMethodBrand.charAt(0).toUpperCase() + paymentMethodBrand.slice(1)} •••• {paymentMethodLast4}
           </Text>
         </View>
       )}
 
-      {/* Divider */}
-      <View style={styles.divider} />
+      {paymentMethodBrand && paymentMethodLast4 && <View style={styles.divider} />}
 
       {/* Error State */}
       {errorMessage && (
@@ -180,7 +243,7 @@ export default function BillPaymentCard({
       {/* Success State */}
       {state === 'success' && (
         <View style={styles.successSection}>
-          <Text style={styles.successText}>✓ Payment Successful!</Text>
+          <Text style={styles.successText}>Payment successful</Text>
         </View>
       )}
 
@@ -189,13 +252,9 @@ export default function BillPaymentCard({
         <TouchableOpacity
           style={[styles.button, styles.payButton]}
           onPress={handlePayment}
-          disabled={state === 'processing'}
+          disabled={false}
         >
-          {state === 'processing' ? (
-            <ActivityIndicator color="white" />
-          ) : (
-            <Text style={styles.buttonText}>Pay all</Text>
-          )}
+          <Text style={styles.buttonText}>Pay all</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -205,75 +264,109 @@ export default function BillPaymentCard({
 const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.white,
-    borderRadius: 20,
-    padding: spacing.lg,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: '#E9E9E9',
     marginVertical: spacing.md,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
+    overflow: 'hidden',
+  },
+  titleSection: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 20,
   },
   title: {
     fontFamily: fonts.semiBold,
     fontSize: 16,
-    color: colors.textPrimary,
-    marginBottom: spacing.md,
+    lineHeight: 20,
+    color: '#212529',
   },
   divider: {
     height: 1,
-    backgroundColor: '#E8E8E8',
-    marginVertical: spacing.md,
+    backgroundColor: '#E9E9E9',
   },
   billsList: {
-    paddingVertical: spacing.sm,
+    paddingVertical: 18,
   },
   billRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: spacing.sm,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
   },
+  billRowLast: {},
   billName: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.medium,
     fontSize: 14,
-    color: colors.textPrimary,
+    lineHeight: 18,
+    color: '#212529',
   },
   billAmount: {
-    fontFamily: fonts.semiBold,
+    fontFamily: fonts.bold,
     fontSize: 14,
-    color: colors.textPrimary,
+    lineHeight: 18,
+    color: '#212529',
   },
   totalRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: spacing.sm,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
   },
   totalLabel: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 14,
-    color: colors.textSecondary,
+    lineHeight: 18,
+    color: '#6b7075',
   },
   totalAmount: {
     fontFamily: fonts.bold,
-    fontSize: 16,
-    color: colors.textPrimary,
+    fontSize: 18,
+    lineHeight: 22,
+    color: '#212529',
   },
   paymentMethod: {
-    paddingVertical: spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    gap: 12,
+  },
+  paymentBrandWrap: {
+    width: 52,
+    minHeight: 18,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+  },
+  paymentBrandLabel: {
+    fontFamily: fonts.bold,
+    fontSize: 11,
+    lineHeight: 13,
+    letterSpacing: 0.8,
+    color: '#1E2A78',
   },
   paymentMethodText: {
-    fontFamily: fonts.bodyLight,
-    fontSize: 12,
-    color: colors.textPrimary,
+    flex: 1,
+    fontFamily: fonts.body,
+    fontSize: 14,
+    lineHeight: 18,
+    color: '#666B70',
   },
   button: {
-    height: 48,
-    borderRadius: 12,
+    height: 56,
+    borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: spacing.md,
+    marginHorizontal: 20,
+    marginTop: 18,
+    marginBottom: 20,
   },
   payButton: {
     backgroundColor: colors.accentCta,
@@ -283,17 +376,20 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     fontFamily: fonts.bold,
-    fontSize: 14,
+    fontSize: 18,
+    lineHeight: 22,
     color: 'white',
   },
   errorSection: {
-    paddingVertical: spacing.md,
+    paddingHorizontal: 20,
+    paddingTop: 14,
   },
   errorText: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 12,
-    color: '#E60000',
-    marginBottom: spacing.md,
+    lineHeight: 16,
+    color: '#C20000',
+    marginBottom: 16,
   },
   successSection: {
     paddingVertical: spacing.md,
@@ -301,7 +397,8 @@ const styles = StyleSheet.create({
   },
   successText: {
     fontFamily: fonts.semiBold,
-    fontSize: 14,
-    color: '#4CAF50',
+    fontSize: 12,
+    lineHeight: 16,
+    color: colors.success,
   },
 });
