@@ -9,8 +9,25 @@ import CalendarIcon from '../icons/CalendarIcon';
 import CoverageDurationIcon from '../icons/CoverageDurationIcon';
 import PaymentProcessingCard from './PaymentProcessingCard';
 import type { TravelInsurancePlan, RoamingPlan } from '../../types';
+import VisaLogo from '../../../assets/payment/visa.svg';
+import MastercardLogo from '../../../assets/payment/mastercard.svg';
+import AmexLogo from '../../../assets/payment/amex.svg';
 
 type State = 'idle' | 'processing' | 'success' | 'error';
+
+type BrandLogoConfig = {
+  Logo: React.ComponentType<any>;
+  width: number;
+  height: number;
+};
+
+const PAYMENT_BRAND_LOGOS: Record<string, BrandLogoConfig> = {
+  visa: { Logo: VisaLogo, width: 48, height: 16 },
+  mastercard: { Logo: MastercardLogo, width: 52, height: 34 },
+  'master card': { Logo: MastercardLogo, width: 52, height: 34 },
+  amex: { Logo: AmexLogo, width: 52, height: 34 },
+  'american express': { Logo: AmexLogo, width: 52, height: 34 },
+};
 
 
 type Props = {
@@ -97,6 +114,8 @@ export default function PaymentSummaryCard({
   };
 
   const totalAmount = (roamingPlan?.price || 0) + insurancePlan.premiumAmount;
+  const normalizedBrand = (paymentMethodBrand || '').trim().toLowerCase();
+  const brandConfig = PAYMENT_BRAND_LOGOS[normalizedBrand];
 
   if (state === 'processing') {
     return <PaymentProcessingCard />;
@@ -168,6 +187,11 @@ export default function PaymentSummaryCard({
 
       {(paymentMethodBrand || paymentMethodLast4) && (
         <View style={styles.paymentMethodSection}>
+          {brandConfig && (
+            <View style={styles.paymentBrandWrap}>
+              <brandConfig.Logo width={brandConfig.width} height={brandConfig.height} />
+            </View>
+          )}
           <Text style={styles.paymentLabel}>
             Paying with {paymentMethodBrand ? paymentMethodBrand.charAt(0).toUpperCase() + paymentMethodBrand.slice(1) : 'Payment Method'} {paymentMethodLast4 ? `•••• ${paymentMethodLast4}` : ''}
           </Text>
@@ -321,11 +345,20 @@ const styles = StyleSheet.create({
     color: '#1a1a1a',
   },
   paymentMethodSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
     paddingVertical: spacing.md,
     marginBottom: spacing.lg,
     borderTopWidth: 1,
     borderBottomWidth: 1,
     borderColor: '#E0E0E0',
+  },
+  paymentBrandWrap: {
+    width: 52,
+    minHeight: 18,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
   },
   paymentLabel: {
     ...typography.small,
