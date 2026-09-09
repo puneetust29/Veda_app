@@ -1004,15 +1004,15 @@ export function useWorkflowChat(event: CalendarEvent) {
       return;
     }
 
-    // Immediately show a placeholder — removed automatically when real results arrive
-    appendItems([{
-      id: nextId(),
-      createdAt: Date.now(),
-      kind: 'text',
-      role: 'agent',
-      text: 'On it! Getting your trip recommendations ready…',
-      transient: true,
-    }]);
+    // // Immediately show a placeholder — removed automatically when real results arrive
+    // appendItems([{
+    //   id: nextId(),
+    //   createdAt: Date.now(),
+    //   kind: 'text',
+    //   role: 'agent',
+    //   text: 'On it! Getting your trip recommendations ready…',
+    //   transient: true,
+    // }]);
 
     const { hasRoamingActive, hasInsuranceActive } = tripPrepCard;
 

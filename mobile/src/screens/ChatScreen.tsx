@@ -51,7 +51,6 @@ export default function ChatScreen({ route, navigation }: Props) {
   const [paymentMethodBrand, setPaymentMethodBrand] = useState<string>('');
   const [paymentMethodLast4, setPaymentMethodLast4] = useState<string>('');
   const [paidBillData, setPaidBillData] = useState<any>(null);
-  const itemCountRef = useRef(0);
 
   const firstName = customer?.full_name?.split(' ')[0] ?? 'User';
   const insets = useSafeAreaInsets();
@@ -86,10 +85,10 @@ export default function ChatScreen({ route, navigation }: Props) {
   }, [isBillPayment, billPaymentResult, items.length, event.id]);
 
   useEffect(() => {
-    if (items.length > itemCountRef.current) {
-      itemCountRef.current = items.length;
+    // Backup scroll trigger for cases where onContentSizeChange doesn't fire
+    setTimeout(() => {
       scrollViewRef.current?.scrollToEnd({ animated: true });
-    }
+    }, 100);
   }, [items]);
 
   return (
@@ -116,6 +115,9 @@ export default function ChatScreen({ route, navigation }: Props) {
           ref={scrollViewRef}
           style={styles.thread}
           contentContainerStyle={styles.threadContent}
+          onContentSizeChange={() => {
+            scrollViewRef.current?.scrollToEnd({ animated: true });
+          }}
         >
           {isBillPayment ? (
             <>
@@ -157,7 +159,6 @@ export default function ChatScreen({ route, navigation }: Props) {
           {!isBillPayment && items.map((item, idx) => {
             // Skip hotel booking component
             if (item.kind === 'hotel') return null;
-
 
             // Skip rendering confirmation items for roaming plans - they're combined with the card
             if (item.kind === 'confirmation' && item.risk === 'commit') {
@@ -243,6 +244,7 @@ const styles = StyleSheet.create({
   thread: { flex: 1 },
   threadContent: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 16, gap: 8 },
   footer: {
+    flexDirection: 'row',
     padding: 16,
     borderTopWidth: 1,
     borderTopColor: '#E8E8E8',
@@ -297,7 +299,7 @@ const styles = StyleSheet.create({
     color: '#1F1F1F',
   },
   sendButton: {
-    backgroundColor: '#D32F2F',
+    backgroundColor: '#F00405',
     borderRadius: 10,
     paddingHorizontal: 18,
     paddingVertical: 12,
