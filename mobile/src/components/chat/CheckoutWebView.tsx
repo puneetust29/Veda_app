@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Modal,
   Pressable,
   SafeAreaView,
   StyleSheet,
@@ -16,14 +15,18 @@ import { log } from '../../lib/logger';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
+import { clearOverlayContent, setOverlayContent } from '../../lib/overlayHost';
 
 type Props = {
   visible: boolean;
+  minimized?: boolean;
   sessionId: string;
   firstUrl: string;
   firstInstruction: Record<string, unknown>;
   onDone: (success: boolean, message: string) => void;
   onClose: () => void;
+  onMinimize?: () => void;
+  onStatus?: (text: string, done?: boolean) => void;
 };
 
 const MAX_ITERATIONS = 40;
@@ -48,11 +51,14 @@ function isLoginUrl(url: string): boolean {
 
 export default function CheckoutWebView({
   visible,
+  minimized = false,
   sessionId,
   firstUrl,
   firstInstruction,
   onDone,
   onClose,
+  onMinimize,
+  onStatus,
 }: Props) {
   const webViewRef = useRef<WebView>(null);
   const viewShotRef = useRef<ViewShot>(null);
@@ -68,10 +74,21 @@ export default function CheckoutWebView({
   const sessionIdRef = useRef(sessionId);
   const currentUrlRef = useRef('');
   const loadErrorRef = useRef(false);
+  const onStatusRef = useRef(onStatus);
+  onStatusRef.current = onStatus;
+  const onMinimizeRef = useRef(onMinimize);
+  onMinimizeRef.current = onMinimize;
+  const lastSnackbarRef = useRef('');
+  const loggedLoginRef = useRef(false);
+  const loggedSignedInRef = useRef(false);
 
   useEffect(() => {
     sessionIdRef.current = sessionId;
   }, [sessionId]);
+
+  useEffect(() => {
+    log.info('CHECKOUT_WV', 'minimized prop changed', { minimized });
+  }, [minimized]);
 
   useEffect(() => {
     activeRef.current = visible;
@@ -350,7 +367,7 @@ export default function CheckoutWebView({
       if (result === '__DONE__') {
         loopDone({ iterations: 0, outcome: 'done_first_instruction' });
         log.ok('CHECKOUT_WV', 'done on first instruction');
-        onDone(true, 'Order placed');
+        onDone(true, 'Added to basket');
         return;
       }
       prevResult = result;
@@ -391,6 +408,12 @@ export default function CheckoutWebView({
           instruction_full: JSON.stringify(response.instruction),
         });
 
+        const snackbarMsg = response.status_snackbar?.localized_message;
+        if (snackbarMsg && snackbarMsg !== lastSnackbarRef.current) {
+          lastSnackbarRef.current = snackbarMsg;
+          onStatusRef.current?.(snackbarMsg);
+        }
+
         if (response.done) {
           loopDone({ iterations: i + 1, outcome: response.success ? 'success' : 'failed', message: response.message });
           if (response.success) {
@@ -413,7 +436,7 @@ export default function CheckoutWebView({
         if (result === '__DONE__') {
           loopDone({ iterations: i + 1, outcome: 'done_instruction' });
           log.ok('CHECKOUT_WV', 'done via instruction', { iterations: i + 1 });
-          onDone(true, 'Order placed');
+          onDone(true, 'Added to basket');
           return;
         }
         if (error) {
@@ -459,11 +482,23 @@ export default function CheckoutWebView({
       if (loginDetected) {
         log.warn('CHECKOUT_WV', 'login page detected — Cloudflare Turnstile may block', { url: nav.url });
         setStatus('Please sign in to continue');
+        if (!loggedLoginRef.current) {
+          loggedLoginRef.current = true;
+          onStatusRef.current?.('Please sign in to Asda to continue…');
+        }
       }
 
       if (!loginDetected && !nav.loading && loopStartedRef.current === false) {
         log.info('CHECKOUT_WV', 'non-login navigation — scheduling loop start (2s)');
         setStatus('Login detected — starting checkout…');
+        if (!loggedSignedInRef.current) {
+          loggedSignedInRef.current = true;
+          onStatusRef.current?.('Signed in — starting checkout…');
+          // Signed in — nothing left for the user to do interactively, so get
+          // the browser out of the way and let the loop run in the background.
+          log.info('CHECKOUT_WV', 'auto-minimizing after sign-in');
+          onMinimizeRef.current?.();
+        }
         setTimeout(runCheckoutLoop, 2000);
       }
     },
@@ -511,56 +546,96 @@ export default function CheckoutWebView({
     }
   }, []);
 
-  if (!visible) return null;
-
-  return (
-    <Modal visible animationType="slide" presentationStyle="fullScreen">
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Checkout</Text>
+  const content = (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Checkout</Text>
+        <View style={styles.headerActions}>
+          {onMinimize && (
+            <Pressable
+              onPress={() => {
+                log.info('CHECKOUT_WV', 'minimize button pressed');
+                onMinimize();
+              }}
+              hitSlop={12}
+            >
+              <Text style={styles.minimizeButton}>⌄</Text>
+            </Pressable>
+          )}
           <Pressable onPress={onClose} hitSlop={12}>
             <Text style={styles.closeButton}>✕</Text>
           </Pressable>
         </View>
+      </View>
 
-        <View style={styles.statusBar}>
-          {onLoginPage ? (
-            <Text style={styles.loginPrompt}>
-              Sign in to Asda, then checkout will continue automatically
+      <View style={styles.statusBar}>
+        {onLoginPage ? (
+          <Text style={styles.loginPrompt}>
+            Sign in to Asda, then checkout will continue automatically
+          </Text>
+        ) : (
+          <>
+            <ActivityIndicator size="small" color={colors.brand} />
+            <Text style={styles.statusText} numberOfLines={1}>
+              {status}
             </Text>
-          ) : (
-            <>
-              <ActivityIndicator size="small" color={colors.brand} />
-              <Text style={styles.statusText} numberOfLines={1}>
-                {status}
-              </Text>
-              {iteration > 0 && (
-                <Text style={styles.stepCount}>Step {iteration}</Text>
-              )}
-            </>
-          )}
-        </View>
+            {iteration > 0 && (
+              <Text style={styles.stepCount}>Step {iteration}</Text>
+            )}
+          </>
+        )}
+      </View>
 
-        <ViewShot ref={viewShotRef} style={{ flex: 1 }} options={{ format: 'jpg', quality: 0.5 }}>
-          <WebView
-            ref={webViewRef}
-            source={{ html: '<html><body style="background:#fff"></body></html>', baseUrl: getHomepageUrl(firstUrl) }}
-            style={styles.webView}
-            onLoadEnd={handleLoadEnd}
-            onMessage={onMessage}
-            javaScriptEnabled
-            domStorageEnabled
-            sharedCookiesEnabled
-            thirdPartyCookiesEnabled
-            allowsInlineMediaPlayback
-            originWhitelist={['*']}
-            onNavigationStateChange={handleNavigationChange}
-            onError={handleError}
-          />
-        </ViewShot>
-      </SafeAreaView>
-    </Modal>
+      <ViewShot ref={viewShotRef} style={{ flex: 1 }} options={{ format: 'jpg', quality: 0.5 }}>
+        <WebView
+          ref={webViewRef}
+          source={{ html: '<html><body style="background:#fff"></body></html>', baseUrl: getHomepageUrl(firstUrl) }}
+          style={styles.webView}
+          onLoadEnd={handleLoadEnd}
+          onMessage={onMessage}
+          javaScriptEnabled
+          domStorageEnabled
+          sharedCookiesEnabled
+          thirdPartyCookiesEnabled
+          allowsInlineMediaPlayback
+          originWhitelist={['*']}
+          onNavigationStateChange={handleNavigationChange}
+          onError={handleError}
+        />
+      </ViewShot>
+    </SafeAreaView>
   );
+
+  // Pushed into the app-root OverlayHost instead of rendered via <Modal> here.
+  // Critically, this is the SAME element type (a plain View) whether visible
+  // or minimized — only its style/pointerEvents change — so React never
+  // unmounts+remounts the WebView when toggling between the two. Swapping
+  // between <Modal> and <View> (the old approach) reloaded the WebView from
+  // scratch on every minimize/restore, which could corrupt an in-progress
+  // checkout if it happened mid-loop.
+  useEffect(() => {
+    if (!visible) {
+      clearOverlayContent();
+      return;
+    }
+    setOverlayContent(
+      <View
+        style={minimized ? styles.hiddenContainer : styles.visibleContainer}
+        pointerEvents={minimized ? 'none' : 'auto'}
+      >
+        {content}
+      </View>,
+    );
+  });
+
+  useEffect(() => {
+    return () => {
+      clearOverlayContent();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return null;
 }
 
 const styles = StyleSheet.create({
@@ -582,10 +657,37 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     fontSize: 17,
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  minimizeButton: {
+    fontSize: 22,
+    color: colors.textMuted,
+    padding: spacing.xs,
+  },
   closeButton: {
     fontSize: 18,
     color: colors.textMuted,
     padding: spacing.xs,
+  },
+  hiddenContainer: {
+    // Full size of OverlayHost's own already-full-screen box (not the tiny
+    // chat card CheckoutWebView happens to be declared inside) — the page's
+    // window.innerWidth/innerHeight needs real dimensions or the
+    // extraction/click scripts find nothing. Just invisible and
+    // click-through, behind everything else.
+    width: '100%',
+    height: '100%',
+    opacity: 0,
+    zIndex: -1,
+  },
+  visibleContainer: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: colors.background,
+    zIndex: 10,
   },
   statusBar: {
     flexDirection: 'row',

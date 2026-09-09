@@ -23,11 +23,12 @@ type Props = {
   onInsurancePurchased?: (data: any) => void;
   onContinuePrep?: () => void;
   onChoiceSelect?: (value: string) => void;
+  onGroceryStatus?: (text: string, done?: boolean) => void;
   continuePrepLoading?: boolean;
   nextItem?: ChatItem;
 };
 
-function ChatItemViewImpl({ item, onConfirm, onDecline, onInsurancePurchased, onContinuePrep, onChoiceSelect, continuePrepLoading, nextItem }: Props) {
+function ChatItemViewImpl({ item, onConfirm, onDecline, onInsurancePurchased, onContinuePrep, onChoiceSelect, onGroceryStatus, continuePrepLoading, nextItem }: Props) {
   switch (item.kind) {
     case 'text':
       return <MessageBubble text={item.text} tone={item.role} />;
@@ -97,7 +98,7 @@ function ChatItemViewImpl({ item, onConfirm, onDecline, onInsurancePurchased, on
     case 'trip_checklist':
       return <TripChecklistCard destination={item.destination} />;
     case 'grocery_basket':
-      return <GroceryBasketCard basket={item.basket} />;
+      return <GroceryBasketCard basket={item.basket} onStatus={onGroceryStatus} />;
     case 'choice':
       return (
         <ChoiceCard

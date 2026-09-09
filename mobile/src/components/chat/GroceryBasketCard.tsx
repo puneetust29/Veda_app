@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Image, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
-import * as WebBrowser from 'expo-web-browser';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { GroceryBasketPayload } from '../../types';
 import { api } from '../../lib/api';
 import { log } from '../../lib/logger';
@@ -8,6 +7,7 @@ import { colors } from '../../theme/colors';
 import { radii, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import CheckoutWebView from './CheckoutWebView';
+import InAppBrowser from './InAppBrowser';
 
 type CheckoutSession = {
   sessionId: string;
@@ -17,6 +17,7 @@ type CheckoutSession = {
 
 type Props = {
   basket: GroceryBasketPayload;
+  onStatus?: (text: string, done?: boolean) => void;
 };
 
 type CheckoutState = 'idle' | 'opening' | 'auto_ordering';
@@ -31,13 +32,15 @@ const SUPERMARKET_EMOJI: Record<string, string> = {
   'ocado.com': '🛒',
 };
 
-export default function GroceryBasketCard({ basket }: Props) {
+export default function GroceryBasketCard({ basket, onStatus }: Props) {
   const icon = SUPERMARKET_EMOJI[basket.supermarket] ?? '🛒';
   const hasProducts = basket.items.length > 0;
   const [checkoutState, setCheckoutState] = useState<CheckoutState>('idle');
   const [autoStatus, setAutoStatus] = useState<AutoOrderStatus | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const [checkoutSession, setCheckoutSession] = useState<CheckoutSession | null>(null);
+  const [checkoutMinimized, setCheckoutMinimized] = useState(false);
+  const [inAppBrowserUrl, setInAppBrowserUrl] = useState<string | null>(null);
 
   useEffect(() => {
     log.info('BASKET', 'card rendered', {
@@ -90,6 +93,8 @@ export default function GroceryBasketCard({ basket }: Props) {
           firstUrl: resp.first_url,
           instruction: resp.instruction,
         });
+        setCheckoutMinimized(false);
+        onStatus?.(`Opening ${basket.supermarket_name} checkout…`);
       } catch (e) {
         done({ error: String(e) });
         log.fail('BASKET', 'createCheckoutSession threw', { error: String(e) });
@@ -100,20 +105,10 @@ export default function GroceryBasketCard({ basket }: Props) {
       return;
     }
     if (basket.supermarket === 'asda.com' && basket.checkout_url) {
-      log.info('BASKET', 'routing → WebBrowser fallback (Asda mcheckout URL)', {
+      log.info('BASKET', 'routing → in-app browser fallback (Asda checkout URL)', {
         url: basket.checkout_url.slice(0, 80),
       });
-      setCheckoutState('opening');
-      try {
-        const result = await WebBrowser.openBrowserAsync(basket.checkout_url, {
-          presentationStyle: WebBrowser.WebBrowserPresentationStyle.FORM_SHEET,
-        });
-        log.info('BASKET', 'WebBrowser closed', { type: result.type });
-      } catch (e) {
-        log.fail('BASKET', 'WebBrowser error', { error: String(e) });
-      } finally {
-        setCheckoutState('idle');
-      }
+      setInAppBrowserUrl(basket.checkout_url);
       return;
     }
     log.info('BASKET', 'routing → startAutoOrder (default)');
@@ -151,12 +146,14 @@ export default function GroceryBasketCard({ basket }: Props) {
           } else if (event.kind === 'done') {
             streamDone({ success: event.success, message: event.message });
             if (event.success) {
-              log.ok('BASKET', 'auto-order complete — order placed');
+              log.ok('BASKET', 'auto-order complete — added to basket');
             } else {
               log.fail('BASKET', 'auto-order complete — failed', { message: event.message });
             }
             setAutoStatus({
-              text: event.success ? '✓ Order placed successfully!' : `Failed: ${event.message}`,
+              text: event.success
+                ? `✓ Added to your ${basket.supermarket_name} basket — open the app to complete checkout`
+                : `Failed: ${event.message}`,
               done: true,
               success: !!event.success,
             });
@@ -186,7 +183,7 @@ export default function GroceryBasketCard({ basket }: Props) {
     }
   }
 
-  async function openCheckout() {
+  function openCheckout() {
     const url = basket.checkout_url;
     if (!url) {
       log.warn('BASKET', 'openCheckout — no checkout_url');
@@ -201,24 +198,12 @@ export default function GroceryBasketCard({ basket }: Props) {
       url: url.slice(0, 80),
     });
 
-    setCheckoutState('opening');
-    try {
-      if (basket.checkout_mode === 'oneshot' || basket.checkout_mode === 'session') {
-        log.info('BASKET', 'opening Pepesto hosted checkout sheet', { mode: basket.checkout_mode });
-        const result = await WebBrowser.openBrowserAsync(url, {
-          presentationStyle: WebBrowser.WebBrowserPresentationStyle.FORM_SHEET,
-        });
-        log.info('BASKET', 'WebBrowser sheet closed', { result: result.type });
-      } else {
-        log.info('BASKET', 'opening supermarket search via Linking', { mode: basket.checkout_mode });
-        await Linking.openURL(url);
-        log.ok('BASKET', 'Linking.openURL dispatched');
-      }
-    } catch (err) {
-      log.fail('BASKET', 'openCheckout error', { error: String(err) });
-    } finally {
-      setCheckoutState('idle');
-    }
+    // Always in-app (never Linking.openURL / WebBrowser) — both are
+    // system-browser contexts, so iOS/Android can intercept a Universal/App
+    // Link (like Pepesto's hosted checkout URLs) and redirect to an
+    // unrelated app or its store listing instead of showing the page. A
+    // plain in-app WebView just loads the URL, no handoff possible.
+    setInAppBrowserUrl(url);
   }
 
   return (
@@ -253,7 +238,7 @@ export default function GroceryBasketCard({ basket }: Props) {
                     product: item.product_name,
                     url: item.product_url.slice(0, 80),
                   });
-                  Linking.openURL(item.product_url);
+                  setInAppBrowserUrl(item.product_url);
                 }
               }}
               accessibilityRole="button"
@@ -359,26 +344,58 @@ export default function GroceryBasketCard({ basket }: Props) {
         </Pressable>
       )}
 
+      {checkoutSession && checkoutMinimized && (
+        <Pressable
+          style={({ pressed }) => [styles.resumeBanner, pressed && { opacity: 0.7 }]}
+          onPress={() => setCheckoutMinimized(false)}
+          accessibilityRole="button"
+          accessibilityLabel="Resume checkout"
+        >
+          <Text style={styles.resumeBannerText}>▶ Checkout in progress — tap to view</Text>
+        </Pressable>
+      )}
+
       {checkoutSession && (
         <CheckoutWebView
           visible
+          minimized={checkoutMinimized}
           sessionId={checkoutSession.sessionId}
           firstUrl={checkoutSession.firstUrl}
           firstInstruction={checkoutSession.instruction}
+          onStatus={onStatus}
+          onMinimize={() => setCheckoutMinimized(true)}
           onDone={(success, message) => {
             log.info('BASKET', 'CheckoutWebView done', { success, message });
             if (success) {
-              log.ok('BASKET', 'order placed via WebView checkout');
+              log.ok('BASKET', 'item added to basket via WebView checkout');
+              onStatus?.('✅ Item added to your basket', true);
             } else {
               log.fail('BASKET', 'WebView checkout failed', { message });
+              onStatus?.(`❌ Checkout stopped: ${message}`, true);
             }
             setCheckoutSession(null);
-            setAutoStatus({ text: success ? '✓ Order placed!' : message, done: true, success });
+            setCheckoutMinimized(false);
+            setAutoStatus({
+              text: success
+                ? `✓ Added to your ${basket.supermarket_name} basket — open the app to complete checkout`
+                : message,
+              done: true,
+              success,
+            });
           }}
           onClose={() => {
             log.info('BASKET', 'CheckoutWebView closed by user');
             setCheckoutSession(null);
+            setCheckoutMinimized(false);
           }}
+        />
+      )}
+
+      {inAppBrowserUrl && (
+        <InAppBrowser
+          url={inAppBrowserUrl}
+          title={basket.supermarket_name}
+          onClose={() => setInAppBrowserUrl(null)}
         />
       )}
     </View>
@@ -570,5 +587,16 @@ const styles = StyleSheet.create({
   checkoutTextSecondary: {
     ...typography.caption,
     color: colors.textMuted,
+  },
+  resumeBanner: {
+    backgroundColor: colors.surface,
+    paddingVertical: spacing.sm,
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  resumeBannerText: {
+    ...typography.caption,
+    color: colors.brand,
   },
 });

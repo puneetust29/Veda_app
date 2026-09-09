@@ -159,6 +159,36 @@ export function useVedaChat() {
     [phase, appendItems, startStream],
   );
 
+  // One evolving status line (spinner while active, checkmark once done) —
+  // not a growing list of chat bubbles. The same item gets updated in place
+  // until `done`, then the next call starts a fresh one.
+  const checkoutStatusIdRef = useRef<string | null>(null);
+
+  const updateCheckoutStatus = useCallback(
+    (text: string, done = false) => {
+      const existingId = checkoutStatusIdRef.current;
+      if (existingId) {
+        commitItems(
+          itemsRef.current.map((item) =>
+            item.id === existingId && item.kind === 'status'
+              ? { ...item, label: text, state: done ? 'done' : 'active' }
+              : item,
+          ),
+        );
+      } else {
+        const id = nextId();
+        checkoutStatusIdRef.current = id;
+        appendItems([
+          { id, createdAt: Date.now(), kind: 'status', label: text, state: done ? 'done' : 'active' },
+        ]);
+      }
+      if (done) {
+        checkoutStatusIdRef.current = null;
+      }
+    },
+    [appendItems, commitItems],
+  );
+
   const retry = useCallback(() => {
     // Find the last user message and retry with it
     const lastUserMsg = [...itemsRef.current]
@@ -177,5 +207,5 @@ export function useVedaChat() {
     startStream(controller, (lastUserMsg as any).text);
   }, [commitItems, startStream]);
 
-  return { items, phase, sendMessage, retry };
+  return { items, phase, sendMessage, retry, updateCheckoutStatus };
 }

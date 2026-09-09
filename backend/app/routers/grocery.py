@@ -191,7 +191,8 @@ async def checkout_step(
         "[grocery/checkout-step] → next instruction | type=%s | elapsed=%dms | full=%s",
         instr_type, elapsed_ms, json.dumps(instr_for_log, default=str),
     )
-    return {"done": False, "instruction": instruction}
+    status_snackbar = proto.get("status_snackbar")
+    return {"done": False, "instruction": instruction, "status_snackbar": status_snackbar}
 
 
 @router.post("/asda/save-session")

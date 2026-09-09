@@ -11,7 +11,7 @@ import { colors, spacing, typography } from '../theme';
 type Props = NativeStackScreenProps<RootStackParamList, 'VedaChat'>;
 
 export default function VedaChatScreen({ navigation }: Props) {
-  const { items, phase, sendMessage, retry } = useVedaChat();
+  const { items, phase, sendMessage, retry, updateCheckoutStatus } = useVedaChat();
   const scrollViewRef = useRef<ScrollView>(null);
   const [draft, setDraft] = useState('');
 
@@ -30,6 +30,7 @@ export default function VedaChatScreen({ navigation }: Props) {
             onChoiceSelect={(value) => {
               sendMessage(value);
             }}
+            onGroceryStatus={updateCheckoutStatus}
           />
         ))}
       </ScrollView>

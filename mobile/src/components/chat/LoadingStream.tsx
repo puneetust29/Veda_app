@@ -11,10 +11,15 @@ export type StreamItem = {
   state?: 'active' | 'done';
 };
 
-function ShimmerText({ children }: { children: string }) {
+function ShimmerText({ children, animate = true }: { children: string; animate?: boolean }) {
   const shimmerValue = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    if (!animate) {
+      // 0.5 is the interpolation's midpoint → maps to full (1) opacity, static
+      shimmerValue.setValue(0.5);
+      return;
+    }
     const animation = Animated.loop(
       Animated.timing(shimmerValue, {
         toValue: 1,
@@ -25,7 +30,7 @@ function ShimmerText({ children }: { children: string }) {
     );
     animation.start();
     return () => animation.stop();
-  }, [shimmerValue]);
+  }, [shimmerValue, animate]);
 
   // Animate text with shimmer effect: darker → lighter → darker (matching Conversation.tsx)
   const textOpacity = shimmerValue.interpolate({
@@ -90,9 +95,11 @@ export default function LoadingStream({ items, isSingleItem = false }: Props) {
 
   return (
     <View style={[styles.container, isSingleItem && styles.singleItemContainer]}>
-      {visibleStreams.map((stream, idx) => (
+      {visibleStreams.map((stream, idx) => {
+        const isActive = stream.state === 'active' || (idx === visibleStreams.length - 1 && !stream.state);
+        return (
         <View key={idx} style={[styles.streamItem, isSingleItem && styles.singleStreamItem]}>
-          {stream.state === 'active' || (idx === visibleStreams.length - 1 && !stream.state) ? (
+          {isActive ? (
             <View style={styles.iconContainer}>
               <View style={styles.dotsBox}>
                 {[0, 1, 2].map((dotIndex) => {
@@ -133,9 +140,10 @@ export default function LoadingStream({ items, isSingleItem = false }: Props) {
           ) : (
             <Text style={styles.checkmark}>✓</Text>
           )}
-          <ShimmerText>{stream.text}</ShimmerText>
+          <ShimmerText animate={isActive}>{stream.text}</ShimmerText>
         </View>
-      ))}
+        );
+      })}
     </View>
   );
 }

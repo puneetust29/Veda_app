@@ -374,6 +374,7 @@ export const api = {
       success?: boolean;
       message?: string;
       instruction?: Record<string, unknown>;
+      status_snackbar?: { localized_message?: string } | null;
     }>('/grocery/checkout-step', {
       method: 'POST',
       body: JSON.stringify({

@@ -16,6 +16,7 @@ import { StripeProvider } from '@stripe/stripe-react-native';
 import { AuthProvider } from './src/context/AuthContext';
 import { SubscriptionInsuranceProvider } from './src/context/SubscriptionInsuranceContext';
 import RootNavigator from './src/navigation/RootNavigator';
+import { OverlayHost } from './src/lib/overlayHost';
 
 const stripePublishableKey = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || '';
 
@@ -40,6 +41,7 @@ export default function App() {
           <SubscriptionInsuranceProvider>
             <StatusBar style="auto" />
             <RootNavigator />
+            <OverlayHost />
           </SubscriptionInsuranceProvider>
         </AuthProvider>
       </StripeProvider>
