@@ -13,9 +13,10 @@ type Props = {
   plan: TravelInsurancePlan;
   onViewDetails?: () => void;
   onProceed?: () => void;
+  purchased?: boolean;
 };
 
-export default function TravelInsuranceCard({ plan, onViewDetails, onProceed }: Props) {
+export default function TravelInsuranceCard({ plan, onViewDetails, onProceed, purchased = false }: Props) {
   const [showDetails, setShowDetails] = useState(false);
 
   return (
@@ -100,8 +101,15 @@ export default function TravelInsuranceCard({ plan, onViewDetails, onProceed }: 
         </TouchableOpacity>
 
         {onProceed && (
-          <TouchableOpacity style={styles.proceedButton} onPress={onProceed}>
-            <Text style={styles.proceedButtonText}>Continue</Text>
+          <TouchableOpacity
+            style={[styles.proceedButton, purchased && styles.proceedButtonDisabled]}
+            onPress={onProceed}
+            disabled={purchased}
+            accessibilityState={{ disabled: purchased }}
+          >
+            <Text style={[styles.proceedButtonText, purchased && styles.proceedButtonTextDisabled]}>
+              {purchased ? 'Purchased' : 'Continue'}
+            </Text>
           </TouchableOpacity>
         )}
       </View>
@@ -289,9 +297,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  proceedButtonDisabled: {
+    backgroundColor: colors.border,
+  },
   proceedButtonText: {
     fontFamily: fonts.bold,
     fontSize: 14,
     color: 'white',
+  },
+  proceedButtonTextDisabled: {
+    color: colors.textSecondary,
   },
 });

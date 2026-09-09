@@ -27,6 +27,21 @@ function isInsuranceAlreadyPurchased(items: any[], currentIdx: number): boolean 
   return false;
 }
 
+function hasActiveTravelInsurance(items: any[], workflowState: any): boolean {
+  const hasInsuranceConfirmation = items.some(
+    (item) => item.kind === 'confirmation_success' && item.planType === 'insurance'
+  );
+
+  const hasInsuranceInTripPrep = items.some(
+    (item) => item.kind === 'trip_preparation' && item.hasInsuranceActive
+  );
+
+  const hasInsuranceCompleted = Array.isArray(workflowState?.completedSteps)
+    && workflowState.completedSteps.includes('insurance');
+
+  return hasInsuranceConfirmation || hasInsuranceInTripPrep || hasInsuranceCompleted;
+}
+
 export default function ChatScreen({ route, navigation }: Props) {
   const { event } = route.params;
   const { customer } = useAuth();
@@ -48,6 +63,7 @@ export default function ChatScreen({ route, navigation }: Props) {
   // Roaming finished with nothing to recommend — offer travel insurance in the
   // footer instead of a retry-and-bail pair of buttons.
   const hasNoRoamingPlan = items.some((item) => item.kind === 'error' && item.code === 'no_plan_found');
+  const insuranceAlreadyActive = hasActiveTravelInsurance(items, workflowState);
 
   const scrollViewRef = useRef<ScrollView>(null);
   const [draft, setDraft] = useState('');
@@ -179,6 +195,7 @@ export default function ChatScreen({ route, navigation }: Props) {
                 onConfirm={confirm}
                 onDecline={decline}
                 onInsurancePurchased={handleInsurancePurchased}
+                insurancePurchased={insuranceAlreadyActive}
                 onContinuePrep={continueWorkflow}
                 continuePrepLoading={phase === 'streaming'}
                 // Pass the next item if it's a confirmation for a roaming card
@@ -201,13 +218,13 @@ export default function ChatScreen({ route, navigation }: Props) {
             <TouchableOpacity
               style={[styles.secondaryButton, hasNoRoamingPlan && styles.secondaryButtonNarrow]}
               onPress={
-                hasNoRoamingPlan
+                hasNoRoamingPlan && !insuranceAlreadyActive
                   ? continueToInsurance
                   : () => navigation.replace('FlightDetail', { event })
               }
             >
               <Text style={styles.secondaryButtonText}>
-                {hasNoRoamingPlan ? 'Continue with travel insurance' : 'Continue without chat'}
+                {hasNoRoamingPlan && !insuranceAlreadyActive ? 'Continue with travel insurance' : 'Continue without chat'}
               </Text>
             </TouchableOpacity>
           </View>

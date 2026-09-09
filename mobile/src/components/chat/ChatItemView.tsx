@@ -21,10 +21,12 @@ type Props = {
   onInsurancePurchased?: (data: any) => void;
   onContinuePrep?: () => void;
   continuePrepLoading?: boolean;
+  /** Insurance is already active for this trip — the card's CTA is disabled. */
+  insurancePurchased?: boolean;
   nextItem?: ChatItem;
 };
 
-function ChatItemViewImpl({ item, onConfirm, onDecline, onInsurancePurchased, onContinuePrep, continuePrepLoading, nextItem }: Props) {
+function ChatItemViewImpl({ item, onConfirm, onDecline, onInsurancePurchased, onContinuePrep, continuePrepLoading, insurancePurchased, nextItem }: Props) {
   switch (item.kind) {
     case 'text':
       return <MessageBubble text={item.text} tone={item.role} />;
@@ -72,6 +74,7 @@ function ChatItemViewImpl({ item, onConfirm, onDecline, onInsurancePurchased, on
           plan={item.plan}
           calendarEventId={item.calendarEventId}
           onInsurancePurchased={onInsurancePurchased}
+          alreadyPurchased={insurancePurchased}
         />
       );
     case 'confirmation':
