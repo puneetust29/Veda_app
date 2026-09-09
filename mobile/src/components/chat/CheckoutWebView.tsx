@@ -494,13 +494,12 @@ export default function CheckoutWebView({
         if (!loggedSignedInRef.current) {
           loggedSignedInRef.current = true;
           onStatusRef.current?.('Signed in — starting checkout…');
-          // TEMPORARILY DISABLED for diagnosis: suspect minimizing (opacity:0)
-          // causes WebKit to throttle/background the page, silently dropping
-          // the "Add to basket" click's network effect even though the click
-          // itself reports success. Keeping the WebView visible for now to
-          // confirm add-to-basket is reliable without minimize.
-          // log.info('CHECKOUT_WV', 'auto-minimizing after sign-in');
-          // onMinimizeRef.current?.();
+          // Signed in — nothing left for the user to do interactively, so get
+          // the browser out of the way and let the loop run in the background.
+          // (Confirmed via testing: minimizing was NOT the cause of the
+          // add-to-basket failures — a visible run failed identically.)
+          log.info('CHECKOUT_WV', 'auto-minimizing after sign-in');
+          onMinimizeRef.current?.();
         }
         setTimeout(runCheckoutLoop, 2000);
       }
