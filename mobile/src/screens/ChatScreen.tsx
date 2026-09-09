@@ -41,9 +41,13 @@ export default function ChatScreen({ route, navigation }: Props) {
   const billPaymentResult = useBillPaymentChat(event);
 
   const { items, phase } = isBillPayment ? billPaymentResult : workflowResult;
-  const { confirm, decline, retry, sendMessage, handleInsurancePurchased, workflowState, continueWorkflow } = isBillPayment
-    ? { confirm: () => { }, decline: () => { }, retry: () => { }, sendMessage: () => { }, handleInsurancePurchased: () => { }, workflowState: {}, continueWorkflow: () => { } }
+  const { confirm, decline, retry, sendMessage, handleInsurancePurchased, workflowState, continueWorkflow, continueToInsurance } = isBillPayment
+    ? { confirm: () => { }, decline: () => { }, retry: () => { }, sendMessage: () => { }, handleInsurancePurchased: () => { }, workflowState: {}, continueWorkflow: () => { }, continueToInsurance: () => { } }
     : workflowResult;
+
+  // Roaming finished with nothing to recommend — offer travel insurance in the
+  // footer instead of a retry-and-bail pair of buttons.
+  const hasNoRoamingPlan = items.some((item) => item.kind === 'error' && item.code === 'no_plan_found');
 
   const scrollViewRef = useRef<ScrollView>(null);
   const [draft, setDraft] = useState('');
@@ -195,10 +199,16 @@ export default function ChatScreen({ route, navigation }: Props) {
               <Text style={styles.primaryButtonText}>Retry</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.secondaryButton}
-              onPress={() => navigation.replace('FlightDetail', { event })}
+              style={[styles.secondaryButton, hasNoRoamingPlan && styles.secondaryButtonNarrow]}
+              onPress={
+                hasNoRoamingPlan
+                  ? continueToInsurance
+                  : () => navigation.replace('FlightDetail', { event })
+              }
             >
-              <Text style={styles.secondaryButtonText}>Continue without chat</Text>
+              <Text style={styles.secondaryButtonText}>
+                {hasNoRoamingPlan ? 'Continue with travel insurance' : 'Continue without chat'}
+              </Text>
             </TouchableOpacity>
           </View>
         )}
@@ -273,6 +283,12 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: 'rgba(230, 0, 0, 0.07)',
     backgroundColor: '#FFFFFF',
+  },
+  // "Continue with travel insurance" is a long label to fit next to Retry —
+  // let it give up width and wrap instead of pushing the row off-screen.
+  secondaryButtonNarrow: {
+    flexShrink: 1,
+    paddingHorizontal: 14,
   },
   secondaryButtonText: {
     color: '#E60000',

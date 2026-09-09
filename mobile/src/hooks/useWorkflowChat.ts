@@ -770,6 +770,57 @@ export function useWorkflowChat(event: CalendarEvent) {
     [appendItems, event, buildWhatsAppShareItems],
   );
 
+  // Roaming ended without a recommendable plan (`no_plan_found`) — move the
+  // workflow straight on to travel insurance instead of leaving the user on a
+  // dead-end retry.
+  const continueToInsurance = useCallback(() => {
+    abortControllerRef.current?.abort();
+    clearWatchdog();
+
+    if (itemsRef.current.some((item) => item.kind === 'travel_insurance')) {
+      setPhase('complete');
+      return;
+    }
+
+    appendItems([
+      {
+        id: nextId(),
+        createdAt: Date.now(),
+        kind: 'text',
+        role: 'agent',
+        text: 'No problem. Let\'s make sure you\'re covered with travel insurance for your trip.',
+      },
+    ]);
+
+    setWorkflowState((prev) => ({
+      currentStep: 'insurance',
+      // Roaming was skipped, not completed
+      completedSteps: prev.completedSteps,
+    }));
+    setPhase('streaming');
+
+    api
+      .getInsuranceRecommendation(event.id)
+      .then((plan) => {
+        if (plan) {
+          appendItems([
+            {
+              id: nextId(),
+              createdAt: Date.now(),
+              kind: 'travel_insurance',
+              plan,
+              calendarEventId: event.id,
+            },
+          ]);
+        }
+        setPhase('complete');
+      })
+      .catch((err) => {
+        if (__DEV__) console.warn('[useWorkflowChat] Failed to fetch insurance after no roaming plan', err);
+        setPhase('complete');
+      });
+  }, [appendItems, clearWatchdog, event.id]);
+
   const retry = useCallback(() => {
     abortControllerRef.current?.abort();
     const controller = new AbortController();
@@ -1088,5 +1139,5 @@ export function useWorkflowChat(event: CalendarEvent) {
     }
   }, [appendItems, event.id, startStream]);
 
-  return { items, phase, confirm, decline, retry, sendMessage, handleInsurancePurchased, workflowState, continueWorkflow };
+  return { items, phase, confirm, decline, retry, sendMessage, handleInsurancePurchased, workflowState, continueWorkflow, continueToInsurance };
 }
