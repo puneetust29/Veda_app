@@ -19,6 +19,11 @@ function extractPrice(summary: string): string | null {
 export default function ConfirmationPrompt({ item, onConfirm, onDecline }: Props) {
   const price = extractPrice(item.summary);
 
+  // Don't render if summary is empty or just whitespace
+  if (!item.summary || !item.summary.trim()) {
+    return null;
+  }
+
   return (
     <View style={styles.card}>
       <Text style={styles.summary}>{item.summary}</Text>

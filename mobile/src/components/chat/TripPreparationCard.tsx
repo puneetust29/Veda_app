@@ -42,8 +42,6 @@ export default function TripPreparationCard({
     { label: 'Travel insurance', active: hasInsuranceActive },
   ];
 
-  const anyPending = !hasRoamingActive || !hasInsuranceActive;
-
   return (
     <CardShell
       badge={<CalendarIcon size={20} color="#E60000" />}
@@ -51,7 +49,6 @@ export default function TripPreparationCard({
       buttonLabel="Continue"
       onButtonPress={onContinue}
       loading={loading}
-      buttonDisabled={!anyPending}
     >
       {/* Travellers Section */}
       <View style={cardShellStyles.section}>

@@ -185,7 +185,7 @@ export const api = {
       throw new Error('Not authenticated');
     }
 
-    const body: any = { calendar_event_id: params.calendarEventId };
+    const body: any = { calendar_event_id: params.calendarEventId, capability: 'roaming' };
     if (params.message) {
       body.message = params.message;
       body.prior_plan = params.priorPlan;

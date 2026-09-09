@@ -83,35 +83,13 @@ export default function TravelInsuranceCardChat({
   // Use a test payment method for now (in production, this would come from saved cards)
   const paymentMethodId = 'pm_card_visa';
 
-  if (showPaymentSummary && onInsurancePurchased) {
-    return (
-      <View style={styles.container}>
-        <MessageBubble
-          text="Everything is ready for your trip. Here's a summary before payment."
-          tone="agent"
-        />
-        {paymentMethodLoading && (
-          <LoadingStream items={[{ text: 'Looking into your payment method…', state: 'active' }]} isSingleItem />
-        )}
-        {!paymentMethodLoading && (
-          <PaymentSummaryCard
-            roamingPlan={roamingPlan}
-            insurancePlan={plan}
-            paymentMethodBrand={paymentMethodBrand}
-            paymentMethodLast4={paymentMethodLast4}
-            savedPaymentMethodId={paymentMethodId}
-            calendarEventId={calendarEventId}
-            onViewOptions={() => setShowPaymentSummary(false)}
-            onSuccess={handlePaymentSuccess}
-          />
-        )}
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
-      <TravelInsuranceCard plan={plan} onViewDetails={() => setShowCoverageDetails(true)} onProceed={onInsurancePurchased ? handleProceed : undefined} />
+      <TravelInsuranceCard
+        plan={plan}
+        onViewDetails={() => setShowCoverageDetails(true)}
+        onProceed={onInsurancePurchased ? handleProceed : undefined}
+      />
       {showCoverageDetails && (
         <>
           <MessageBubble
@@ -122,6 +100,29 @@ export default function TravelInsuranceCardChat({
             plan={plan}
             onClose={() => setShowCoverageDetails(false)}
           />
+        </>
+      )}
+      {showPaymentSummary && onInsurancePurchased && (
+        <>
+          <MessageBubble
+            text="Everything is ready for your trip. Here's a summary before payment."
+            tone="agent"
+          />
+          {paymentMethodLoading && (
+            <LoadingStream items={[{ text: 'Looking into your payment method…', state: 'active' }]} isSingleItem />
+          )}
+          {!paymentMethodLoading && (
+            <PaymentSummaryCard
+              roamingPlan={roamingPlan}
+              insurancePlan={plan}
+              paymentMethodBrand={paymentMethodBrand}
+              paymentMethodLast4={paymentMethodLast4}
+              savedPaymentMethodId={paymentMethodId}
+              calendarEventId={calendarEventId}
+              onViewOptions={() => setShowPaymentSummary(false)}
+              onSuccess={handlePaymentSuccess}
+            />
+          )}
         </>
       )}
     </View>
