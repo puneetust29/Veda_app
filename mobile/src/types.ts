@@ -322,7 +322,20 @@ export type ChatItem =
   | (ChatItemBase & { kind: 'card'; card: RecommendationCardPayload })
   | (ChatItemBase & { kind: 'hotel'; hotel: HotelDetectionResultPayload })
   | (ChatItemBase & { kind: 'maps'; maps: MapsResultPayload })
-  | (ChatItemBase & { kind: 'whatsapp_share'; text: string; contactName?: string; contactPhone?: string })
+  | (ChatItemBase & {
+      kind: 'whatsapp_share';
+      text: string;
+      contactName?: string;
+      contactPhone?: string;
+      messageType?: 'trip_notification' | 'emergency_alert' | 'request_favor' | 'casual_update' | 'formal_notice';
+      tripData?: {
+        travelerName: string;
+        destination: string;
+        startDate: string;
+        endDate: string;
+        travelers: string;
+      };
+    })
   | (ChatItemBase & { kind: 'travel_insurance'; plan: TravelInsurancePlan; calendarEventId: string })
   | (ChatItemBase & {
       kind: 'confirmation';

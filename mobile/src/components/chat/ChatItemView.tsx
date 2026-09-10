@@ -65,7 +65,15 @@ function ChatItemViewImpl({ item, onConfirm, onDecline, onInsurancePurchased, on
     case 'maps':
       return null; // dev-only — rendered in Integration (Dev) screens only
     case 'whatsapp_share':
-      return <WhatsAppShareCard text={item.text} contactName={item.contactName} contactPhone={item.contactPhone} />;
+      return (
+        <WhatsAppShareCard
+          text={item.text}
+          contactName={item.contactName}
+          contactPhone={item.contactPhone}
+          messageType={item.messageType}
+          tripData={item.tripData}
+        />
+      );
     case 'travel_insurance':
       return (
         <TravelInsuranceCardChat

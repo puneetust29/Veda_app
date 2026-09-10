@@ -212,7 +212,7 @@ function AttentionCard({
   const completionStatus = getFlightCompletionStatus(flight.id, subscriptions, activeInsurance);
   const isDomestic = flight.is_domestic ?? false;
   const cardSubtitle = getCardSubtitle(completionStatus);
-  const shouldDisableButton = isDomestic || completionStatus === 'both_done';
+  const shouldDisableButton = isDomestic;
 
 
   return (
@@ -266,7 +266,7 @@ function AttentionCard({
         disabled={shouldDisableButton}
       >
         <Text style={[styles.ctaText, shouldDisableButton && styles.ctaTextDisabled]}>
-          {isDomestic ? 'Domestic coming soon' : completionStatus === 'both_done' ? 'All set! Ready to fly' : 'Review recommendation'}
+          {isDomestic ? 'Domestic coming soon' : 'Review recommendation'}
         </Text>
         <View style={[styles.ctaButton, shouldDisableButton && styles.ctaButtonDisabled]}>
           <SvgXml xml={arrowWhite} width={14} height={14} />
