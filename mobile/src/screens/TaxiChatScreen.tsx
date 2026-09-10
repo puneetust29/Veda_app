@@ -10,7 +10,7 @@ import MessageBubble from '../components/chat/MessageBubble';
 import RecommendationCard from '../components/chat/RecommendationCard';
 import PickupLocationRow from '../components/taxi/PickupLocationRow';
 import LocationPickerModal from '../components/taxi/LocationPickerModal';
-import DestinationSuggestions from '../components/taxi/DestinationSuggestions';
+import LocationSuggestions from '../components/taxi/LocationSuggestions';
 import ErrorPanel from '../components/taxi/ErrorPanel';
 import { usePlacesAutocomplete } from '../hooks/usePlacesAutocomplete';
 import { api } from '../lib/api';
@@ -341,6 +341,7 @@ export default function TaxiChatScreen({ navigation }: Props) {
     const initializeLocation = async () => {
       try {
         const permission = await Location.getForegroundPermissionsAsync();
+
         if (permission.status === Location.PermissionStatus.GRANTED) {
           const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
           const { latitude, longitude } = position.coords;
@@ -369,12 +370,10 @@ export default function TaxiChatScreen({ navigation }: Props) {
         onPressClose={() => navigation.goBack()}
         menuItems={[]}
       />
-      {(phase === 'input' || phase === 'error' || phase === 'loading') && (
-        <PickupLocationRow
-          label={pickupLocation?.label ?? 'Current location (default)'}
-          onChangePress={() => setPickerVisible(true)}
-        />
-      )}
+      <PickupLocationRow
+        label={pickupLocation?.label ?? 'Current location'}
+        onChangePress={() => setPickerVisible(true)}
+      />
       <ScrollView
         ref={scrollViewRef}
         style={styles.thread}
@@ -396,7 +395,7 @@ export default function TaxiChatScreen({ navigation }: Props) {
         )}
 
         {(phase === 'input' || (phase === 'loading' && displayPredictions.length > 0)) && (
-          <DestinationSuggestions
+          <LocationSuggestions
             predictions={displayPredictions}
             onSelect={handleSelectPrediction}
           />

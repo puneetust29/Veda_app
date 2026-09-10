@@ -22,7 +22,7 @@ export type CalendarEvent = {
   id: string;
   customer_id: string;
   title: string;
-  event_type: 'flight' | 'other';
+  event_type: 'flight' | 'hotel' | 'broadbandBill' | 'other';
   origin: string | null;
   destination: string | null;
   start_datetime: string;
@@ -376,4 +376,4 @@ export type ChatItem =
       destination: string;
     })
   | (ChatItemBase & { kind: 'transport'; transport: TransportResultPayload })
-  | (ChatItemBase & { kind: 'error'; message: string; retryable: boolean });
+  | (ChatItemBase & { kind: 'error'; message: string; retryable: boolean; code?: string });

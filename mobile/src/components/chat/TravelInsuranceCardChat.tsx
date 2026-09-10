@@ -14,6 +14,8 @@ type Props = {
   roamingPlan?: RoamingPlan | null;
   calendarEventId: string;
   onInsurancePurchased?: (data: any) => void;
+  /** Insurance already active for this trip (purchased earlier or in a prior session). */
+  alreadyPurchased?: boolean;
 };
 
 export default function TravelInsuranceCardChat({
@@ -21,6 +23,7 @@ export default function TravelInsuranceCardChat({
   roamingPlan,
   calendarEventId,
   onInsurancePurchased,
+  alreadyPurchased = false,
 }: Props) {
   const [showPaymentSummary, setShowPaymentSummary] = useState(false);
   const [showCoverageDetails, setShowCoverageDetails] = useState(false);
@@ -29,6 +32,7 @@ export default function TravelInsuranceCardChat({
   const [paymentMethodBrand, setPaymentMethodBrand] = useState<string | undefined>();
   const [paymentMethodLast4, setPaymentMethodLast4] = useState<string | undefined>();
   const [paymentMethodLoading, setPaymentMethodLoading] = useState(false);
+  const [purchased, setPurchased] = useState(false);
 
   useEffect(() => {
     const fetchCustomer = async () => {
@@ -63,12 +67,16 @@ export default function TravelInsuranceCardChat({
     }
   }, [showPaymentSummary]);
 
+  const isPurchased = purchased || alreadyPurchased;
+
   const handleProceed = () => {
+    if (isPurchased) return;
     setShowPaymentSummary(true);
   };
 
   const handlePaymentSuccess = (purchaseData: any) => {
     setShowPaymentSummary(false);
+    setPurchased(true);
     if (onInsurancePurchased) {
       onInsurancePurchased({
         ...purchaseData,
@@ -83,35 +91,14 @@ export default function TravelInsuranceCardChat({
   // Use a test payment method for now (in production, this would come from saved cards)
   const paymentMethodId = 'pm_card_visa';
 
-  if (showPaymentSummary && onInsurancePurchased) {
-    return (
-      <View style={styles.container}>
-        <MessageBubble
-          text="Everything is ready for your trip. Here's a summary before payment."
-          tone="agent"
-        />
-        {paymentMethodLoading && (
-          <LoadingStream items={[{ text: 'Looking into your payment method…', state: 'active' }]} isSingleItem />
-        )}
-        {!paymentMethodLoading && (
-          <PaymentSummaryCard
-            roamingPlan={roamingPlan}
-            insurancePlan={plan}
-            paymentMethodBrand={paymentMethodBrand}
-            paymentMethodLast4={paymentMethodLast4}
-            savedPaymentMethodId={paymentMethodId}
-            calendarEventId={calendarEventId}
-            onViewOptions={() => setShowPaymentSummary(false)}
-            onSuccess={handlePaymentSuccess}
-          />
-        )}
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
-      <TravelInsuranceCard plan={plan} onViewDetails={() => setShowCoverageDetails(true)} onProceed={onInsurancePurchased ? handleProceed : undefined} />
+      <TravelInsuranceCard
+        plan={plan}
+        onViewDetails={() => setShowCoverageDetails(true)}
+        onProceed={onInsurancePurchased ? handleProceed : undefined}
+        purchased={isPurchased}
+      />
       {showCoverageDetails && (
         <>
           <MessageBubble
@@ -122,6 +109,29 @@ export default function TravelInsuranceCardChat({
             plan={plan}
             onClose={() => setShowCoverageDetails(false)}
           />
+        </>
+      )}
+      {showPaymentSummary && onInsurancePurchased && (
+        <>
+          <MessageBubble
+            text="Everything is ready for your trip. Here's a summary before payment."
+            tone="agent"
+          />
+          {paymentMethodLoading && (
+            <LoadingStream items={[{ text: 'Looking into your payment method…', state: 'active' }]} isSingleItem />
+          )}
+          {!paymentMethodLoading && (
+            <PaymentSummaryCard
+              roamingPlan={roamingPlan}
+              insurancePlan={plan}
+              paymentMethodBrand={paymentMethodBrand}
+              paymentMethodLast4={paymentMethodLast4}
+              savedPaymentMethodId={paymentMethodId}
+              calendarEventId={calendarEventId}
+              onViewOptions={() => setShowPaymentSummary(false)}
+              onSuccess={handlePaymentSuccess}
+            />
+          )}
         </>
       )}
     </View>

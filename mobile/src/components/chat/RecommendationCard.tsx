@@ -83,7 +83,7 @@ export default function RecommendationCard({ card, confirmation, onConfirm, onDe
           </View>
 
           {/* Total & Buttons Section */}
-          {confirmation && price && (
+          {confirmation && price && confirmation.state === 'pending' && confirmation.risk === 'commit' && (
             <>
               <View style={styles.divider} />
               <View style={styles.totalRow}>
@@ -91,22 +91,20 @@ export default function RecommendationCard({ card, confirmation, onConfirm, onDe
                 <Text style={styles.totalPrice}>{price}</Text>
               </View>
 
-              {confirmation.state === 'pending' && confirmation.risk === 'commit' && (
-                <View style={styles.actions}>
-                  <TouchableOpacity
-                    style={styles.secondaryButton}
-                    onPress={() => onDecline?.(confirmation.actionId)}
-                  >
-                    <Text style={styles.secondaryButtonText} numberOfLines={1}>Not now</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.primaryButton}
-                    onPress={() => onConfirm?.(confirmation.actionId)}
-                  >
-                    <Text style={styles.primaryButtonText} numberOfLines={1}>Approve roaming</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
+              <View style={styles.actions}>
+                <TouchableOpacity
+                  style={styles.secondaryButton}
+                  onPress={() => onDecline?.(confirmation.actionId)}
+                >
+                  <Text style={styles.secondaryButtonText} numberOfLines={1}>Not now</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.primaryButton}
+                  onPress={() => onConfirm?.(confirmation.actionId)}
+                >
+                  <Text style={styles.primaryButtonText} numberOfLines={1}>Approve roaming</Text>
+                </TouchableOpacity>
+              </View>
             </>
           )}
           </View>

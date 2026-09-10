@@ -35,6 +35,9 @@ export default function TripPreparationCard({
     month: 'short',
   }) : null;
 
+  // Nothing left for the workflow to do once both purchases are active.
+  const allPrepComplete = hasRoamingActive && hasInsuranceActive;
+
   const statusItems = [
     { label: 'Flight bookings', active: hasFlightBooking },
     ...(hasHotelBooking ? [{ label: 'Hotel bookings', active: hasHotelBooking }] : []),
@@ -42,16 +45,14 @@ export default function TripPreparationCard({
     { label: 'Travel insurance', active: hasInsuranceActive },
   ];
 
-  const anyPending = !hasRoamingActive || !hasInsuranceActive;
-
   return (
     <CardShell
       badge={<CalendarIcon size={20} color="#E60000" />}
       title={`${returnDate ? `${startDate} - ${returnDate}` : startDate}, ${event.destination}`}
-      buttonLabel="Continue"
+      buttonLabel={allPrepComplete ? 'All set' : 'Continue'}
       onButtonPress={onContinue}
+      buttonDisabled={allPrepComplete}
       loading={loading}
-      buttonDisabled={!anyPending}
     >
       {/* Travellers Section */}
       <View style={cardShellStyles.section}>

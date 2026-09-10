@@ -4,19 +4,35 @@ import { colors, fonts, spacing } from '../../theme';
 import CheckmarkIcon from '../icons/CheckmarkIcon';
 import HeaderBackground from '../icons/HeaderBackground';
 import { api } from '../../lib/api';
+import VisaLogo from '../../../assets/payment/visa.svg';
+import MastercardLogo from '../../../assets/payment/mastercard.svg';
+import AmexLogo from '../../../assets/payment/amex.svg';
 
+
+type BrandLogoConfig = {
+  Logo: React.ComponentType<any>;
+  width: number;
+  height: number;
+};
+
+const PAYMENT_BRAND_LOGOS: Record<string, BrandLogoConfig> = {
+  visa: { Logo: VisaLogo, width: 48, height: 16 },
+  mastercard: { Logo: MastercardLogo, width: 52, height: 34 },
+  'master card': { Logo: MastercardLogo, width: 52, height: 34 },
+  amex: { Logo: AmexLogo, width: 52, height: 34 },
+  'american express': { Logo: AmexLogo, width: 52, height: 34 },
+};
 
 
 type Props = {
   insuranceId?: string;
   insuranceAmount?: number;
   insuranceCurrency?: string;
-  destination: string;
   cardLast4?: string;
   cardBrand?: string;
 };
 
-export default function PaymentCompleteCard({ insuranceId, insuranceAmount, insuranceCurrency, destination, cardLast4, cardBrand }: Props) {
+export default function PaymentCompleteCard({ insuranceId, insuranceAmount, insuranceCurrency, cardLast4, cardBrand }: Props) {
   const [paymentMethodBrand, setPaymentMethodBrand] = useState(cardBrand);
   const [paymentMethodLast4, setPaymentMethodLast4] = useState(cardLast4);
 
@@ -38,6 +54,8 @@ export default function PaymentCompleteCard({ insuranceId, insuranceAmount, insu
   const totalAmount = insuranceAmount || 0;
   const currency = insuranceCurrency || '£';
   const transactionId = insuranceId || 'N/A';
+  const normalizedBrand = (paymentMethodBrand || '').trim().toLowerCase();
+  const brandConfig = PAYMENT_BRAND_LOGOS[normalizedBrand];
 
   return (
     <View>
@@ -59,9 +77,16 @@ export default function PaymentCompleteCard({ insuranceId, insuranceAmount, insu
           {paymentMethodBrand && paymentMethodLast4 && (
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Payment method</Text>
-              <Text style={styles.detailValue}>
-                {paymentMethodBrand.charAt(0).toUpperCase() + paymentMethodBrand.slice(1)} •••• {paymentMethodLast4}
-              </Text>
+              <View style={styles.paymentMethodValue}>
+                {brandConfig && (
+                  <View style={styles.paymentBrandWrap}>
+                    <brandConfig.Logo width={brandConfig.width} height={brandConfig.height} />
+                  </View>
+                )}
+                <Text style={styles.detailValue}>
+                  {paymentMethodBrand.charAt(0).toUpperCase() + paymentMethodBrand.slice(1)} •••• {paymentMethodLast4}
+                </Text>
+              </View>
             </View>
           )}
 
@@ -154,6 +179,17 @@ const styles = StyleSheet.create({
     lineHeight: 13,
     fontWeight: '600',
     color: '#000000',
+  },
+  paymentMethodValue: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  paymentBrandWrap: {
+    width: 52,
+    minHeight: 18,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
   },
   paymentMethod: {
     flexDirection: 'row',

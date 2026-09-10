@@ -159,6 +159,9 @@ export function applyStreamEvent(items: ChatItem[], event: AgentStreamEvent): Ch
           kind: 'error',
           message: event.data.message ?? friendlyErrorMessage(event.data.code),
           retryable: event.data.retryable,
+          // Kept so the UI can special-case outcomes like `no_plan_found`
+          // (offer travel insurance instead of a retry).
+          code: event.data.code,
         },
       ];
     }

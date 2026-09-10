@@ -155,6 +155,15 @@ export default function DashboardScreen({ navigation }: Props) {
       return Number(isLondon(b)) - Number(isLondon(a));
     });
   console.log('[Dashboard] upcomingFlights order:', upcomingFlights.map((e, i) => `#${i + 1} "${e.title}" origin=${e.origin} dest=${e.destination} start=${e.start_datetime} end=${e.end_datetime}`));
+
+  const upcomingBills = events
+    .filter((event) => event.event_type === 'broadbandBill')
+    .sort((a, b) => {
+      const dateA = a.start_datetime ? new Date(a.start_datetime).getTime() : 0;
+      const dateB = b.start_datetime ? new Date(b.start_datetime).getTime() : 0;
+      return dateA - dateB;
+    });
+
   const firstName = customer?.full_name?.split(' ')[0] ?? 'there';
 
   // "Connect apps" tiles are visual placeholders for integrations that
@@ -163,14 +172,15 @@ export default function DashboardScreen({ navigation }: Props) {
     {
       id: 'taxi', iconXml: tileTaxi, label: 'Book a taxi', onPress: () => navigation.navigate('TaxiChat'),
     },
-    { id: 'school-fees', iconXml: tileMap, label: 'Pay school fees' },
-    { id: 'health-checkup', iconXml: tileHealth, label: 'Book annual health checkup' },
-    { id: 'broadband', iconXml: tileBuildings, label: 'Renew home broadband' },
+    { id: 'school-fees', iconXml: tileMap, label: 'Pay school fees', comingSoon: true },
+    { id: 'health-checkup', iconXml: tileHealth, label: 'Book annual health checkup', comingSoon: true },
+    { id: 'broadband', iconXml: tileBuildings, label: 'Renew home broadband', comingSoon: true },
     {
       id: 'groceries',
       iconXml: tileEcommerce,
       label: 'Restock weekly groceries',
       connectAppIcons: [{ source: ellipse1 }, { source: ellipse2 }],
+      comingSoon: true,
     },
     {
       id: 'meetings',
@@ -181,12 +191,14 @@ export default function DashboardScreen({ navigation }: Props) {
         { source: appGcal, inset: true },
       ],
       onPress: () => navigation.navigate('DeviceCalendar'),
+      comingSoon: true,
     },
     {
       id: 'food',
       iconXml: tileFood,
       label: 'Order food',
       connectAppIcons: [{ source: ellipse1 }, { source: ellipse3 }],
+      comingSoon: true,
     },
   ];
 
@@ -244,15 +256,16 @@ export default function DashboardScreen({ navigation }: Props) {
 
             <View style={styles.attentionHeader}>
               <Text style={styles.attentionTitle}>What needs your attention</Text>
-              {upcomingFlights.length > 0 ? (
+              {upcomingFlights.length + upcomingBills.length > 0 ? (
                 <View style={styles.countBadge}>
-                  <Text style={styles.countBadgeText}>{upcomingFlights.length}</Text>
+                  <Text style={styles.countBadgeText}>{upcomingFlights.length + upcomingBills.length}</Text>
                 </View>
               ) : null}
             </View>
 
             <AttentionCarousel
               flights={upcomingFlights}
+              bills={upcomingBills}
               activeRoamingEventIds={
                 new Set(
                   (subscriptions ?? [])
@@ -266,6 +279,10 @@ export default function DashboardScreen({ navigation }: Props) {
               onPressFlight={(event) => {
                 const idx = upcomingFlights.findIndex((f) => f.id === event.id);
                 console.log(`[Dashboard] opened card #${idx + 1} "${event.title}" origin=${event.origin} dest=${event.destination} start=${event.start_datetime}`);
+                navigation.navigate('Chat', { event });
+              }}
+              onPressBill={(event) => {
+                console.log('[Dashboard] opened bill', event.id);
                 navigation.navigate('Chat', { event });
               }}
             />

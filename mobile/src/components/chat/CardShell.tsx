@@ -42,18 +42,20 @@ export default function CardShell({
         {children}
 
         {/* Action Button */}
-        <TouchableOpacity
-          style={[styles.button, (loading || buttonDisabled) && styles.buttonDisabled]}
-          onPress={onButtonPress}
-          disabled={loading || buttonDisabled}
-          activeOpacity={0.8}
-        >
-          {loading ? (
-            <ActivityIndicator color="#FFFFFF" size="small" />
-          ) : (
-            <Text style={styles.buttonText}>{buttonLabel}</Text>
-          )}
-        </TouchableOpacity>
+        {buttonLabel && (
+          <TouchableOpacity
+            style={[styles.button, (loading || buttonDisabled) && styles.buttonDisabled]}
+            onPress={onButtonPress}
+            disabled={loading || buttonDisabled}
+            activeOpacity={0.8}
+          >
+            {loading ? (
+              <ActivityIndicator color="#FFFFFF" size="small" />
+            ) : (
+              <Text style={styles.buttonText}>{buttonLabel}</Text>
+            )}
+          </TouchableOpacity>
+        )}
 
         {footer}
       </View>
