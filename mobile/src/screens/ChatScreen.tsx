@@ -215,18 +215,14 @@ export default function ChatScreen({ route, navigation }: Props) {
             <TouchableOpacity style={styles.primaryButton} onPress={retry}>
               <Text style={styles.primaryButtonText}>Retry</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.secondaryButton, hasNoRoamingPlan && styles.secondaryButtonNarrow]}
-              onPress={
-                hasNoRoamingPlan && !insuranceAlreadyActive
-                  ? continueToInsurance
-                  : () => navigation.replace('FlightDetail', { event })
-              }
-            >
-              <Text style={styles.secondaryButtonText}>
-                {hasNoRoamingPlan && !insuranceAlreadyActive ? 'Continue with travel insurance' : 'Continue without chat'}
-              </Text>
-            </TouchableOpacity>
+            {hasNoRoamingPlan && !insuranceAlreadyActive && (
+              <TouchableOpacity
+                style={[styles.secondaryButton, styles.secondaryButtonNarrow]}
+                onPress={continueToInsurance}
+              >
+                <Text style={styles.secondaryButtonText}>Continue with travel insurance</Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
 
