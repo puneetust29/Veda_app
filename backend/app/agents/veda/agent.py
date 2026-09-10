@@ -28,6 +28,8 @@ class VedaAgent(BaseAgent):
             "customer": customer,
             "user_message": ctx.user_message,
             "history": (ctx.subject or {}).get("history", []),
+            "location_context": ctx.context.get("location_context"),
+            "enriched_location_context": ctx.context.get("enriched_location_context"),
         }
 
     def execute(self, ctx: AgentContext, mode: AgentMode = "suggest") -> AgentResult:

@@ -80,6 +80,8 @@ class ChatStreamRequest(BaseModel):
     capability: Optional[str] = None
     history: Optional[list[dict]] = None
     device_location: Optional[DeviceLocation] = None
+    location_context: Optional[str] = None
+    enriched_location_context: Optional[dict] = None
 
 
 @router.post("/stream")
@@ -105,6 +107,10 @@ async def chat_stream(
         subject["history"] = body.history
     if body.device_location is not None:
         subject["device_location"] = body.device_location.model_dump()
+    # Always include location_context so the resolver and agent get it even when null
+    subject["location_context"] = body.location_context
+    if body.enriched_location_context is not None:
+        subject["enriched_location_context"] = body.enriched_location_context
 
     # Generate conversation_id: use calendar_event_id if available, else a uuid
     if body.calendar_event_id:
@@ -113,8 +119,8 @@ async def chat_stream(
         import uuid
         conversation_id = str(uuid.uuid4())
 
-    logger.info("[chat/stream] customer=%s event_id=%s capability=%s message=%r",
-                customer.get("id"), body.calendar_event_id, body.capability, body.message)
+    logger.info("[chat/stream] customer=%s event_id=%s capability=%s message=%r location_context=%r",
+                customer.get("id"), body.calendar_event_id, body.capability, body.message, body.location_context)
 
     stream = EventStream(conversation_id=conversation_id)
 

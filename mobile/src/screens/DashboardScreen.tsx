@@ -23,6 +23,7 @@ import {
   tileEcommerce,
   tileFood,
   tileHealth,
+  tileLocation,
   tileMap,
   tileTaxi,
 } from '../components/dashboard/figmaSvgs';
@@ -197,6 +198,12 @@ export default function DashboardScreen({ navigation }: Props) {
       label: 'Order food',
       connectAppIcons: [{ source: ellipse1 }, { source: ellipse3 }],
     },
+    {
+      id: 'nearby',
+      iconXml: tileLocation,
+      label: 'Find places nearby',
+      onPress: () => navigation.navigate('VedaChat', { initialMessage: "What's near me right now?" }),
+    },
   ];
 
   // No dedicated profile/settings screen exists in the Figma design yet, so
@@ -232,6 +239,12 @@ export default function DashboardScreen({ navigation }: Props) {
         },
       ]
       : []),
+    {
+      id: 'location',
+      icon: 'location-outline',
+      label: 'Location & Geofences',
+      onPress: () => navigation.navigate('GeofenceSettings'),
+    },
     { id: 'sign-out', icon: 'log-out-outline', label: 'Sign out', onPress: signOut, destructive: true },
   ];
 

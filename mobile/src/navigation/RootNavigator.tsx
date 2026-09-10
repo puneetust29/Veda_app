@@ -10,6 +10,9 @@ import DeviceCalendarScreen from '../screens/DeviceCalendarScreen';
 import FlightDetailScreen from '../screens/FlightDetailScreen';
 import GmailScreen from '../screens/GmailScreen';
 import DevNavigator from '../dev/DevNavigator';
+import GeofenceEditScreen from '../screens/GeofenceEditScreen';
+import GeofenceSettingsScreen from '../screens/GeofenceSettingsScreen';
+import SavedPlacesScreen from '../screens/SavedPlacesScreen';
 import RoamingPlansScreen from '../screens/RoamingPlansScreen';
 import SubscriptionsScreen from '../screens/SubscriptionsScreen';
 import TaxiChatScreen from '../screens/TaxiChatScreen';
@@ -91,6 +94,21 @@ export default function RootNavigator() {
               name="Contacts"
               component={ContactsScreen}
               options={{ headerShown: true, title: 'Contacts', headerBackTitle: '' }}
+            />
+            <Stack.Screen
+              name="GeofenceSettings"
+              component={GeofenceSettingsScreen}
+              options={{ headerShown: true, title: 'Location & Geofences', headerBackTitle: '' }}
+            />
+            <Stack.Screen
+              name="GeofenceEdit"
+              component={GeofenceEditScreen}
+              options={{ headerShown: true, title: 'Add location', headerBackTitle: '' }}
+            />
+            <Stack.Screen
+              name="SavedPlaces"
+              component={SavedPlacesScreen}
+              options={{ headerShown: true, title: 'Saved Places', headerBackTitle: '' }}
             />
             <Stack.Screen name="Dev" component={DevNavigator} />
           </>

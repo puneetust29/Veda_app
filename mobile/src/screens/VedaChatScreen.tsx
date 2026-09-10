@@ -1,5 +1,5 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -10,8 +10,17 @@ import { colors, spacing, typography } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'VedaChat'>;
 
-export default function VedaChatScreen({ navigation }: Props) {
+export default function VedaChatScreen({ navigation, route }: Props) {
   const { items, phase, sendMessage, retry } = useVedaChat();
+  const initialMessage = route.params?.initialMessage;
+  const didAutoSend = useRef(false);
+
+  useEffect(() => {
+    if (initialMessage && !didAutoSend.current) {
+      didAutoSend.current = true;
+      sendMessage(initialMessage);
+    }
+  }, [initialMessage, sendMessage]);
   const scrollViewRef = useRef<ScrollView>(null);
   const [draft, setDraft] = useState('');
 

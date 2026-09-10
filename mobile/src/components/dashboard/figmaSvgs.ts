@@ -124,6 +124,11 @@ export const tileArrow = `<svg preserveAspectRatio="none" overflow="visible" wid
 </g>
 </svg>`;
 
+export const tileLocation = `<svg preserveAspectRatio="none" overflow="visible" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M10 1.66667C7.23858 1.66667 5 3.90524 5 6.66667C5 10.4167 10 18.3333 10 18.3333C10 18.3333 15 10.4167 15 6.66667C15 3.90524 12.7614 1.66667 10 1.66667Z" stroke="#E60000" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="10" cy="6.66667" r="1.66667" stroke="#E60000" stroke-width="1.2"/>
+</svg>`;
+
 export const tileMap = `<svg preserveAspectRatio="none" overflow="visible" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
 <g id="Map" clip-path="url(#clip0_0_98)">
 <g id="Vector">
