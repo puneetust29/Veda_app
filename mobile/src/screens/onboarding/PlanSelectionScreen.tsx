@@ -1254,7 +1254,7 @@ const styles = StyleSheet.create({
   // --------------------------------------------------
 
   fanViewport: {
-    marginTop: spacing.lg,
+    marginTop: spacing.xl,
     marginHorizontal: -BODY_SIDE_PADDING,
     position: 'relative',
   },

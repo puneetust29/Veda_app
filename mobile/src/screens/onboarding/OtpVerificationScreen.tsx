@@ -17,12 +17,24 @@ import StepHeader from '../../components/onboarding/StepHeader';
 import StepProgressBar from '../../components/onboarding/StepProgressBar';
 import { useAuth } from '../../context/AuthContext';
 import { useOnboarding } from '../../context/OnboardingContext';
-import { colors, radii, spacing, typography } from '../../theme';
+import { colors, fonts, radii, spacing, typography } from '../../theme';
 import type { OnboardingStackParamList } from '../../types';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'OtpVerification'>;
 
 type Status = 'idle' | 'verifying' | 'verified' | 'error';
+
+function maskPhoneNumber(phone: string): string {
+  if (!phone || phone.length < 5) return phone;
+  // Extract country code (+1 to +999) and last 3 digits, mask everything in between
+  const match = phone.match(/^(\+\d{1,3})(.*)(\d{3})$/);
+  if (!match) return phone;
+  const countryCode = match[1];
+  const middleDigits = match[2];
+  const lastThree = match[3];
+  const masked = '•'.repeat(middleDigits.length);
+  return `${countryCode} ${masked} ${lastThree}`;
+}
 
 const RESEND_TIMEOUT = 45;
 
@@ -133,13 +145,13 @@ export default function OtpVerificationScreen({ navigation }: Props) {
       onLayout={(event) => setScreenHeight(event.nativeEvent.layout.height)}
     >
       <OnboardingBanner />
-      <StepHeader onBack={() => navigation.goBack()} overlay />
+      <StepHeader overlay={false} />
 
       <View style={[styles.body, { paddingBottom: keyboardOverlap }]}>
         <StepProgressBar step={1} totalSteps={5}/>
         <Text style={styles.title}>Verify it's you.</Text>
         <Text style={styles.subtitle}>
-          Code sent to <Text style={styles.subtitleBold}>{phoneNumber || 'your number'}</Text>
+          Code sent to <Text style={styles.subtitleBold}>{maskPhoneNumber(phoneNumber) || 'your number'}</Text>
         </Text>
 
         <View style={styles.otpWrap}>
@@ -184,7 +196,7 @@ export default function OtpVerificationScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: { flex: 1},
   body: { paddingHorizontal: spacing.xxl, paddingTop: spacing.xxl, flex: 1, backgroundColor: colors.background, borderTopLeftRadius: radii.xl, borderTopRightRadius: radii.xl, overflow: 'hidden', position: 'relative', marginTop: -35,  },
-  title: { ...typography.headline, color: colors.textPrimary, marginBottom: spacing.sm },
+  title: { fontSize: 28, fontWeight: '700', fontFamily: fonts.bold, color: colors.textPrimary, marginBottom: spacing.sm, lineHeight: 34 },
   subtitle: { ...typography.body, color: colors.textSecondary, marginBottom: spacing.xl },
   subtitleBold: { color: colors.textPrimary, fontWeight: '700' },
   otpWrap: { marginBottom: spacing.md },

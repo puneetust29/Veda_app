@@ -53,9 +53,9 @@ export default function SuccessScreen(_props: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center', gap: spacing.md },
-  title: { ...typography.title, color: colors.textPrimary },
-  subtitleRow: { flexDirection: 'row' },
-  subtitle: { ...typography.caption, color: colors.textMuted },
+  container: { flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
+  title: { ...typography.title, color: colors.textPrimary, fontSize: 32, textAlign: 'center' },
+  subtitleRow: { flexDirection: 'row', justifyContent: 'center' },
+  subtitle: { ...typography.caption, color: colors.textSecondary },
   dots: { color: colors.brand, fontWeight: '700', minWidth: 18 },
 });
