@@ -28,6 +28,8 @@ export type Suggestion = {
    * wired up yet). */
   connectAppIcons?: ConnectAppIcon[];
   onPress?: () => void;
+  /** Show "Coming soon" badge and disable interaction. */
+  comingSoon?: boolean;
 };
 
 type Props = {
@@ -60,12 +62,13 @@ export default function SuggestionGrid({ suggestions, onShuffle }: Props) {
             style={styles.tile}
             onPress={item.onPress}
             activeOpacity={0.7}
+            disabled={item.comingSoon}
           >
             <View style={styles.tileTop}>
               <View style={styles.iconBox}>
                 <SvgXml xml={item.iconXml} width={20} height={20} />
               </View>
-              {item.connectAppIcons ? (
+              {item.connectAppIcons && !item.comingSoon ? (
                 <View style={styles.connectRow}>
                   <Text style={styles.connectLabel}>Connect apps</Text>
                   <View style={styles.connectIcons}>
@@ -95,6 +98,14 @@ export default function SuggestionGrid({ suggestions, onShuffle }: Props) {
               </Text>
               <SvgXml xml={tileArrow} width={20} height={20} />
             </View>
+            {item.comingSoon && (
+              <>
+                <View style={styles.comingSoonOverlay} pointerEvents="none" />
+                <View style={styles.comingSoonBadge} pointerEvents="none">
+                  <Text style={styles.comingSoonBadgeText}>Coming soon</Text>
+                </View>
+              </>
+            )}
           </TouchableOpacity>
         ))}
       </View>
@@ -133,6 +144,35 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     padding: spacing.md,
     justifyContent: 'space-between',
+  },
+  comingSoonOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(240, 4, 5, 0.3)',
+    borderRadius: 20,
+    zIndex: 9,
+  },
+  comingSoonBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.6)',
+    backgroundColor: '#5a3a33',
+    zIndex: 10,
+  },
+  comingSoonBadgeText: {
+    fontFamily: fonts.medium,
+    fontSize: 12,
+    lineHeight: 14,
+    color: '#FFFFFF',
+    fontWeight: '500',
   },
   tileTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   iconBox: {

@@ -172,14 +172,15 @@ export default function DashboardScreen({ navigation }: Props) {
     {
       id: 'taxi', iconXml: tileTaxi, label: 'Book a taxi', onPress: () => navigation.navigate('TaxiChat'),
     },
-    { id: 'school-fees', iconXml: tileMap, label: 'Pay school fees' },
-    { id: 'health-checkup', iconXml: tileHealth, label: 'Book annual health checkup' },
-    { id: 'broadband', iconXml: tileBuildings, label: 'Renew home broadband' },
+    { id: 'school-fees', iconXml: tileMap, label: 'Pay school fees', comingSoon: true },
+    { id: 'health-checkup', iconXml: tileHealth, label: 'Book annual health checkup', comingSoon: true },
+    { id: 'broadband', iconXml: tileBuildings, label: 'Renew home broadband', comingSoon: true },
     {
       id: 'groceries',
       iconXml: tileEcommerce,
       label: 'Restock weekly groceries',
       connectAppIcons: [{ source: ellipse1 }, { source: ellipse2 }],
+      comingSoon: true,
     },
     {
       id: 'meetings',
@@ -190,12 +191,14 @@ export default function DashboardScreen({ navigation }: Props) {
         { source: appGcal, inset: true },
       ],
       onPress: () => navigation.navigate('DeviceCalendar'),
+      comingSoon: true,
     },
     {
       id: 'food',
       iconXml: tileFood,
       label: 'Order food',
       connectAppIcons: [{ source: ellipse1 }, { source: ellipse3 }],
+      comingSoon: true,
     },
   ];
 
@@ -253,9 +256,9 @@ export default function DashboardScreen({ navigation }: Props) {
 
             <View style={styles.attentionHeader}>
               <Text style={styles.attentionTitle}>What needs your attention</Text>
-              {upcomingFlights.length > 0 ? (
+              {upcomingFlights.length + upcomingBills.length > 0 ? (
                 <View style={styles.countBadge}>
-                  <Text style={styles.countBadgeText}>{upcomingFlights.length}</Text>
+                  <Text style={styles.countBadgeText}>{upcomingFlights.length + upcomingBills.length}</Text>
                 </View>
               ) : null}
             </View>
