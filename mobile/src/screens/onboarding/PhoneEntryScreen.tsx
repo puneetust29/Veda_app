@@ -65,7 +65,7 @@ export default function PhoneEntryScreen({ navigation }: Props) {
   return (
     <View style={styles.container}>
       <OnboardingBanner />
-      <StepHeader onBack={() => navigation.goBack()} overlay />
+      <StepHeader overlay={false} />
 
       <View style={styles.cardWrapper}>
         <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
@@ -85,7 +85,7 @@ export default function PhoneEntryScreen({ navigation }: Props) {
           <TextInput
             ref={phoneInputRef}
             style={styles.input}
-            placeholder="Mobile number"
+            placeholder="Vodafone mobile number"
             placeholderTextColor={colors.textMuted}
             keyboardType="phone-pad"
             autoComplete="tel"
@@ -138,12 +138,15 @@ export default function PhoneEntryScreen({ navigation }: Props) {
       <Modal visible={helpVisible} transparent animationType="fade" onRequestClose={() => setHelpVisible(false)}>
         <Pressable style={styles.sheetBackdrop} onPress={() => setHelpVisible(false)}>
           <Pressable style={styles.sheet}>
-            <Text style={styles.sheetTitle}>Here's how it helps</Text>
+            <View style={styles.sheetTitleRow}>
+              <Ionicons name="shield-checkmark" size={20} color={colors.brandText} />
+              <Text style={styles.sheetTitle}>Here's how it helps</Text>
+            </View>
             <Text style={styles.sheetIntro}>Your Vodafone number gives Veda a trusted starting point.</Text>
             <Text style={styles.sheetSubIntro}>It helps Veda:</Text>
             {HELP_BULLETS.map((bullet) => (
               <View key={bullet} style={styles.sheetBulletRow}>
-                <Ionicons name="checkmark" size={16} color={colors.brandText} />
+                <Ionicons name="checkmark-circle" size={18} color={colors.brandText} />
                 <Text style={styles.sheetBulletText}>{bullet}</Text>
               </View>
             ))}
@@ -204,7 +207,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   cardWrapper: { flex: 1, backgroundColor: colors.background, borderTopLeftRadius: radii.xl, borderTopRightRadius: radii.xl, overflow: 'hidden', position: 'relative', marginTop: -35, padding: spacing.xxl },
   body: { flex: 1 },
-  title: { fontSize: 38, fontWeight: '600', fontFamily: fonts.semiBold, color: colors.textPrimary, marginBottom: spacing.sm, lineHeight: 46 },
+  title: { fontSize: 38, fontWeight: '600', fontFamily: fonts.semiBold, color: colors.textPrimary, marginBottom: spacing.sm, lineHeight: 38 },
   subtitle: { fontSize: 14, fontWeight: '300', fontFamily: fonts.bodyLight, color: '#6b7280', marginBottom: spacing.xxl, lineHeight: 21 },
   inputRow: {
     flexDirection: 'row',
@@ -256,7 +259,8 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     paddingBottom: spacing.xxxl,
   },
-  sheetTitle: { ...typography.title, color: colors.textPrimary, marginBottom: spacing.sm },
+  sheetTitleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
+  sheetTitle: { ...typography.title, color: colors.textPrimary },
   sheetIntro: { ...typography.body, color: colors.textSecondary, marginBottom: spacing.md },
   sheetSubIntro: { ...typography.bodyBold, color: colors.textPrimary, marginBottom: spacing.sm },
   sheetBulletRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },

@@ -1,7 +1,8 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-import { colors, spacing, typography } from '../../theme';
+import VodafoneLogo from '../../../assets/vodafone-logo.svg';
+import { colors, fonts, spacing, typography } from '../../theme';
 import type { OnboardingStackParamList } from '../../types';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'Landing'>;
@@ -15,6 +16,10 @@ export default function LandingScreen({ navigation }: Props) {
         <TouchableOpacity style={styles.cta} onPress={() => navigation.navigate('PhoneEntry')} activeOpacity={0.9}>
           <Text style={styles.ctaText}>Get Started</Text>
         </TouchableOpacity>
+        <View style={styles.poweredByContainer}>
+          <Text style={styles.poweredByText}>Powered by</Text>
+          <VodafoneLogo width={72} height={18} style={styles.vodafoneLogoIcon} />
+        </View>
       </View>
     </View>
   );
@@ -44,4 +49,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   ctaText: { ...typography.bodyBold, color: colors.white, fontSize: 16, fontWeight: '700' },
+  poweredByContainer: { marginTop: spacing.lg, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  poweredByText: { fontSize: 14, fontWeight: '400', fontFamily: fonts.body, color: colors.textMuted },
+  vodafoneLogoIcon: { marginLeft: spacing.xs },
 });

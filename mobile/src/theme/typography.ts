@@ -15,12 +15,12 @@ export const fonts = {
 // the Figma design (greeting headline, section titles, card copy, etc.).
 // Uses Urbanist for headlines/bold accents and Inter for body/labels.
 export const typography: Record<string, TextStyle> = {
-  display: { fontSize: 42, fontFamily: fonts.bold },
-  headline: { fontSize: 28, fontWeight: '700', fontFamily: fonts.bold },
-  title: { fontSize: 24, fontWeight: '700', fontFamily: fonts.bold },
-  sectionTitle: { fontSize: 18, fontWeight: '700', fontFamily: fonts.bold },
-  body: { fontSize: 15, fontWeight: '400', fontFamily: fonts.body },
-  bodyBold: { fontSize: 15, fontWeight: '600', fontFamily: fonts.semiBold },
-  caption: { fontSize: 13, fontWeight: '400', fontFamily: fonts.body },
-  small: { fontSize: 12, fontWeight: '600', fontFamily: fonts.semiBold },
+  display: { fontSize: 42, fontFamily: fonts.bold, lineHeight: 52 },
+  headline: { fontSize: 28, fontWeight: '700', fontFamily: fonts.bold, lineHeight: 36 },
+  title: { fontSize: 24, fontWeight: '700', fontFamily: fonts.bold, lineHeight: 32 },
+  sectionTitle: { fontSize: 18, fontWeight: '700', fontFamily: fonts.bold, lineHeight: 24 },
+  body: { fontSize: 15, fontWeight: '400', fontFamily: fonts.body, lineHeight: 22 },
+  bodyBold: { fontSize: 15, fontWeight: '600', fontFamily: fonts.semiBold, lineHeight: 22 },
+  caption: { fontSize: 13, fontWeight: '400', fontFamily: fonts.body, lineHeight: 19 },
+  small: { fontSize: 12, fontWeight: '600', fontFamily: fonts.semiBold, lineHeight: 16 },
 };

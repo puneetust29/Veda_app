@@ -248,8 +248,8 @@ export default function WelcomeScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  body: { paddingHorizontal: spacing.xl, paddingTop:spacing.xl, flex: 1, flexDirection: 'column' },
-  title: { fontSize: 32, fontWeight: '700', fontFamily: fonts.bold, color: colors.textPrimary, marginBottom: spacing.sm, lineHeight: 40 },
+  body: { paddingHorizontal: spacing.xl, paddingTop: spacing.xs, flex: 1, flexDirection: 'column' },
+  title: { fontSize: 32, fontWeight: '700', fontFamily: fonts.semiBold, color: colors.textPrimary, marginBottom: spacing.sm, marginTop: -spacing.sm, lineHeight: 36 },
   subtitle: { fontSize: 14, fontWeight: '400', fontFamily: fonts.body, color: '#6b7280', marginBottom: spacing.lg, lineHeight: 21 },
   viewContainer: { flex: 1, justifyContent: 'space-between' },
 
@@ -259,7 +259,7 @@ const styles = StyleSheet.create({
     width: 260,
     height: 340,
     alignSelf: 'center',
-    marginTop: spacing.xxxl,
+    marginTop: spacing.md,
   },
 
   contentWrapper: {
@@ -272,7 +272,7 @@ const styles = StyleSheet.create({
     // show through and the layers bleed into each other while animating.
     backgroundColor: colors.background,
     borderColor: colors.borderMuted,
-    borderRadius: radii.xxl,
+    borderRadius: 24,
     overflow: 'hidden',
   },
 
@@ -306,7 +306,7 @@ const styles = StyleSheet.create({
 
   imageCard: {
     width: '100%',
-    borderRadius: radii.lg,
+    borderRadius: 20,
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
@@ -314,13 +314,13 @@ const styles = StyleSheet.create({
 
 
   cardTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    fontFamily: fonts.bold,
+    fontSize: 28,
+    fontWeight: '600',
+    fontFamily: fonts.semiBold,
     color: colors.textPrimary,
     marginBottom: spacing.xs,
     marginTop: spacing.xl,
-    lineHeight: 20,
+    lineHeight: 34,
   },
 
   cardSubtitle: {

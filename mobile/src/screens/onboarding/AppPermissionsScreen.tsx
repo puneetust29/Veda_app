@@ -564,7 +564,7 @@ const styles = StyleSheet.create({
 
   body: {
     paddingHorizontal: spacing.xl,
-    paddingTop: spacing.lg,
+    paddingTop: spacing.sm,
     paddingBottom: spacing.xl,
   },
 
@@ -573,7 +573,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontFamily: fonts.semiBold,
     color: colors.textPrimary,
-    marginTop: spacing.md,
+    marginTop: spacing.xs,
     marginBottom: spacing.sm,
     lineHeight: 46,
   },
