@@ -2,6 +2,7 @@ import { Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, radii, typography } from '../../theme';
+import LocationSuggestions from './LocationSuggestions';
 
 type Prediction = { place_id: string; description: string };
 
@@ -88,20 +89,10 @@ export default function LocationPickerModal({
               contentContainerStyle={styles.predictionsContent}
               keyboardShouldPersistTaps="handled"
             >
-              {predictions.map((pred) => (
-                <TouchableOpacity
-                  key={pred.place_id}
-                  style={styles.predictionItem}
-                  onPress={() => onPredictionSelect(pred.description)}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.predictionIcon}>
-                    <Ionicons name="location" size={16} color={colors.brand} />
-                  </View>
-                  <Text style={styles.predictionText} numberOfLines={2}>{pred.description}</Text>
-                  <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
-                </TouchableOpacity>
-              ))}
+              <LocationSuggestions
+                predictions={predictions}
+                onSelect={onPredictionSelect}
+              />
             </ScrollView>
           )}
         </View>
@@ -230,36 +221,8 @@ const styles = StyleSheet.create({
   },
   predictionsList: {
     flex: 1,
-    marginTop: spacing.md,
-    paddingHorizontal: spacing.lg,
   },
   predictionsContent: {
-    gap: spacing.sm,
     paddingBottom: spacing.lg,
-  },
-  predictionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radii.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    gap: spacing.md,
-  },
-  predictionIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: radii.sm,
-    backgroundColor: colors.badgeTint,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  predictionText: {
-    ...typography.body,
-    flex: 1,
-    fontSize: 14,
-    color: colors.textPrimary,
   },
 });

@@ -33,6 +33,28 @@ type CardItem = Extract<ChatItem, { kind: 'card' }>;
 
 const WATCHDOG_MS = 90_000;
 
+/**
+ * Insurance can already be active from several sources: a receipt or success
+ * item added earlier in this thread, the workflow state, or the trip
+ * preparation card (which reflects what the API reported at load). Checking
+ * only one of them makes the flow re-offer a policy the customer already owns.
+ */
+function isInsuranceActive(items: ChatItem[], completedSteps: WorkflowStep[]): boolean {
+  const hasReceipt = items.some((item) => {
+    if (item.kind === 'receipt' && 'planName' in item) {
+      return (
+        item.planName?.toLowerCase().includes('insurance') ||
+        item.planName?.toLowerCase().includes('travel')
+      );
+    }
+    if (item.kind === 'confirmation_success' && item.planType === 'insurance') return true;
+    return false;
+  });
+  const tripPrepCard = items.find((item) => item.kind === 'trip_preparation');
+  const hasFromAPI = tripPrepCard?.kind === 'trip_preparation' && tripPrepCard.hasInsuranceActive;
+  return hasReceipt || hasFromAPI || completedSteps.includes('insurance');
+}
+
 function greetingText(
   event: CalendarEvent,
   hasRoamingActive: boolean,
@@ -64,7 +86,13 @@ function greetingText(
 
 export function useWorkflowChat(event: CalendarEvent) {
   const { customer } = useAuth();
-  const { subscriptions, activeInsurance, refreshSubscriptions, refreshInsurance } = useSubscriptionInsurance();
+  const {
+    subscriptions,
+    activeInsurance,
+    refreshSubscriptions,
+    refreshInsurance,
+    loading: subscriptionsLoading,
+  } = useSubscriptionInsurance();
 
   const [workflowState, setWorkflowState] = useState<WorkflowState>({
     currentStep: 'roaming',
@@ -114,6 +142,21 @@ export function useWorkflowChat(event: CalendarEvent) {
       commitItems(
         itemsRef.current.map((item) =>
           item.kind === 'confirmation' && item.actionId === actionId ? { ...item, ...patch } : item,
+        ),
+      );
+    },
+    [commitItems],
+  );
+
+  // The trip preparation card is built once at mount from the API's view of
+  // existing subscriptions, so purchases made later in this thread have to be
+  // written back onto it — otherwise its checklist and Continue button keep
+  // showing work that is already done.
+  const markTripPrepActive = useCallback(
+    (patch: { hasRoamingActive?: boolean; hasInsuranceActive?: boolean }) => {
+      commitItems(
+        itemsRef.current.map((item) =>
+          item.kind === 'trip_preparation' ? { ...item, ...patch } : item,
         ),
       );
     },
@@ -276,6 +319,10 @@ export function useWorkflowChat(event: CalendarEvent) {
 
   // Initialize: check for existing subscriptions and show trip prep
   useEffect(() => {
+    // Wait for the subscription/insurance context to finish loading: this runs
+    // once, and starting before the data lands would build the trip
+    // preparation card as if nothing were active.
+    if (subscriptionsLoading) return;
     if (startedRef.current) return;
     startedRef.current = true;
 
@@ -388,7 +435,7 @@ export function useWorkflowChat(event: CalendarEvent) {
       abortControllerRef.current?.abort();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally mount-once, but depend on context data
-  }, [subscriptions, activeInsurance]);
+  }, [subscriptions, activeInsurance, subscriptionsLoading]);
 
   const confirm = useCallback(
     (actionId: string) => {
@@ -415,14 +462,13 @@ export function useWorkflowChat(event: CalendarEvent) {
           updateConfirmationItem(actionId, { state: 'confirmed' });
           // Refresh subscriptions in context immediately after purchase
           await refreshSubscriptions();
+          markTripPrepActive({ hasRoamingActive: true });
           // Check if insurance is already active
-          const hasInsuranceReceipt = itemsRef.current.some((item) => {
-            if (item.kind !== 'receipt' || !('planName' in item)) return false;
-            const isInsurancePlan = item.planName?.toLowerCase().includes('insurance') ||
-                                     item.planName?.toLowerCase().includes('travel');
-            return isInsurancePlan;
-          });
-          console.log('[useWorkflowChat] confirm - hasInsuranceReceipt:', hasInsuranceReceipt);
+          const hasInsuranceActive = isInsuranceActive(
+            itemsRef.current,
+            workflowStateRef.current.completedSteps,
+          );
+          console.log('[useWorkflowChat] confirm - hasInsuranceActive:', hasInsuranceActive);
 
           const newItems: ChatItem[] = [
             {
@@ -444,7 +490,7 @@ export function useWorkflowChat(event: CalendarEvent) {
           appendItems(newItems);
 
           // If insurance already active, show completion
-          if (hasInsuranceReceipt) {
+          if (hasInsuranceActive) {
             console.log('[useWorkflowChat] Insurance already active, showing completion...');
             const hasPaymentComplete = itemsRef.current.some((item) => item.kind === 'payment_complete');
             const itemsToAdd: ChatItem[] = [];
@@ -530,7 +576,7 @@ export function useWorkflowChat(event: CalendarEvent) {
           });
         });
     },
-    [appendItems, updateConfirmationItem, event.id, refreshSubscriptions, buildWhatsAppShareItems],
+    [appendItems, updateConfirmationItem, event.id, refreshSubscriptions, buildWhatsAppShareItems, markTripPrepActive],
   );
 
   const decline = useCallback(
@@ -555,22 +601,12 @@ export function useWorkflowChat(event: CalendarEvent) {
         console.log('[useWorkflowChat] Advancing to insurance...');
 
         // Check if insurance is already purchased (from receipts, confirmations, or API)
-        const hasInsuranceReceipt = itemsRef.current.some((item) => {
-          if (item.kind === 'receipt' && 'planName' in item) {
-            return item.planName?.toLowerCase().includes('insurance') || item.planName?.toLowerCase().includes('travel');
-          }
-          if (item.kind === 'confirmation_success' && (item as any).planType === 'insurance') {
-            return true;
-          }
-          return false;
-        });
+        const hasInsuranceActive = isInsuranceActive(
+          itemsRef.current,
+          workflowStateRef.current.completedSteps,
+        );
 
-        const tripPrepCard = itemsRef.current.find((item) => item.kind === 'trip_preparation');
-        const hasInsuranceFromAPI = tripPrepCard?.kind === 'trip_preparation' && tripPrepCard.hasInsuranceActive;
-        const hasInsuranceCompleted = workflowStateRef.current.completedSteps.includes('insurance');
-        const hasInsuranceActive = hasInsuranceReceipt || hasInsuranceFromAPI || hasInsuranceCompleted;
-
-        console.log('[useWorkflowChat] Insurance check - hasInsuranceReceipt:', hasInsuranceReceipt, 'hasInsuranceFromAPI:', hasInsuranceFromAPI, 'hasInsuranceActive:', hasInsuranceActive);
+        console.log('[useWorkflowChat] Insurance check - hasInsuranceActive:', hasInsuranceActive);
 
         if (hasInsuranceActive) {
           // Insurance already purchased, show completion
@@ -665,6 +701,8 @@ export function useWorkflowChat(event: CalendarEvent) {
       const hasRoamingActive = hasRoamingReceipt || hasRoamingCompleted;
 
       console.log('[useWorkflowChat] handleInsurancePurchased - hasRoamingReceipt:', hasRoamingReceipt, 'hasRoamingCompleted:', hasRoamingCompleted);
+
+      markTripPrepActive({ hasInsuranceActive: true });
 
       // Create receipt for insurance purchase to track completion
       const newItems: ChatItem[] = [
@@ -767,8 +805,59 @@ export function useWorkflowChat(event: CalendarEvent) {
 
       setPhase('complete');
     },
-    [appendItems, event, buildWhatsAppShareItems],
+    [appendItems, event, buildWhatsAppShareItems, markTripPrepActive],
   );
+
+  // Roaming ended without a recommendable plan (`no_plan_found`) — move the
+  // workflow straight on to travel insurance instead of leaving the user on a
+  // dead-end retry.
+  const continueToInsurance = useCallback(() => {
+    abortControllerRef.current?.abort();
+    clearWatchdog();
+
+    if (itemsRef.current.some((item) => item.kind === 'travel_insurance')) {
+      setPhase('complete');
+      return;
+    }
+
+    appendItems([
+      {
+        id: nextId(),
+        createdAt: Date.now(),
+        kind: 'text',
+        role: 'agent',
+        text: 'No problem. Let\'s make sure you\'re covered with travel insurance for your trip.',
+      },
+    ]);
+
+    setWorkflowState((prev) => ({
+      currentStep: 'insurance',
+      // Roaming was skipped, not completed
+      completedSteps: prev.completedSteps,
+    }));
+    setPhase('streaming');
+
+    api
+      .getInsuranceRecommendation(event.id)
+      .then((plan) => {
+        if (plan) {
+          appendItems([
+            {
+              id: nextId(),
+              createdAt: Date.now(),
+              kind: 'travel_insurance',
+              plan,
+              calendarEventId: event.id,
+            },
+          ]);
+        }
+        setPhase('complete');
+      })
+      .catch((err) => {
+        if (__DEV__) console.warn('[useWorkflowChat] Failed to fetch insurance after no roaming plan', err);
+        setPhase('complete');
+      });
+  }, [appendItems, clearWatchdog, event.id]);
 
   const retry = useCallback(() => {
     abortControllerRef.current?.abort();
@@ -792,21 +881,13 @@ export function useWorkflowChat(event: CalendarEvent) {
 
       // Get trip prep card to check initial status
       const tripPrepCard = itemsRef.current.find((item) => item.kind === 'trip_preparation');
-      const tripPrepInsuranceActive = tripPrepCard?.kind === 'trip_preparation' ? tripPrepCard.hasInsuranceActive : false;
       const tripPrepRoamingActive = tripPrepCard?.kind === 'trip_preparation' ? tripPrepCard.hasRoamingActive : false;
 
       // Check if insurance is already purchased (from receipts, workflowState, or trip prep)
-      const hasInsuranceReceipt = itemsRef.current.some((item) => {
-        if (item.kind === 'receipt' && 'planName' in item) {
-          return item.planName?.toLowerCase().includes('insurance') || item.planName?.toLowerCase().includes('travel');
-        }
-        if (item.kind === 'confirmation_success' && (item as any).planType === 'insurance') {
-          return true;
-        }
-        return false;
-      });
-      const hasInsuranceCompleted = workflowStateRef.current.completedSteps.includes('insurance');
-      const hasInsuranceActive = hasInsuranceReceipt || hasInsuranceCompleted || tripPrepInsuranceActive;
+      const hasInsuranceActive = isInsuranceActive(
+        itemsRef.current,
+        workflowStateRef.current.completedSteps,
+      );
 
       // Check if roaming is already purchased (from receipts, workflowState, or trip prep)
       const hasRoamingReceipt = itemsRef.current.some((item) => {
@@ -1088,5 +1169,5 @@ export function useWorkflowChat(event: CalendarEvent) {
     }
   }, [appendItems, event.id, startStream]);
 
-  return { items, phase, confirm, decline, retry, sendMessage, handleInsurancePurchased, workflowState, continueWorkflow };
+  return { items, phase, confirm, decline, retry, sendMessage, handleInsurancePurchased, workflowState, continueWorkflow, continueToInsurance };
 }

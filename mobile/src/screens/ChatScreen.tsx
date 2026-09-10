@@ -27,6 +27,21 @@ function isInsuranceAlreadyPurchased(items: any[], currentIdx: number): boolean 
   return false;
 }
 
+function hasActiveTravelInsurance(items: any[], workflowState: any): boolean {
+  const hasInsuranceConfirmation = items.some(
+    (item) => item.kind === 'confirmation_success' && item.planType === 'insurance'
+  );
+
+  const hasInsuranceInTripPrep = items.some(
+    (item) => item.kind === 'trip_preparation' && item.hasInsuranceActive
+  );
+
+  const hasInsuranceCompleted = Array.isArray(workflowState?.completedSteps)
+    && workflowState.completedSteps.includes('insurance');
+
+  return hasInsuranceConfirmation || hasInsuranceInTripPrep || hasInsuranceCompleted;
+}
+
 export default function ChatScreen({ route, navigation }: Props) {
   const { event } = route.params;
   const { customer } = useAuth();
@@ -41,9 +56,14 @@ export default function ChatScreen({ route, navigation }: Props) {
   const billPaymentResult = useBillPaymentChat(event);
 
   const { items, phase } = isBillPayment ? billPaymentResult : workflowResult;
-  const { confirm, decline, retry, sendMessage, handleInsurancePurchased, workflowState, continueWorkflow } = isBillPayment
-    ? { confirm: () => { }, decline: () => { }, retry: () => { }, sendMessage: () => { }, handleInsurancePurchased: () => { }, workflowState: {}, continueWorkflow: () => { } }
+  const { confirm, decline, retry, sendMessage, handleInsurancePurchased, workflowState, continueWorkflow, continueToInsurance } = isBillPayment
+    ? { confirm: () => { }, decline: () => { }, retry: () => { }, sendMessage: () => { }, handleInsurancePurchased: () => { }, workflowState: {}, continueWorkflow: () => { }, continueToInsurance: () => { } }
     : workflowResult;
+
+  // Roaming finished with nothing to recommend — offer travel insurance in the
+  // footer instead of a retry-and-bail pair of buttons.
+  const hasNoRoamingPlan = items.some((item) => item.kind === 'error' && item.code === 'no_plan_found');
+  const insuranceAlreadyActive = hasActiveTravelInsurance(items, workflowState);
 
   const scrollViewRef = useRef<ScrollView>(null);
   const [draft, setDraft] = useState('');
@@ -175,6 +195,7 @@ export default function ChatScreen({ route, navigation }: Props) {
                 onConfirm={confirm}
                 onDecline={decline}
                 onInsurancePurchased={handleInsurancePurchased}
+                insurancePurchased={insuranceAlreadyActive}
                 onContinuePrep={continueWorkflow}
                 continuePrepLoading={phase === 'streaming'}
                 // Pass the next item if it's a confirmation for a roaming card
@@ -195,10 +216,16 @@ export default function ChatScreen({ route, navigation }: Props) {
               <Text style={styles.primaryButtonText}>Retry</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.secondaryButton}
-              onPress={() => navigation.replace('FlightDetail', { event })}
+              style={[styles.secondaryButton, hasNoRoamingPlan && styles.secondaryButtonNarrow]}
+              onPress={
+                hasNoRoamingPlan && !insuranceAlreadyActive
+                  ? continueToInsurance
+                  : () => navigation.replace('FlightDetail', { event })
+              }
             >
-              <Text style={styles.secondaryButtonText}>Continue without chat</Text>
+              <Text style={styles.secondaryButtonText}>
+                {hasNoRoamingPlan && !insuranceAlreadyActive ? 'Continue with travel insurance' : 'Continue without chat'}
+              </Text>
             </TouchableOpacity>
           </View>
         )}
@@ -273,6 +300,12 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: 'rgba(230, 0, 0, 0.07)',
     backgroundColor: '#FFFFFF',
+  },
+  // "Continue with travel insurance" is a long label to fit next to Retry —
+  // let it give up width and wrap instead of pushing the row off-screen.
+  secondaryButtonNarrow: {
+    flexShrink: 1,
+    paddingHorizontal: 14,
   },
   secondaryButtonText: {
     color: '#E60000',

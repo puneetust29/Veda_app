@@ -9,7 +9,7 @@ type Props = {
   onSelect: (description: string) => void;
 };
 
-export default function DestinationSuggestions({ predictions, onSelect }: Props) {
+export default function LocationSuggestions({ predictions, onSelect }: Props) {
   if (predictions.length === 0) return null;
 
   return (
