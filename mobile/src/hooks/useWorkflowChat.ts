@@ -560,7 +560,6 @@ export function useWorkflowChat(event: CalendarEvent) {
               role: 'agent',
               text: '✓ Roaming is set up. Now let\'s get you travel insurance.',
             },
-            ...buildWhatsAppShareItems(),
           ]);
 
           // Move to insurance step
