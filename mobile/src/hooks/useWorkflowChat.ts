@@ -181,14 +181,33 @@ export function useWorkflowChat(event: CalendarEvent) {
     const dateFormat = { month: 'short', day: 'numeric', timeZone: 'UTC' } as const;
     const startFormatted = startDate.toLocaleDateString('en-US', dateFormat);
     const endFormatted = endDate.toLocaleDateString('en-US', dateFormat);
-    const isRoundTrip = startFormatted !== endFormatted;
 
-    const contactName = customer.emergency_contact_name || 'Emergency Contact';
-    const travellerName = customer.full_name?.split(' ')[0] || 'Your friend';
+    const contactName = customer?.emergency_contact_name || 'Emergency Contact';
+    const travellerName = customer?.full_name || 'Your friend';
     const destination = event.destination ?? 'their destination';
-    const text = isRoundTrip
-      ? `Hi ${contactName},\n\n${travellerName} is travelling to ${destination} from ${startFormatted} to ${endFormatted}.`
-      : `Hi ${contactName},\n\n${travellerName} is travelling to ${destination} on ${startFormatted}.`;
+
+    // Generate message using Message Agent (dynamic, configurable)
+    const { messageAgent } = require('../services/messageAgent');
+    const message = messageAgent.generateMessage({
+      type: 'trip_notification',
+      tone: 'informal',
+      contactName,
+      tripData: {
+        travelerName: travellerName,
+        destination,
+        startDate: startFormatted,
+        endDate: endFormatted,
+        travelers: '1+ travelers',
+      },
+    });
+    const text = message.text;
+    const tripData = {
+      travelerName: travellerName,
+      destination,
+      startDate: startFormatted,
+      endDate: endFormatted,
+      travelers: '1+ travelers',
+    };
 
     return [
       {
@@ -205,6 +224,8 @@ export function useWorkflowChat(event: CalendarEvent) {
         text,
         contactName,
         contactPhone: customer.emergency_contact_phone,
+        messageType: 'trip_notification',
+        tripData,
       },
     ];
   }, [customer, event]);
@@ -1105,7 +1126,7 @@ export function useWorkflowChat(event: CalendarEvent) {
       setWorkflowState({ currentStep: 'complete', completedSteps: ['roaming', 'insurance'] });
       setPhase('complete');
     } else if (hasRoamingActive && !hasInsuranceActive) {
-      // Only roaming active - go to insurance
+      // Only roaming active - proceed to insurance
       appendItems([
         {
           id: nextId(),

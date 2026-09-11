@@ -1,20 +1,57 @@
-import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { useState, useMemo } from 'react';
+import { StyleSheet, Text, View, ScrollView, Pressable, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { shareToWhatsApp } from '../../lib/whatsapp';
-import { brandIcons } from '../../theme';
+import { brandIcons, colors, spacing, radii, typography } from '../../theme';
 import CardShell, { cardShellStyles } from './CardShell';
+import type { MessageTone } from '../../config/messageTemplates';
 
 type Props = {
   text: string;
   contactName?: string;
   contactPhone?: string;
+  messageType?: 'trip_notification' | 'emergency_alert' | 'request_favor' | 'casual_update' | 'formal_notice';
+  tripData?: {
+    travelerName: string;
+    destination: string;
+    startDate: string;
+    endDate: string;
+    travelers: string;
+  };
 };
 
-export default function WhatsAppShareCard({ text, contactName = 'Emergency Contact', contactPhone }: Props) {
+const AVAILABLE_TONES: MessageTone[] = ['informal', 'formal', 'friendly'];
+
+export default function WhatsAppShareCard({
+  text: initialText,
+  contactName = 'Emergency Contact',
+  contactPhone,
+  messageType = 'trip_notification',
+  tripData,
+}: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedTone, setSelectedTone] = useState<MessageTone>('informal');
+  const [editedMessage, setEditedMessage] = useState<string | null>(null);
+  const [isInputFocused, setIsInputFocused] = useState(false);
+
+  const currentText = useMemo(() => {
+    if (!tripData) return initialText;
+
+    const { messageAgent } = require('../../services/messageAgent');
+    try {
+      const message = messageAgent.generateMessage({
+        type: messageType,
+        tone: selectedTone,
+        contactName: contactName,
+        tripData,
+      });
+      return message.text;
+    } catch {
+      return initialText;
+    }
+  }, [selectedTone, tripData, messageType, initialText, contactName]);
 
   if (!contactPhone) {
     return (
@@ -26,11 +63,18 @@ export default function WhatsAppShareCard({ text, contactName = 'Emergency Conta
     );
   }
 
+  const messageToSend = editedMessage || currentText;
+
+  const handleToneChange = (tone: MessageTone) => {
+    setSelectedTone(tone);
+    setEditedMessage(null); // Reset edits when tone changes
+  };
+
   const handleShare = async () => {
     setLoading(true);
     setError(null);
     try {
-      await shareToWhatsApp(contactPhone, text);
+      await shareToWhatsApp(contactPhone, messageToSend);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to open WhatsApp');
     } finally {
@@ -49,9 +93,49 @@ export default function WhatsAppShareCard({ text, contactName = 'Emergency Conta
       footer={error ? <Text style={styles.error}>{error}</Text> : undefined}
     >
       <View style={cardShellStyles.divider} />
+      {tripData && (
+        <>
+          <View style={cardShellStyles.section}>
+            <Text style={cardShellStyles.sectionLabel}>Tone</Text>
+            <View style={styles.toneContainer}>
+              {AVAILABLE_TONES.map((tone) => (
+                <Pressable
+                  key={tone}
+                  onPress={() => handleToneChange(tone)}
+                  style={[styles.toneButton, selectedTone === tone && styles.toneButtonActive]}
+                >
+                  <Text
+                    style={[
+                      styles.toneButtonText,
+                      selectedTone === tone && styles.toneButtonTextActive,
+                    ]}
+                  >
+                    {tone.charAt(0).toUpperCase() + tone.slice(1)}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+          <View style={cardShellStyles.divider} />
+        </>
+      )}
       <View style={cardShellStyles.section}>
         <Text style={cardShellStyles.sectionLabel}>Message</Text>
-        <Text style={styles.messageText}>{text}</Text>
+        <View style={styles.messageInputContainer}>
+          <TextInput
+            style={[styles.messageInput, isInputFocused && styles.messageInputFocused]}
+            placeholder="Edit your message..."
+            placeholderTextColor={colors.textDisabled}
+            value={messageToSend}
+            onChangeText={setEditedMessage}
+            onFocus={() => setIsInputFocused(true)}
+            onBlur={() => setIsInputFocused(false)}
+            multiline
+            editable={!loading}
+            textAlignVertical="top"
+          />
+          <Text style={styles.editHint}>tap to edit</Text>
+        </View>
       </View>
     </CardShell>
   );
@@ -59,31 +143,77 @@ export default function WhatsAppShareCard({ text, contactName = 'Emergency Conta
 
 const styles = StyleSheet.create({
   fallbackShadow: {
-    marginBottom: 12,
+    marginBottom: spacing.md,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
     shadowRadius: 16,
     elevation: 4,
-    borderRadius: 24,
+    borderRadius: radii.xl,
   },
   fallbackCard: {
-    borderRadius: 24,
-    backgroundColor: '#FFFFFF',
-    padding: 16,
+    borderRadius: radii.xl,
+    backgroundColor: colors.background,
+    padding: spacing.lg,
   },
   messageText: {
-    fontSize: 14,
-    fontWeight: '400',
-    fontFamily: 'Urbanist_400Regular',
-    color: '#1a1a1a',
+    ...typography.caption,
+    color: colors.textPrimary,
     lineHeight: 20,
   },
+  messageInputContainer: {
+    position: 'relative',
+  },
+  messageInput: {
+    ...typography.caption,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    backgroundColor: colors.surface,
+    color: colors.textPrimary,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    minHeight: 100,
+    lineHeight: 20,
+  },
+  messageInputFocused: {
+    backgroundColor: colors.white,
+    borderColor: colors.brand,
+  },
+  editHint: {
+    ...typography.caption,
+    color: colors.textMuted,
+    marginTop: spacing.xs,
+    textAlign: 'right',
+  },
   error: {
-    marginBottom: 12,
-    marginHorizontal: 16,
-    fontSize: 12,
+    marginBottom: spacing.md,
+    marginHorizontal: spacing.lg,
+    ...typography.small,
     color: '#d32f2f',
-    fontWeight: '500',
+  },
+  toneContainer: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    flexWrap: 'wrap',
+  },
+  toneButton: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radii.md,
+    backgroundColor: colors.neutralFillLight,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+  },
+  toneButtonActive: {
+    backgroundColor: colors.accentCta,
+    borderColor: colors.accentCta,
+  },
+  toneButtonText: {
+    ...typography.small,
+    color: colors.textSecondary,
+  },
+  toneButtonTextActive: {
+    color: colors.white,
   },
 });
