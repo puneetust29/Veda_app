@@ -152,12 +152,299 @@ export type DeviceSyncResult = {
   skipped_non_flight: number;
 };
 
+// --- Geofencing ---
+
+export type GeofenceType = 'home' | 'work' | 'custom' | 'temporary';
+
+export type TemporaryGeofenceMetadata = {
+  taskReminder: string;
+  expiresAt: string;
+  createdByMessage: string;
+};
+
+export type Geofence = {
+  id: string;
+  label: string;
+  type: GeofenceType;
+  latitude: number;
+  longitude: number;
+  radiusMeters: number;
+  enabled: boolean;
+  createdAt: string;
+  temporaryMetadata?: TemporaryGeofenceMetadata;
+};
+
+export type GeofenceEvent = {
+  type: 'GEOFENCE_ENTER' | 'GEOFENCE_EXIT';
+  geofenceId: string;
+  geofenceLabel: string;
+  geofenceType: GeofenceType;
+  timestamp: string;
+  latitude: number;
+  longitude: number;
+};
+
+export type LocationSettings = {
+  locationEnabled: boolean;
+  backgroundLocationEnabled: boolean;
+  geofencingEnabled: boolean;
+};
+
+// --- Phase 2: Semantic location context ---
+
+export type SemanticLocationContext = {
+  currentPlace: string | null;
+  currentGeofenceId: string | null;
+  currentGeofenceType: GeofenceType | null;
+  arrivedAt: string | null;
+  lastDepartedPlace: string | null;
+  lastDepartedAt: string | null;
+  updatedAt: string;
+};
+
+// --- Phase 2: Workflow engine ---
+
+export type WorkflowTrigger = {
+  event: 'GEOFENCE_ENTER' | 'GEOFENCE_EXIT';
+  geofenceId?: string;
+  geofenceType?: GeofenceType;
+};
+
+export type WorkflowActionDef =
+  | { kind: 'notify'; title: string; body: string }
+  | { kind: 'location_action'; action: LocationAction };
+
+export type WorkflowDefinition = {
+  id: string;
+  trigger: WorkflowTrigger;
+  actions: WorkflowActionDef[];
+  enabled: boolean;
+  expiresAt?: string;
+};
+
+// --- Location Intelligence Platform ---
+
+export type PlaceCategory =
+  | 'home' | 'work' | 'frequent'
+  | 'grocery' | 'pharmacy' | 'hospital' | 'urgent_care'
+  | 'gas_station' | 'coffee_shop' | 'restaurant' | 'atm'
+  | 'bank' | 'ev_charger' | 'park' | 'shopping'
+  | 'transit' | 'airport' | 'unknown';
+
+export type NearbyPlaceResult = {
+  placeId: string;
+  name: string;
+  address: string;
+  distanceMetres?: number;
+  isOpen?: boolean | null;
+  rating?: number | null;
+  category: PlaceCategory;
+};
+
+export type CurrentPlaceContext = {
+  semanticLabel: string;
+  placeCategory: string;
+  arrivedAt: string | null;
+  confidence: 'high' | 'medium' | 'low';
+};
+
+export type LocationTransition = {
+  kind: 'arrived' | 'departed';
+  place: string;
+  minutesAgo: number;
+};
+
+export type SavedPlace = {
+  id: string;
+  label: string;
+  category: PlaceCategory;
+  placeId: string | null;
+  geofenceId: string | null;
+  isFavorite: boolean;
+  addedAt: string;
+};
+
+export type EnrichedLocationContext = {
+  currentPlace: CurrentPlaceContext | null;
+  nearbyPlaces: NearbyPlaceResult[];
+  savedPlaces: SavedPlace[];
+  locationMode: 'precise' | 'semantic' | 'offline' | 'disabled';
+  locationConfidence: 'high' | 'medium' | 'low';
+  recentTransition: LocationTransition | null;
+  routineSummary: string | null;
+  privacyMode: boolean;
+};
+
+export type PlaceSearchSettings = {
+  placeSearchEnabled: boolean;
+  proximityRecommendationsEnabled: boolean;
+};
+
+export type ContextRule = {
+  id: string;
+  placeCategories: PlaceCategory[];
+  notificationTitle: string;
+  notificationBody: string;
+  conditionKey: string | null;
+  cooldownMinutes: number;
+  maxFiresPerDay: number;
+};
+
+// --- Phase 2: Location actions ---
+
+export type LocationActionKind =
+  | 'disable_tracking'
+  | 'pause_geofencing'
+  | 'resume_geofencing'
+  | 'list_locations'
+  | 'delete_location'
+  | 'create_temporary_geofence'
+  | 'set_location_context'
+  // Location Intelligence
+  | 'search_nearby_places'
+  | 'show_place_details'
+  | 'save_favorite_place'
+  | 'remove_favorite_place'
+  | 'request_navigation'
+  | 'show_shopping_list_prompt';
+
+export type LocationAction = {
+  kind: LocationActionKind;
+  geofenceId?: string;
+  newGeofence?: Omit<Geofence, 'id' | 'createdAt'>;
+  contextMessage?: string;
+  // Location Intelligence fields
+  category?: PlaceCategory;
+  placeId?: string;
+  placeLabel?: string;
+  openNow?: boolean;
+  radiusMiles?: number;
+  keyword?: string;
+};
+
+// --- Phase 2: Safety framework (interfaces only — no messaging integration) ---
+
+export type TrustedContact = {
+  id: string;
+  name: string;
+  phone: string;
+  relationship?: string;
+};
+
+export type ArrivalShareEvent = {
+  contactId: string;
+  geofenceId: string;
+  arrivedAt: string;
+  message: string;
+};
+
+export type SafetyCheckEvent = {
+  contactId: string;
+  triggeredAt: string;
+  expectedArrivalAt: string;
+  checkInStatus: 'pending' | 'checked_in' | 'overdue';
+};
+
+export type SafetyWorkflowDefinition = {
+  id: string;
+  contact: TrustedContact;
+  shareOnArrival: boolean;
+  checkInTimeoutMinutes: number;
+  targetGeofenceId?: string;
+};
+
+// --- Phase 3: Routine learning & behavioral intelligence ---
+
+// 48 half-hour buckets covering 24h (index 0 = 00:00–00:30, 47 = 23:30–00:00)
+export type TimeBuckets = number[];
+
+export type PlaceVisitStats = {
+  geofenceId: string;
+  geofenceLabel: string;
+  geofenceType: GeofenceType;
+  totalVisits: number;
+  // weekdayVisits[0] = Monday … [6] = Sunday
+  weekdayVisits: [number, number, number, number, number, number, number];
+  arrivalTimeBuckets: TimeBuckets;   // 48 entries
+  departureTimeBuckets: TimeBuckets; // 48 entries
+  dwellMinutesAvg: number;
+  dwellMinutesM2: number;            // Welford's online variance accumulator
+  dwellCount: number;
+  lastVisitAt: string;               // ISO — used for 30-day prune
+  firstSeenAt: string;
+};
+
+export type CommutePattern = {
+  id: string;                        // `${fromGeofenceId}::${toGeofenceId}`
+  fromGeofenceId: string;
+  fromLabel: string;
+  toGeofenceId: string;
+  toLabel: string;
+  weekdays: number[];                // observed 0=Mon…6=Sun
+  departureBucket: number;           // dominant 30-min slot of departure
+  durationMinutesAvg: number;
+  durationMinutesM2: number;         // Welford's M2
+  occurrences: number;
+  confidence: number;                // 0..1 (occurrences / 10, capped)
+  lastObservedAt: string;
+};
+
+export type RoutineModel = {
+  homeGeofenceId: string | null;
+  homeLabel: string | null;
+  homeConfidence: number;
+  workGeofenceId: string | null;
+  workLabel: string | null;
+  workConfidence: number;
+  inferredAt: string;
+};
+
+export type ArrivalPrediction = {
+  id: string;
+  fromGeofenceId: string;
+  fromLabel: string;
+  toGeofenceId: string;
+  toLabel: string;
+  predictedArrivalAt: string;
+  typicalDurationMinutes: number;
+  confidence: number;
+  departedAt: string;
+  expiresAt: string;
+};
+
+export type AnomalyType = 'late_commute' | 'early_arrival' | 'unusual_dwell';
+
+export type AnomalySignal = {
+  type: AnomalyType;
+  fromLabel?: string;
+  toLabel: string;
+  deviationMinutes: number;   // positive = late, negative = early
+  typicalMinutes: number;
+  detectedAt: string;
+};
+
+export type ProactiveSuggestionKind =
+  | 'heading_home'
+  | 'late_commute'
+  | 'early_arrival'
+  | 'home_place_inferred'
+  | 'work_place_inferred'
+  | 'frequent_place_unlabeled';
+
+export type ProactiveSuggestion = {
+  id: string;
+  kind: ProactiveSuggestionKind;
+  message: string;
+  expiresAt: string;
+  geofenceId?: string;
+};
+
 export type RootStackParamList = {
   Onboarding: undefined;
   Dashboard: undefined;
   FlightDetail: { event: CalendarEvent };
   Chat: { event: CalendarEvent };
-  VedaChat: undefined;
+  VedaChat: { initialMessage?: string } | undefined;
   TaxiChat: undefined;
   Subscriptions: undefined;
   RoamingPlans: undefined;
@@ -167,6 +454,9 @@ export type RootStackParamList = {
   DeviceCalendar: undefined;
   Gmail: undefined;
   Contacts: undefined;
+  GeofenceSettings: undefined;
+  GeofenceEdit: { geofenceId?: string } | undefined;
+  SavedPlaces: undefined;
   // Dev-only integrations catalog (see dev/devFlags.ts and dev/DevNavigator.tsx)
   // -- a self-contained nested navigator; its own screens/params live in
   // dev/types.ts, not here.
@@ -309,7 +599,15 @@ export type AgentStreamEvent =
       data: { action_id: string; summary: string; risk: 'commit' | 'read'; plan_id: string; calendar_event_id: string };
     }
   | { type: 'error'; data: { code: string; message?: string; retryable: boolean } }
+  | { type: 'geofence_event'; data: GeofenceEvent }
+  | { type: 'location_action'; data: LocationAction }
   | { type: 'done'; data?: { status?: string } | null };
+
+export type NavigationIntent = {
+  destinationName: string;
+  destinationAddress: string;
+  placeId: string;
+};
 
 // The stable render model the UI works off. Derived from `AgentStreamEvent`s via
 // `chatThread.ts`'s `applyStreamEvent` reducer, plus a few client-generated items
@@ -363,4 +661,6 @@ export type ChatItem =
       destination: string;
     })
   | (ChatItemBase & { kind: 'transport'; transport: TransportResultPayload })
-  | (ChatItemBase & { kind: 'error'; message: string; retryable: boolean; code?: string });
+  | (ChatItemBase & { kind: 'error'; message: string; retryable: boolean })
+  | (ChatItemBase & { kind: 'location_action'; action: LocationAction; result?: string })
+  | (ChatItemBase & { kind: 'nearby_places'; places: NearbyPlaceResult[]; category: PlaceCategory; searchLabel: string });

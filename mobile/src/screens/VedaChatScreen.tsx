@@ -10,8 +10,17 @@ import { colors, spacing, typography } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'VedaChat'>;
 
-export default function VedaChatScreen({ navigation }: Props) {
+export default function VedaChatScreen({ navigation, route }: Props) {
   const { items, phase, sendMessage, retry } = useVedaChat();
+  const initialMessage = route.params?.initialMessage;
+  const didAutoSend = useRef(false);
+
+  useEffect(() => {
+    if (initialMessage && !didAutoSend.current) {
+      didAutoSend.current = true;
+      sendMessage(initialMessage);
+    }
+  }, [initialMessage, sendMessage]);
   const scrollViewRef = useRef<ScrollView>(null);
   const [draft, setDraft] = useState('');
 
