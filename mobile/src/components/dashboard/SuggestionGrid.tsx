@@ -49,7 +49,7 @@ export default function SuggestionGrid({ suggestions, onShuffle }: Props) {
   return (
     <View>
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Things you can ask me</Text>
+        <Text style={styles.sectionTitle}>Things you can ask Veda</Text>
         <TouchableOpacity onPress={onShuffle} disabled={!onShuffle} hitSlop={8}>
           <SvgXml xml={shuffleXml} width={24} height={24} />
         </TouchableOpacity>
