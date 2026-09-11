@@ -111,7 +111,7 @@ function PrivacyAccordions({
   onToggle: (id: AccordionId, expanded: boolean) => void;
   detailed?: boolean;
 }) {
-  const [openId, setOpenId] = useState<AccordionId | null>(null);
+  const [openId, setOpenId] = useState<AccordionId | null>('use');
 
   const handleToggle = (id: AccordionId, expanded: boolean) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -258,7 +258,7 @@ function PrivacyAccordions({
 // until each accordion has been opened at least once.
 export default function ConsentScreen({ navigation }: Props) {
   const [openedAccordions, setOpenedAccordions] = useState<Record<AccordionId, boolean>>({
-    use: false,
+    use: true,
     safe: false,
     ai: false,
     control: false,
@@ -285,7 +285,7 @@ export default function ConsentScreen({ navigation }: Props) {
 
       <Animated.ScrollView contentContainerStyle={styles.body}>
         <StepProgressBar step={5} totalSteps={5}/>
-        <Text style={styles.title}>Your data belongs to you.</Text>
+        <Text style={styles.title}>Your data{'\n'}belongs to you.</Text>
         <Text style={styles.subtitle}>
           Veda only accesses information you've approved, and you can change or remove permissions anytime.
         </Text>
@@ -343,8 +343,8 @@ export default function ConsentScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   body: { paddingHorizontal: spacing.xl,paddingTop: spacing.xl,paddingBottom: spacing.xl },
-  title: { ...typography.title, color: colors.textPrimary, marginBottom: spacing.sm, fontSize: 38 },
-  subtitle: { ...typography.caption, color: colors.textSecondary, marginBottom: spacing.lg },
+  title: { ...typography.title, color: colors.textPrimary, marginBottom: spacing.sm, fontSize: 38, lineHeight: 42 },
+  subtitle: { ...typography.caption, color: colors.textMuted, marginBottom: spacing.lg },
   sectionIntro: {
     ...typography.caption,
     fontFamily: fonts.bodyLight,
