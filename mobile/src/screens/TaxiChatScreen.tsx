@@ -1,10 +1,10 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import * as Location from 'expo-location';
-import { Ionicons } from '@expo/vector-icons';
 
 import AiDisclaimer from '../components/chat/AiDisclaimer';
+import ChatInputBar from '../components/chat/ChatInputBar';
 import ChatItemView from '../components/chat/ChatItemView';
 import LoadingStream from '../components/chat/LoadingStream';
 import MessageBubble from '../components/chat/MessageBubble';
@@ -20,7 +20,7 @@ import { nextId } from '../lib/chatThread';
 import { getCachedReverseGeocode } from '../lib/geocodeCache';
 import { calculateDistance } from '../lib/distanceCalculator';
 import type { RecommendationCardPayload, RootStackParamList, ChatItem } from '../types';
-import { colors, spacing, radii, typography } from '../theme';
+import { colors, spacing } from '../theme';
 import DashboardHeader from '../components/dashboard/DashboardHeader';
 import { useAuth } from '../context/AuthContext';
 
@@ -438,29 +438,14 @@ export default function TaxiChatScreen({ navigation }: Props) {
       />
 
       {(phase === 'input' || phase === 'card' || (phase === 'loading' && displayPredictions.length > 0)) && (
-        <View style={styles.inputSection}>
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.input}
-              placeholder="Where would you like to go?"
-              value={draft}
-              onChangeText={handleDestinationSearch}
-              placeholderTextColor={colors.textMuted}
-              editable={!autocompleteLoading}
-            />
-            <TouchableOpacity
-              style={[styles.sendButton, (!draft.trim() || autocompleteLoading) && styles.sendButtonDisabled]}
-              onPress={handleSendMessage}
-              disabled={!draft.trim() || autocompleteLoading}
-            >
-              {autocompleteLoading ? (
-                <ActivityIndicator color={colors.white} size="small" />
-              ) : (
-                <Ionicons name="send" size={20} color={colors.white} />
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
+        <ChatInputBar
+          value={draft}
+          onChangeText={handleDestinationSearch}
+          onSend={handleSendMessage}
+          placeholder="Where would you like to go?"
+          editable={!autocompleteLoading}
+          loading={autocompleteLoading}
+        />
       )}
     </View>
   );
@@ -472,44 +457,5 @@ const styles = StyleSheet.create({
   threadContent: { padding: spacing.lg, paddingBottom: spacing.md },
   cardContainer: {
     marginVertical: spacing.md,
-  },
-  inputSection: {
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    gap: spacing.md,
-    alignItems: 'center',
-  },
-  input: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radii.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    ...typography.body,
-    fontSize: 14,
-    color: colors.textPrimary,
-    backgroundColor: colors.surface,
-  },
-  sendButton: {
-    backgroundColor: colors.brand,
-    borderRadius: radii.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: colors.brand,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  sendButtonDisabled: {
-    opacity: 0.5,
   },
 });

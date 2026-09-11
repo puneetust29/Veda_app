@@ -1,9 +1,10 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useRef, useState, useEffect } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import AiDisclaimer from '../components/chat/AiDisclaimer';
+import ChatInputBar from '../components/chat/ChatInputBar';
 import ChatItemView from '../components/chat/ChatItemView';
 import DashboardHeader from '../components/dashboard/DashboardHeader';
 import LoadingStream from '../components/chat/LoadingStream';
@@ -75,6 +76,12 @@ export default function ChatScreen({ route, navigation }: Props) {
 
   const firstName = customer?.full_name?.split(' ')[0] ?? 'User';
   const insets = useSafeAreaInsets();
+
+  // Mirrors the LoadingStream conditions below — hide the AI disclaimer while
+  // the initial loader is the only thing on screen.
+  const showInitialLoader = isBillPayment
+    ? !paidBillData && !paymentMethodId
+    : items.length === 0 && phase === 'idle';
 
   useEffect(() => {
     if (isBillPayment) {
@@ -206,7 +213,7 @@ export default function ChatScreen({ route, navigation }: Props) {
               />
             );
           })}
-          <AiDisclaimer />
+          {!showInitialLoader && <AiDisclaimer />}
         </ScrollView>
 
 
@@ -230,26 +237,17 @@ export default function ChatScreen({ route, navigation }: Props) {
           </View>
         )}
 
-        <View style={[styles.inputContainer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
-          <TextInput
-            style={styles.input}
-            placeholder="Ask a follow-up question…"
-            value={draft}
-            onChangeText={setDraft}
-            editable={phase !== 'streaming'}
-            placeholderTextColor="#999"
-          />
-          <TouchableOpacity
-            style={[styles.sendButton, phase === 'streaming' && styles.sendButtonDisabled]}
-            onPress={() => {
-              sendMessage(draft);
-              setDraft('');
-            }}
-            disabled={phase === 'streaming' || !draft.trim()}
-          >
-            <Text style={styles.sendButtonText}>Send</Text>
-          </TouchableOpacity>
-        </View>
+        <ChatInputBar
+          value={draft}
+          onChangeText={setDraft}
+          onSend={() => {
+            sendMessage(draft);
+            setDraft('');
+          }}
+          editable={phase !== 'streaming'}
+          sendDisabled={phase === 'streaming'}
+          bottomInset={insets.bottom}
+        />
       </View>
     </View>
   );
@@ -312,34 +310,4 @@ const styles = StyleSheet.create({
     fontSize: 13.5,
     fontWeight: '600',
   },
-  inputContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#E8E8E8',
-    gap: 8,
-  },
-  input: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 14,
-    backgroundColor: '#F9F9F9',
-    color: '#1F1F1F',
-  },
-  sendButton: {
-    backgroundColor: '#F00405',
-    borderRadius: 10,
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    justifyContent: 'center',
-  },
-  sendButtonDisabled: {
-    opacity: 0.6,
-  },
-  sendButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '600' },
 });
