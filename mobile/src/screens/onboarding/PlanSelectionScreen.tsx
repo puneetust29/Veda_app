@@ -23,7 +23,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import StepHeader from '../../components/onboarding/StepHeader';
 import StepProgressBar from '../../components/onboarding/StepProgressBar';
 import { useOnboarding } from '../../context/OnboardingContext';
-import { brandIcons, colors, radii, spacing, typography, withOpacity } from '../../theme';
+import { brandIcons, colors, fonts, radii, spacing, typography, withOpacity } from '../../theme';
 import type { OnboardingStackParamList, PlanTier } from '../../types';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'PlanSelection'>;
@@ -136,11 +136,12 @@ const BANNER_GRADIENT = {
   end: { x: 1, y: 0.68 },
 };
 
+// linear-gradient(146.093deg, #E70001 6.94%, #970000 93.97%)
 const CARD_HEADER_GRADIENT = {
   colors: [colors.gradientCardStart, colors.gradientCardEnd] as const,
-  locations: [0.0152, 0.5903] as const,
-  start: { x: 0.56, y: 0 },
-  end: { x: 0.44, y: 1 },
+  locations: [0.0694, 0.9397] as const,
+  start: { x: 0.44, y: 0 },
+  end: { x: 0.56, y: 1 },
 };
 
 // Same geometry, mono ink — so the two faces line up pixel for pixel and the
@@ -1147,10 +1148,12 @@ const styles = StyleSheet.create({
     ...typography.title,
     color: colors.white,
     textAlign: 'center',
-    fontSize: 27,
-    lineHeight: 33,
-    fontWeight: '700',
-    marginTop: 26,
+    fontFamily: fonts.semiBold,
+    fontSize: 38,
+    lineHeight: 38,
+    fontWeight: '600',
+    letterSpacing: -0.76,
+    marginTop: 24,
   },
 
   heroSubtitle: {
@@ -1158,7 +1161,11 @@ const styles = StyleSheet.create({
     color: colors.white,
     marginTop: 6,
     textAlign: 'center',
-    fontSize: 12,
+    fontFamily: fonts.bodyLight,
+    fontWeight: '300',
+    fontSize: 14,
+    lineHeight: 19.6,
+    letterSpacing: 0,
     opacity: 0.92,
   },
 
@@ -1254,7 +1261,7 @@ const styles = StyleSheet.create({
   // --------------------------------------------------
 
   fanViewport: {
-    marginTop: spacing.xl,
+    // marginTop: spacing.xl,
     marginHorizontal: -BODY_SIDE_PADDING,
     position: 'relative',
   },
@@ -1417,9 +1424,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1.5,
+    overflow: 'hidden',
+    borderWidth: 2,
     borderColor: colors.white,
-    marginLeft: -6,
+    marginLeft: -8,
   },
 
   appIconMono: { backgroundColor: '#FFFFFF', borderColor: '#FFFFFF' },
