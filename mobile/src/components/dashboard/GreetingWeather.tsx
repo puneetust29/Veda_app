@@ -1,16 +1,21 @@
-import { Ionicons } from '@expo/vector-icons';
-import type { ComponentProps } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
 
 import { colors, fonts, spacing } from '../../theme';
 import type { WeatherSummary } from '../../types';
+
+const weatherSunny = require('../../../assets/weather/sunny.png');
+const weatherNight = require('../../../assets/weather/night.png');
+const weatherCloudy = require('../../../assets/weather/cloudy.png');
+const weatherCloudyNight = require('../../../assets/weather/cloudy-night.png');
+const weatherPartlySunny = require('../../../assets/weather/partly-sunny.png');
+const weatherPartlyRainy = require('../../../assets/weather/partly-rainy.png');
+const weatherRainy = require('../../../assets/weather/rainy.png');
+const weatherThunderstorm = require('../../../assets/weather/thunderstorm.png');
 
 type Props = {
   name: string;
   weather: WeatherSummary;
 };
-
-type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
 // Convert country names to ISO 2-letter codes for compact display.
 const COUNTRY_TO_ISO: Record<string, string> = {
@@ -67,27 +72,29 @@ function formatLocation(location: string): string {
   }).join(', ');
 }
 
-function weatherIconName(weatherCode: number | null): IoniconName {
-  if (weatherCode === null) return 'cloud-outline';
-  if (weatherCode === 0) return 'sunny-outline';
-  if (weatherCode === 1 || weatherCode === 2) return 'partly-sunny-outline';
-  if (weatherCode === 3 || weatherCode === 45 || weatherCode === 48) return 'cloudy-outline';
-  if (
-    weatherCode === 51 ||
-    weatherCode === 53 ||
-    weatherCode === 55 ||
-    weatherCode === 56 ||
-    weatherCode === 57 ||
-    weatherCode === 61 ||
-    weatherCode === 63 ||
-    weatherCode === 65 ||
-    weatherCode === 66 ||
-    weatherCode === 67 ||
-    weatherCode === 80 ||
-    weatherCode === 81 ||
-    weatherCode === 82
-  ) {
-    return 'rainy-outline';
+function isNightNow(): boolean {
+  const hour = new Date().getHours();
+  return hour < 6 || hour >= 19;
+}
+
+// Figma "Weather icon" set — clear and cloudy conditions each have a
+// day/night pair, swapped by local hour since Open-Meteo's weather_code
+// doesn't carry day/night itself. There's no dedicated snow asset, so snow
+// codes fall back to the plain rain art (closest available precipitation icon).
+function weatherIconSource(weatherCode: number | null) {
+  const night = isNightNow();
+
+  if (weatherCode === null) return night ? weatherCloudyNight : weatherCloudy;
+  if (weatherCode === 0) return night ? weatherNight : weatherSunny;
+  if (weatherCode === 1) return night ? weatherCloudyNight : weatherPartlySunny;
+  if (weatherCode === 2 || weatherCode === 3 || weatherCode === 45 || weatherCode === 48) {
+    return night ? weatherCloudyNight : weatherCloudy;
+  }
+  if (weatherCode === 51 || weatherCode === 53 || weatherCode === 55 || weatherCode === 80 || weatherCode === 81 || weatherCode === 82) {
+    return weatherPartlyRainy;
+  }
+  if (weatherCode === 56 || weatherCode === 57 || weatherCode === 61 || weatherCode === 63 || weatherCode === 65 || weatherCode === 66 || weatherCode === 67) {
+    return weatherRainy;
   }
   if (
     weatherCode === 71 ||
@@ -97,10 +104,10 @@ function weatherIconName(weatherCode: number | null): IoniconName {
     weatherCode === 85 ||
     weatherCode === 86
   ) {
-    return 'snow-outline';
+    return weatherRainy;
   }
-  if (weatherCode === 95 || weatherCode === 96 || weatherCode === 99) return 'thunderstorm-outline';
-  return 'cloud-outline';
+  if (weatherCode === 95 || weatherCode === 96 || weatherCode === 99) return weatherThunderstorm;
+  return night ? weatherCloudyNight : weatherCloudy;
 }
 
 function timeOfDayGreeting(): string {
@@ -129,11 +136,7 @@ export default function GreetingWeather({ name, weather }: Props) {
       </View>
 
       <View style={styles.weather}>
-        <Ionicons
-          name={weatherIconName(weather.weatherCode)}
-          size={80}
-          color={colors.headerGradientStart}
-        />
+        <Image source={weatherIconSource(weather.weatherCode)} style={styles.weatherIcon} resizeMode="contain" />
         <View style={styles.weatherRow}>
           <View style={styles.temperatureRow}>
             <Text style={styles.temperature}>{weather.temperatureC}</Text>
@@ -179,6 +182,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
   },
   weather: { alignItems: 'flex-end', flexShrink: 1, gap: spacing.sm },
+  weatherIcon: { width: 80, height: 80 },
   weatherRow: {
     flexDirection: 'row',
     alignItems: 'center',
