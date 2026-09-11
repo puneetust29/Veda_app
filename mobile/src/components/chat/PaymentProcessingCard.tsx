@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated, Easing } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { colors, fonts } from '../../theme';
 import HeaderBackground from '../icons/HeaderBackground';
 
@@ -24,49 +25,57 @@ export default function PaymentProcessingCard() {
 
     return (
         <View style={styles.card}>
-            <View style={styles.pattern}>
-                <HeaderBackground width={226} height={64} />
-            </View>
-            <View style={styles.content}>
-                <View style={styles.iconContainer}>
-                    <View style={styles.dotsBox}>
-                        {[0, 1, 2].map((index) => {
-                            const delay = index * DOT_DELAY_MS;
-                            const inputRange = [
-                                (delay - 200) / CYCLE_DURATION,
-                                delay / CYCLE_DURATION,
-                                (delay + 400) / CYCLE_DURATION,
-                                (delay + 600) / CYCLE_DURATION,
-                            ].map((v) => Math.max(0, Math.min(1, v)));
-
-                            return (
-                                <Animated.View
-                                    key={index}
-                                    style={[
-                                        styles.dot,
-                                        { left: index * 8 },
-                                        {
-                                            opacity: animationValue.interpolate({
-                                                inputRange,
-                                                outputRange: [0.3, 1, 1, 0.3],
-                                            }),
-                                            transform: [
-                                                {
-                                                    scale: animationValue.interpolate({
-                                                        inputRange,
-                                                        outputRange: [0.8, 1.2, 1.2, 0.8],
-                                                    }),
-                                                },
-                                            ],
-                                        },
-                                    ]}
-                                />
-                            );
-                        })}
-                    </View>
+            <LinearGradient
+                colors={['#FFFDFD', '#FFE4E4']}
+                locations={[0.008, 0.992]}
+                start={{ x: 0, y: 0.53 }}
+                end={{ x: 1, y: 0.47 }}
+                style={styles.surface}
+            >
+                <View style={styles.pattern}>
+                    <HeaderBackground width={226} height={64} />
                 </View>
-                <Text style={styles.text}>Payment processing...</Text>
-            </View>
+                <View style={styles.content}>
+                    <View style={styles.iconContainer}>
+                        <View style={styles.dotsBox}>
+                            {[0, 1, 2].map((index) => {
+                                const delay = index * DOT_DELAY_MS;
+                                const inputRange = [
+                                    (delay - 200) / CYCLE_DURATION,
+                                    delay / CYCLE_DURATION,
+                                    (delay + 400) / CYCLE_DURATION,
+                                    (delay + 600) / CYCLE_DURATION,
+                                ].map((v) => Math.max(0, Math.min(1, v)));
+
+                                return (
+                                    <Animated.View
+                                        key={index}
+                                        style={[
+                                            styles.dot,
+                                            { left: index * 8 },
+                                            {
+                                                opacity: animationValue.interpolate({
+                                                    inputRange,
+                                                    outputRange: [0.3, 1, 1, 0.3],
+                                                }),
+                                                transform: [
+                                                    {
+                                                        scale: animationValue.interpolate({
+                                                            inputRange,
+                                                            outputRange: [0.8, 1.2, 1.2, 0.8],
+                                                        }),
+                                                    },
+                                                ],
+                                            },
+                                        ]}
+                                    />
+                                );
+                            })}
+                        </View>
+                    </View>
+                    <Text style={styles.text}>Payment processing...</Text>
+                </View>
+            </LinearGradient>
         </View>
     );
 }
@@ -78,9 +87,13 @@ const styles = StyleSheet.create({
         borderRadius: 24,
         shadowColor: '#FF0000',
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.12,
-        shadowRadius: 8,
+        shadowOpacity: 0.122,
+        shadowRadius: 16,
         elevation: 4,
+    },
+    surface: {
+        borderRadius: 24,
+        overflow: 'hidden',
     },
     pattern: {
         position: 'absolute',

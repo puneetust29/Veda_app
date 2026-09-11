@@ -1,8 +1,10 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useRef, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import AiDisclaimer from '../components/chat/AiDisclaimer';
+import ChatInputBar from '../components/chat/ChatInputBar';
 import ChatItemView from '../components/chat/ChatItemView';
 import { useVedaChat } from '../hooks/useVedaChat';
 import type { RootStackParamList } from '../types';
@@ -26,6 +28,7 @@ export default function VedaChatScreen({ navigation }: Props) {
         {items.map((item) => (
           <ChatItemView key={item.id} item={item} />
         ))}
+        <AiDisclaimer />
       </ScrollView>
 
       {phase === 'failed' && (
@@ -36,26 +39,16 @@ export default function VedaChatScreen({ navigation }: Props) {
         </View>
       )}
 
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.input}
-          placeholder="Ask me about travel plans or Veda…"
-          value={draft}
-          onChangeText={setDraft}
-          editable={phase !== 'streaming'}
-          placeholderTextColor="#999"
-        />
-        <TouchableOpacity
-          style={[styles.sendButton, phase === 'streaming' && styles.sendButtonDisabled]}
-          onPress={() => {
-            sendMessage(draft);
-            setDraft('');
-          }}
-          disabled={phase === 'streaming' || !draft.trim()}
-        >
-          <Text style={styles.sendButtonText}>Send</Text>
-        </TouchableOpacity>
-      </View>
+      <ChatInputBar
+        value={draft}
+        onChangeText={setDraft}
+        onSend={() => {
+          sendMessage(draft);
+          setDraft('');
+        }}
+        editable={phase !== 'streaming'}
+        sendDisabled={phase === 'streaming'}
+      />
     </SafeAreaView>
   );
 }
@@ -77,33 +70,4 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   primaryButtonText: { color: colors.white, fontSize: 16, fontWeight: '600' },
-  inputContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
-    gap: spacing.md,
-  },
-  input: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    fontSize: 14,
-    backgroundColor: '#f9f9f9',
-  },
-  sendButton: {
-    backgroundColor: colors.brand,
-    borderRadius: 8,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    justifyContent: 'center',
-  },
-  sendButtonDisabled: {
-    opacity: 0.5,
-  },
-  sendButtonText: { color: colors.white, fontSize: 14, fontWeight: '600' },
 });

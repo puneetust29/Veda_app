@@ -8,15 +8,16 @@ type Props = {
   planType: 'roaming' | 'insurance';
 };
 
-export default function ConfirmationSuccessCard({ planType }: Props) {
+export default function ({ planType }: Props) {
   const displayText = planType === 'roaming' ? 'Roaming plan confirmed' : 'Travel insurance confirmed';
 
   return (
     <View style={styles.container}>
       <LinearGradient
         colors={['#FFFDFD', '#FFE4E4']}
-        start={{ x: 0, y: 1 }}
-        end={{ x: 1, y: 0 }}
+        locations={[0.008, 0.992]}
+        start={{ x: 0, y: 0.53 }}
+        end={{ x: 1, y: 0.47 }}
         style={styles.content}
       >
         <View style={styles.iconContainer}>
@@ -32,21 +33,23 @@ const styles = StyleSheet.create({
   container: {
     marginBottom: spacing.md,
     marginHorizontal: spacing.xxxl,
+    backgroundColor: colors.white,
+    borderRadius: 24,
+    // iOS shadow
+    shadowColor: '#FF0000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.122,
+    shadowRadius: 16,
+    // Android elevation
+    elevation: 4,
   },
   content: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
     borderRadius: 24,
+    overflow: 'hidden',
     padding: spacing.lg,
     gap: spacing.sm,
-    // iOS shadow
-    shadowColor: '#FF0000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    // Android elevation
-    elevation: 4,
   },
   iconContainer: {
     width: 32,

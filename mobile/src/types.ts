@@ -314,10 +314,15 @@ export type AgentStreamEvent =
 // The stable render model the UI works off. Derived from `AgentStreamEvent`s via
 // `chatThread.ts`'s `applyStreamEvent` reducer, plus a few client-generated items
 // (the greeting, the duplicate-subscription receipt).
+// Sources shown as small overlapping icons above an agent message, indicating
+// where the info in that message was pulled from (e.g. the bill's source
+// inbox and provider).
+export type ConnectAppSource = 'gmail' | 'vodafone';
+
 type ChatItemBase = { id: string; createdAt: number };
 
 export type ChatItem =
-  | (ChatItemBase & { kind: 'text'; role: 'agent' | 'user'; text: string; transient?: boolean })
+  | (ChatItemBase & { kind: 'text'; role: 'agent' | 'user'; text: string; transient?: boolean; connectApps?: ConnectAppSource[] })
   | (ChatItemBase & { kind: 'status'; tool?: string; label: string; state: 'active' | 'done' })
   | (ChatItemBase & { kind: 'card'; card: RecommendationCardPayload })
   | (ChatItemBase & { kind: 'hotel'; hotel: HotelDetectionResultPayload })
