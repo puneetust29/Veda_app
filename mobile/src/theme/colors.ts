@@ -42,6 +42,9 @@ export const colors = {
   rowDivider: '#eaeaea',
   pillFillLight: '#e8e8e8',
   neutralFillLight: '#f3f3f3',
+  toggleTrackLight: '#f0f0f0',
+  toggleThumbLight: '#e8e8e8',
+  buttonBackground: '#f5f5f5',
 
   accentRed: '#E8332B',
   pinkTile: '#FFEBEB',

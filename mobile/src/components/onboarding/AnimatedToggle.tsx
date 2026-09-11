@@ -22,8 +22,8 @@ export default function AnimatedToggle({ value, onValueChange }: Props) {
     Animated.timing(anim, { toValue: value ? 1 : 0, duration: 200, useNativeDriver: false }).start();
   }, [anim, value]);
 
-  const trackColor = anim.interpolate({ inputRange: [0, 1], outputRange: ['#f0f0f0', '#f0f0f0'] });
-  const thumbColor = anim.interpolate({ inputRange: [0, 1], outputRange: ['#e8e8e8', colors.brandBackGround] });
+  const trackColor = anim.interpolate({ inputRange: [0, 1], outputRange: [colors.toggleTrackLight, colors.toggleTrackLight] });
+  const thumbColor = anim.interpolate({ inputRange: [0, 1], outputRange: [colors.toggleThumbLight, colors.brandBackGround] });
   const thumbTranslate = anim.interpolate({ inputRange: [0, 1], outputRange: [2, WIDTH - THUMB - 2] });
 
   return (
