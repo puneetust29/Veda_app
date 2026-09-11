@@ -3,6 +3,7 @@ import { useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import AiDisclaimer from '../components/chat/AiDisclaimer';
 import ChatItemView from '../components/chat/ChatItemView';
 import { useVedaChat } from '../hooks/useVedaChat';
 import type { RootStackParamList } from '../types';
@@ -26,6 +27,7 @@ export default function VedaChatScreen({ navigation }: Props) {
         {items.map((item) => (
           <ChatItemView key={item.id} item={item} />
         ))}
+        <AiDisclaimer />
       </ScrollView>
 
       {phase === 'failed' && (

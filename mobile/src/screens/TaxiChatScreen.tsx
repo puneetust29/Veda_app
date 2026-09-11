@@ -4,6 +4,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, TextInput, TouchableOpacity,
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 
+import AiDisclaimer from '../components/chat/AiDisclaimer';
 import ChatItemView from '../components/chat/ChatItemView';
 import LoadingStream from '../components/chat/LoadingStream';
 import MessageBubble from '../components/chat/MessageBubble';
@@ -414,6 +415,7 @@ export default function TaxiChatScreen({ navigation }: Props) {
         {phase === 'error' && (
           <ErrorPanel message={errorMessage} onRetry={handleRetry} />
         )}
+        <AiDisclaimer />
       </ScrollView>
 
       <LocationPickerModal

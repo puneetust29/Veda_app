@@ -3,6 +3,7 @@ import { useRef, useState, useEffect } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import AiDisclaimer from '../components/chat/AiDisclaimer';
 import ChatItemView from '../components/chat/ChatItemView';
 import DashboardHeader from '../components/dashboard/DashboardHeader';
 import LoadingStream from '../components/chat/LoadingStream';
@@ -168,9 +169,7 @@ export default function ChatScreen({ route, navigation }: Props) {
                   onError={(error) => billPaymentResult.handlePaymentError(error)}
                 />
               ) : (
-                <View style={styles.loadingContainer}>
-                  <Text style={styles.loadingText}>Loading payment details...</Text>
-                </View>
+                <LoadingStream items={INITIAL_STREAM_EVENTS} />
               )}
             </>
           ) : items.length === 0 && phase === 'idle' ? (
@@ -207,6 +206,7 @@ export default function ChatScreen({ route, navigation }: Props) {
               />
             );
           })}
+          <AiDisclaimer />
         </ScrollView>
 
 
@@ -342,13 +342,4 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   sendButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '600' },
-  loadingContainer: {
-    paddingHorizontal: 16,
-    paddingVertical: 24,
-    alignItems: 'center',
-  },
-  loadingText: {
-    fontSize: 14,
-    color: '#999999',
-  },
 });

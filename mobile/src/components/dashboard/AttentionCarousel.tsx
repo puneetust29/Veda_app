@@ -18,7 +18,7 @@ import CheckableTag from '../common/CheckableTag';
 import { useSubscriptionInsurance } from '../../context/SubscriptionInsuranceContext';
 import { colors, fonts, spacing } from '../../theme';
 import type { CalendarEvent } from '../../types';
-import { arrowWhite, chipDevices, chipMap, dotPending } from './figmaSvgs';
+import { arrowWhite, chipBill, chipDevices, chipMap } from './figmaSvgs';
 
 type Props = {
   flights: CalendarEvent[];
@@ -263,16 +263,14 @@ function AttentionCard({
             {billPaid ? `Paid on ${new Date(event.start_datetime).toLocaleDateString()}` : 'I\'ve gathered everything that\'s due this month.'}
           </Text>
 
-          {/* Bill Type Tag with Checkmark */}
-          <View style={styles.billTagRow}>
-            <View style={styles.billTag}>
-              <Text style={styles.billTagLabel}>{billType.charAt(0).toUpperCase() + billType.slice(1)}</Text>
-              {billPaid ? (
-                <Ionicons name="checkmark-circle" size={14} color={colors.success} />
-              ) : (
-                <SvgXml xml={dotPending} width={14} height={14} />
-              )}
-            </View>
+          {/* Bill type chip — same CheckableTag as the flight card's Roaming / Insurance chips */}
+          <View style={styles.tagRow}>
+            <CheckableTag
+              iconXml={chipBill}
+              label={billType.charAt(0).toUpperCase() + billType.slice(1)}
+              confirmed={billPaid}
+              onPress={billPaid ? () => {} : onPress}
+            />
           </View>
         </View>
 
@@ -481,26 +479,5 @@ const styles = StyleSheet.create({
   },
   billCategoryLabelHighlight: {
     color: 'white',
-  },
-  billTagRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginTop: spacing.md,
-    flexWrap: 'wrap',
-  },
-  billTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: colors.chipTint,
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  billTagLabel: {
-    fontFamily: fonts.semiBold,
-    fontSize: 11,
-    lineHeight: 16.5,
-    color: colors.textPrimary,
   },
 });

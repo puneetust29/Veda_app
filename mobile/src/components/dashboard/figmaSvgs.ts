@@ -67,6 +67,16 @@ export const chipDevices = `<svg preserveAspectRatio="none" overflow="visible" w
 </defs>
 </svg>`;
 
+// Receipt outline drawn in the same 1px black stroke style as chipMap /
+// chipDevices so the bill card's CheckableTag matches the flight card chips.
+export const chipBill = `<svg preserveAspectRatio="none" overflow="visible" width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Receipt">
+<path d="M3.33333 2H12.6667V14L11 12.6667L9.5 14L8 12.6667L6.5 14L5 12.6667L3.33333 14V2Z" stroke="#000000" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M5.66667 5.33333H10.3333" stroke="#000000" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M5.66667 8H10.3333" stroke="#000000" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+</svg>`;
+
 export const dotPending = `<svg preserveAspectRatio="none" overflow="visible" width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
 <g id="Non-categorized" clip-path="url(#clip0_0_180)">
 <g id="Vector">
