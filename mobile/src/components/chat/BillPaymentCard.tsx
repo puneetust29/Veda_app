@@ -264,31 +264,28 @@ export default function BillPaymentCard({
 const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.white,
-    borderRadius: 24,
+    borderRadius: 22,
     borderWidth: 1,
-    borderColor: '#E9E9E9',
+    borderColor: '#E8E8E8',
     marginVertical: spacing.md,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 2,
+    shadowOpacity: 0,
+    elevation: 0,
     overflow: 'hidden',
   },
   titleSection: {
     paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 20,
+    paddingTop: 22,
+    paddingBottom: 18,
   },
   title: {
     fontFamily: fonts.semiBold,
     fontSize: 16,
-    lineHeight: 20,
-    color: '#212529',
+    lineHeight: 21,
+    color: '#181818',
   },
   divider: {
     height: 1,
-    backgroundColor: '#E9E9E9',
+    backgroundColor: '#ECECEC',
   },
   billsList: {
     paddingVertical: 18,
@@ -303,14 +300,14 @@ const styles = StyleSheet.create({
   billRowLast: {},
   billName: {
     fontFamily: fonts.medium,
-    fontSize: 14,
-    lineHeight: 18,
+    fontSize: 15,
+    lineHeight: 20,
     color: '#212529',
   },
   billAmount: {
     fontFamily: fonts.bold,
-    fontSize: 14,
-    lineHeight: 18,
+    fontSize: 15,
+    lineHeight: 20,
     color: '#212529',
   },
   totalRow: {
@@ -322,7 +319,7 @@ const styles = StyleSheet.create({
   },
   totalLabel: {
     fontFamily: fonts.body,
-    fontSize: 14,
+    fontSize: 13,
     lineHeight: 18,
     color: '#6b7075',
   },

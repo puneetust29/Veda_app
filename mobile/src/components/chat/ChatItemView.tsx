@@ -29,7 +29,7 @@ type Props = {
 function ChatItemViewImpl({ item, onConfirm, onDecline, onInsurancePurchased, onContinuePrep, continuePrepLoading, insurancePurchased, nextItem }: Props) {
   switch (item.kind) {
     case 'text':
-      return <MessageBubble text={item.text} tone={item.role} />;
+      return <MessageBubble text={item.text} tone={item.role} connectApps={item.connectApps} />;
     case 'status':
       return <LoadingStream items={[{ text: item.label, state: item.state }]} isSingleItem />;
     case 'trip_preparation':

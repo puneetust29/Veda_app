@@ -23,11 +23,12 @@ export function useBillPaymentChat(event: CalendarEvent) {
       role: 'agent',
       text: `Here's your ${billProvider} broadband bill for this month. Amount due: ${billCurrency}${billAmount.toFixed(2)} on ${dueDate}.`,
       createdAt: Date.now(),
+      connectApps: ['gmail', 'vodafone'],
     };
 
     setItems([greeting]);
     setPhase('awaiting_payment');
-  }, [event]);
+  }, []);
 
   const handlePaymentSuccess = useCallback((purchaseData: any) => {
     const successMessage: ChatItem = {
