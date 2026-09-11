@@ -1,6 +1,8 @@
 import { memo } from 'react';
 
 import type { ChatItem } from '../../types';
+import { LocationActionCard } from './LocationActionCard';
+import { NearbyPlacesCard } from './NearbyPlacesCard';
 import ConfirmationPrompt from './ConfirmationPrompt';
 import ConfirmationSuccessCard from './ConfirmationSuccessCard';
 import HotelBookingCard from '../common/HotelBookingCard';
@@ -95,6 +97,10 @@ function ChatItemViewImpl({ item, onConfirm, onDecline, onInsurancePurchased, on
       );
     case 'trip_checklist':
       return <TripChecklistCard destination={item.destination} />;
+    case 'location_action':
+      return <LocationActionCard action={item.action} result={item.result} />;
+    case 'nearby_places':
+      return <NearbyPlacesCard places={item.places} category={item.category} searchLabel={item.searchLabel} />;
     case 'error':
       return <MessageBubble text={item.message} tone="error" />;
     default: {
