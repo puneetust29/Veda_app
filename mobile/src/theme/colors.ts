@@ -48,8 +48,8 @@ export const colors = {
   pinkBorder: '#FBC7C7',
   gradientBannerStart: '#E70001',
   gradientBannerEnd: '#970000',
-  gradientCardStart: '#D5201F',
-  gradientCardEnd: '#C81F1D',
+  gradientCardStart: '#E70001',
+  gradientCardEnd: '#970000',
 
   // Dashboard tokens pulled 1:1 from Figma node 1:35332 ("5 - Stability
   // Index Screen"). The design uses several distinct reds — keep them
