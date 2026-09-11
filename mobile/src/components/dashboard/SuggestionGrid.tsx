@@ -124,7 +124,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontFamily: fonts.semiBold,
     fontSize: 20,
-    lineHeight: 22,
+    lineHeight: 26,
     letterSpacing: -0.4,
     color: colors.textPrimary,
   },
