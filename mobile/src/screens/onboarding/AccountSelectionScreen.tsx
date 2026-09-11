@@ -194,8 +194,8 @@ export default function AccountSelectionScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  body: { paddingHorizontal: spacing.xl, paddingTop: spacing.xl, flex: 1 },
-  title: { fontSize: 36, fontWeight: '600', fontFamily: fonts.semiBold, color: colors.textPrimary, marginBottom: spacing.sm, lineHeight: 44 },
+  body: { paddingHorizontal: spacing.xl, paddingTop: spacing.xs, flex: 1 },
+  title: { fontSize: 36, fontWeight: '600', fontFamily: fonts.semiBold, color: colors.textPrimary, marginTop: -spacing.sm, marginBottom: spacing.sm, lineHeight: 44 },
   subtitle: { fontSize: 14, fontWeight: '300', fontFamily: fonts.bodyLight, color: colors.textConnect, marginBottom: spacing.lg, lineHeight: 21, textAlign: 'left' },
   loading: { marginTop: spacing.xxl },
   notice: { padding: spacing.lg, borderRadius: radii.md, backgroundColor: colors.warningTint, marginBottom: spacing.lg },

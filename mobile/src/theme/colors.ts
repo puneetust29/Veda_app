@@ -44,6 +44,11 @@ export const colors = {
   neutralFillLight: '#f3f3f3',
   toggleTrackLight: '#f0f0f0',
   toggleThumbLight: '#e8e8e8',
+  // Figma node 1:42104/1:42115 ("Toggle" off/on) — permissions screen switch.
+  toggleTrackOff: '#f3e0e0',
+  toggleTrackOn: '#eb3434',
+  toggleThumbOffStart: '#ff8e8e',
+  toggleThumbOffEnd: '#e60000',
   buttonBackground: '#f5f5f5',
 
   accentRed: '#E8332B',
