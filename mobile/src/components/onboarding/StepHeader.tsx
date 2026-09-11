@@ -39,7 +39,7 @@ export default function StepHeader({ onBack, overlay }: Props) {
   return (
     <View style={[styles.container, { paddingTop: insets.top + spacing.md }]}>
       <TouchableOpacity style={[styles.circle, styles.circleDefault]} onPress={onBack} hitSlop={16}>
-        <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
+        <Ionicons name="chevron-back" size={26} color="#000000" />
       </TouchableOpacity>
     </View>
   );
@@ -51,7 +51,7 @@ const styles = StyleSheet.create({
   container: { paddingHorizontal: spacing.lg, paddingBottom: spacing.md },
   containerOverlay: { position: 'absolute', left: 0, right: 0, zIndex: 1000, elevation: 1000 },
   circle: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
-  circleDefault: { backgroundColor: colors.surface },
+  circleDefault: { backgroundColor: '#f5f5f5' },
   // Dark translucent (not white-on-white) so the chevron stays visible
   // regardless of what's behind it — the banner's light "swoosh" graphic
   // made a white-tinted circle nearly invisible.

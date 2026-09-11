@@ -26,6 +26,8 @@ export default function AccountSelectionScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const appGoogle = require('../../../assets/dashboard/app-google.png');
+  const appGmail = require('../../../assets/dashboard/app-gmail.png');
+  const appGcal = require('../../../assets/dashboard/app-gcal.png');
 
   const load = useCallback(async () => {
     setStatus(await api.googleAuthStatus());
@@ -129,7 +131,7 @@ export default function AccountSelectionScreen({ navigation }: Props) {
               <View style={styles.accountRow}>
                 <Text style={styles.accountEmail}>{status.google_account_email ?? 'Connected'}</Text>
                 <View style={styles.checkCircle}>
-                  <Ionicons name="checkmark" size={14} color="#111" />
+                  <Ionicons name="checkmark" size={16} color="#111" />
                 </View>
               </View>
             ) : (
@@ -140,20 +142,20 @@ export default function AccountSelectionScreen({ navigation }: Props) {
               <>
                 <View style={styles.serviceRow}>
                   <View style={styles.serviceInfo}>
-                    <Ionicons name="calendar-outline" size={16} color={colors.textSecondary} />
+                    <Image source={appGcal} style={{ width: 16, height: 16, resizeMode: 'contain' }} />
                     <Text style={styles.serviceName}>Calendar</Text>
                   </View>
                   <View style={styles.checkCircle}>
-                    <Ionicons name="checkmark" size={14} color="#111" />
+                    <Ionicons name="checkmark" size={16} color="#111" />
                   </View>
                 </View>
                 <View style={styles.serviceRow}>
                   <View style={styles.serviceInfo}>
-                    <Ionicons name="mail-outline" size={16} color={colors.textSecondary} />
+                    <Image source={appGmail} style={{ width: 16, height: 16, resizeMode: 'contain' }} />
                     <Text style={styles.serviceName}>Gmail</Text>
                   </View>
                   <View style={styles.checkCircle}>
-                    <Ionicons name="checkmark" size={14} color="#111" />
+                    <Ionicons name="checkmark" size={16} color="#111" />
                   </View>
                 </View>
               </>
@@ -193,8 +195,8 @@ export default function AccountSelectionScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   body: { paddingHorizontal: spacing.xl, paddingTop: spacing.xl, flex: 1 },
-  title: { fontSize: 38, fontWeight: '600', fontFamily: fonts.semiBold, color: colors.textPrimary, marginBottom: spacing.sm, lineHeight: 46 },
-  subtitle: { fontSize: 14, fontWeight: '300', fontFamily: fonts.bodyLight, color: '#6b7280', marginBottom: spacing.lg, lineHeight: 21 },
+  title: { fontSize: 36, fontWeight: '600', fontFamily: fonts.semiBold, color: colors.textPrimary, marginBottom: spacing.sm, lineHeight: 44 },
+  subtitle: { fontSize: 14, fontWeight: '300', fontFamily: fonts.bodyLight, color: '#6b7280', marginBottom: spacing.lg, lineHeight: 21, textAlign: 'left' },
   loading: { marginTop: spacing.xxl },
   notice: { padding: spacing.lg, borderRadius: radii.md, backgroundColor: colors.warningTint, marginBottom: spacing.lg },
   noticeTitle: { ...typography.bodyBold, color: colors.warningText },
@@ -285,7 +287,7 @@ const styles = StyleSheet.create({
     fontWeight: '300',
     fontFamily: fonts.bodyLight,
     color: '#6b7280',
-    textAlign: 'center',
+    textAlign: 'left',
     marginBottom: spacing.sm,
   },
   cta: {
