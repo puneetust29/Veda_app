@@ -5,6 +5,7 @@ import { colors, fonts, spacing } from '../../theme';
 import { api } from '../../lib/api';
 import { useSubscriptionInsurance } from '../../context/SubscriptionInsuranceContext';
 import type { CalendarEvent } from '../../types';
+import InvoiceIcon from '../icons/InvoiceIcon';
 import PaymentProcessingCard from './PaymentProcessingCard';
 import VisaLogo from '../../../assets/payment/visa.svg';
 import MastercardLogo from '../../../assets/payment/mastercard.svg';
@@ -15,7 +16,15 @@ type State = 'idle' | 'processing' | 'success' | 'error';
 type BillLineItem = {
   name: string;
   amount: number;
+  dueDate: string | null;
 };
+
+function formatDueDate(dueDate: unknown): string | null {
+  if (typeof dueDate !== 'string' || !dueDate) return null;
+  const parsed = new Date(dueDate);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return `Due ${parsed.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`;
+}
 
 type BrandLogoConfig = {
   Logo: React.ComponentType<any>;
@@ -51,6 +60,9 @@ type Props = {
   savedPaymentMethodId: string;
   onSuccess: (data: any) => void;
   onError?: (error: string) => void;
+  /** True when this bill was already paid in a prior session — skips
+   * straight to the paid/disabled button state instead of 'idle'. */
+  alreadyPaid?: boolean;
 };
 
 export default function BillPaymentCard({
@@ -60,8 +72,9 @@ export default function BillPaymentCard({
   savedPaymentMethodId,
   onSuccess,
   onError,
+  alreadyPaid = false,
 }: Props) {
-  const [state, setState] = useState<State>('idle');
+  const [state, setState] = useState<State>(alreadyPaid ? 'success' : 'idle');
   const [errorMessage, setErrorMessage] = useState('');
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const { refreshBills } = useSubscriptionInsurance();
@@ -71,6 +84,11 @@ export default function BillPaymentCard({
   const billAmount = rawDetails.bill_amount || 0;
   const billCurrency = rawDetails.bill_currency || 'USD';
   const currencySymbol = CURRENCY_SYMBOLS[billCurrency] || billCurrency;
+  const billMonth = (() => {
+    const parsed = new Date(rawDetails.due_date);
+    return Number.isNaN(parsed.getTime()) ? null : parsed.toLocaleDateString('en-GB', { month: 'long' });
+  })();
+  const cardTitle = billMonth ? `${billMonth} bill` : "This month's bills";
   const candidateItems = Array.isArray(rawDetails.bill_items)
     ? rawDetails.bill_items
     : Array.isArray(rawDetails.line_items)
@@ -90,6 +108,7 @@ export default function BillPaymentCard({
       return {
         name: name.charAt(0).toUpperCase() + name.slice(1),
         amount: Number.isFinite(amount) ? amount : 0,
+        dueDate: formatDueDate(item?.due_date ?? rawDetails.due_date),
       };
     })
     .filter(Boolean) as BillLineItem[];
@@ -97,6 +116,7 @@ export default function BillPaymentCard({
   const fallbackItem: BillLineItem = {
     name: billType.charAt(0).toUpperCase() + billType.slice(1),
     amount: billAmount,
+    dueDate: formatDueDate(rawDetails.due_date),
   };
 
   const displayItems = billLineItems.length > 0 ? billLineItems : [fallbackItem];
@@ -170,14 +190,14 @@ export default function BillPaymentCard({
     setErrorMessage('');
   };
 
-  if (state === 'processing') {
-    return <PaymentProcessingCard />;
-  }
-
   return (
+    <>
     <View style={styles.card}>
       <View style={styles.titleSection}>
-        <Text style={styles.title}>This month's bills</Text>
+        <View style={styles.iconContainer}>
+          <InvoiceIcon size={20} />
+        </View>
+        <Text style={styles.title}>{cardTitle}</Text>
       </View>
 
       <View style={styles.divider} />
@@ -189,7 +209,10 @@ export default function BillPaymentCard({
             key={`${item.name}-${index}`}
             style={[styles.billRow, index === displayItems.length - 1 && styles.billRowLast]}
           >
-            <Text style={styles.billName}>{item.name}</Text>
+            <View style={styles.billNameColumn}>
+              <Text style={styles.billName}>{item.name}</Text>
+              {item.dueDate && <Text style={styles.billDueDate}>{item.dueDate}</Text>}
+            </View>
             <Text style={styles.billAmount}>
               {currencySymbol}{item.amount.toFixed(2)}
             </Text>
@@ -240,47 +263,62 @@ export default function BillPaymentCard({
         </View>
       )}
 
-      {/* Success State */}
-      {state === 'success' && (
-        <View style={styles.successSection}>
-          <Text style={styles.successText}>Payment successful</Text>
-        </View>
-      )}
-
       {/* Pay Button */}
-      {state !== 'success' && !errorMessage && (
+      {!errorMessage && (
         <TouchableOpacity
-          style={[styles.button, styles.payButton]}
+          style={[
+            styles.button,
+            state === 'success' ? styles.paidButton : state === 'processing' ? styles.processingButton : styles.payButton,
+          ]}
           onPress={handlePayment}
-          disabled={false}
+          disabled={state === 'success' || state === 'processing'}
         >
-          <Text style={styles.buttonText}>Pay all</Text>
+          <Text style={styles.buttonText}>
+            {state === 'success'
+              ? 'Paid'
+              : state === 'processing'
+                ? 'Processing...'
+                : `${displayItems.length > 1 ? 'Pay all' : 'Pay bill'} - ${currencySymbol}${totalAmount.toFixed(2)}`}
+          </Text>
         </TouchableOpacity>
       )}
     </View>
+    {state === 'processing' && <PaymentProcessingCard />}
+    </>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.white,
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: '#E8E8E8',
+    borderRadius: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 3,
     marginVertical: spacing.md,
-    shadowOpacity: 0,
-    elevation: 0,
-    overflow: 'hidden',
   },
   titleSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
     paddingHorizontal: 20,
     paddingTop: 22,
     paddingBottom: 18,
   },
+  iconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(230, 0, 0, 0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   title: {
     fontFamily: fonts.semiBold,
-    fontSize: 16,
-    lineHeight: 21,
+    fontSize: 20,
+    lineHeight: 24,
     color: '#181818',
   },
   divider: {
@@ -298,17 +336,24 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   billRowLast: {},
+  billNameColumn: { gap: 4 },
   billName: {
-    fontFamily: fonts.medium,
-    fontSize: 15,
-    lineHeight: 20,
-    color: '#212529',
+    fontFamily: fonts.semiBold,
+    fontSize: 16,
+    lineHeight: 19,
+    color: '#181818',
+  },
+  billDueDate: {
+    fontFamily: fonts.body,
+    fontSize: 12,
+    lineHeight: 15,
+    color: '#1a1a1a',
   },
   billAmount: {
-    fontFamily: fonts.bold,
-    fontSize: 15,
-    lineHeight: 20,
-    color: '#212529',
+    fontFamily: fonts.semiBold,
+    fontSize: 16,
+    lineHeight: 19,
+    color: '#181818',
   },
   totalRow: {
     flexDirection: 'row',
@@ -358,8 +403,8 @@ const styles = StyleSheet.create({
     color: '#666B70',
   },
   button: {
-    height: 56,
-    borderRadius: 28,
+    height: 49,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
     marginHorizontal: 20,
@@ -367,15 +412,23 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   payButton: {
-    backgroundColor: colors.accentCta,
+    backgroundColor: '#f00405',
+  },
+  paidButton: {
+    backgroundColor: '#f00405',
+    opacity: 0.6,
+  },
+  processingButton: {
+    backgroundColor: '#f00405',
+    opacity: 0.8,
   },
   retryButton: {
     backgroundColor: colors.accentButton,
   },
   buttonText: {
     fontFamily: fonts.bold,
-    fontSize: 18,
-    lineHeight: 22,
+    fontSize: 14,
+    lineHeight: 17,
     color: 'white',
   },
   errorSection: {
@@ -388,15 +441,5 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     color: '#C20000',
     marginBottom: 16,
-  },
-  successSection: {
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-  },
-  successText: {
-    fontFamily: fonts.semiBold,
-    fontSize: 12,
-    lineHeight: 16,
-    color: colors.success,
   },
 });

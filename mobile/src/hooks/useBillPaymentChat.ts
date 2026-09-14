@@ -4,6 +4,18 @@ import type { CalendarEvent, ChatItem } from '../types';
 
 export type ChatPhase = 'idle' | 'streaming' | 'awaiting_payment' | 'complete' | 'failed';
 
+const CURRENCY_SYMBOLS: Record<string, string> = { USD: '$', GBP: '£', EUR: '€' };
+
+function formatCurrencyAmount(currency: string, amount: number): string {
+  const symbol = CURRENCY_SYMBOLS[currency];
+  return symbol ? `${symbol}${amount.toFixed(2)}` : `${currency} ${amount.toFixed(2)}`;
+}
+
+function formatDueDate(dueDate: string | undefined): string {
+  if (!dueDate) return 'Due soon';
+  return new Date(dueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+}
+
 export function useBillPaymentChat(event: CalendarEvent) {
   const { customer } = useAuth();
   const [items, setItems] = useState<ChatItem[]>([]);
@@ -15,13 +27,13 @@ export function useBillPaymentChat(event: CalendarEvent) {
     const billProvider = rawDetails.bill_provider || 'Broadband';
     const billAmount = rawDetails.bill_amount || 0;
     const billCurrency = rawDetails.bill_currency || 'USD';
-    const dueDate = rawDetails.due_date ? new Date(rawDetails.due_date).toLocaleDateString() : 'Due soon';
+    const dueDate = formatDueDate(rawDetails.due_date);
 
     const greeting: ChatItem = {
       id: '1',
       kind: 'text',
       role: 'agent',
-      text: `Here's your ${billProvider} broadband bill for this month. Amount due: ${billCurrency}${billAmount.toFixed(2)} on ${dueDate}.`,
+      text: `Your ${billProvider} broadband bill is ready. Amount due: **${formatCurrencyAmount(billCurrency, billAmount)} on ${dueDate}**`,
       createdAt: Date.now(),
       connectApps: ['gmail', 'vodafone'],
     };
@@ -31,15 +43,6 @@ export function useBillPaymentChat(event: CalendarEvent) {
   }, []);
 
   const handlePaymentSuccess = useCallback((purchaseData: any) => {
-    const successMessage: ChatItem = {
-      id: Date.now().toString(),
-      kind: 'text',
-      role: 'agent',
-      text: `Payment successful! Your bill has been paid.`,
-      createdAt: Date.now(),
-    };
-
-    setItems((prev) => [...prev, successMessage]);
     setPhase('complete');
   }, []);
 
