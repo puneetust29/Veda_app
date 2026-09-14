@@ -123,8 +123,6 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.white,
     borderRadius: 24,
-    borderWidth: 1,
-    borderColor: '#E8E8E8',
     padding: 20,
     marginBottom: spacing.lg,
     shadowColor: '#000',
