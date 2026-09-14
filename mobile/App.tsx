@@ -1,6 +1,7 @@
 import {
   Inter_300Light,
   Inter_400Regular,
+  Inter_600SemiBold,
 } from '@expo-google-fonts/inter';
 import {
   Urbanist_400Regular,
@@ -27,6 +28,7 @@ export default function App() {
     Urbanist_700Bold,
     Inter_300Light,
     Inter_400Regular,
+    Inter_600SemiBold,
   });
 
   if (!fontsLoaded) {

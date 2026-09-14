@@ -22,6 +22,19 @@ function ConnectAppIcon({ source }: { source: ConnectAppSource }) {
   return <VodafoneIcon width={16} height={16} />;
 }
 
+// Minimal **bold** markdown support — the only rich-text agent messages need
+// right now (e.g. bolding the amount/date in a bill summary).
+function renderRichText(text: string) {
+  const parts = text.split(/\*\*(.+?)\*\*/g);
+  return parts.map((part, index) =>
+    index % 2 === 1 ? (
+      <Text key={index} style={styles.bold}>{part}</Text>
+    ) : (
+      part
+    )
+  );
+}
+
 export default function MessageBubble({ text, tone, connectApps }: Props) {
   // Don't render if text is empty
   if (!text || !text.trim()) {
@@ -64,7 +77,7 @@ export default function MessageBubble({ text, tone, connectApps }: Props) {
           end={{ x: 1, y: 0.9 }}
           style={[styles.agentBubble, hasConnectedApps && styles.agentBubbleFeature]}
         >
-          <Text style={[styles.agentText, hasConnectedApps && styles.agentTextFeature]}>{text}</Text>
+          <Text style={[styles.agentText, hasConnectedApps && styles.agentTextFeature]}>{renderRichText(text)}</Text>
         </LinearGradient>
       ) : (
         <View style={[styles.bubble, tone === 'user' ? styles.userBubble : styles.errorBubble]}>
@@ -157,6 +170,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
+  bold: { fontFamily: 'Inter_600SemiBold' },
   userText: { color: '#FFFFFF', fontSize: 15, lineHeight: 21, fontWeight: '400' },
   errorText: { color: '#C62828', fontSize: 15, lineHeight: 21, fontWeight: '500' },
 });

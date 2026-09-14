@@ -9,6 +9,7 @@ import ChatItemView from '../components/chat/ChatItemView';
 import DashboardHeader from '../components/dashboard/DashboardHeader';
 import LoadingStream from '../components/chat/LoadingStream';
 import BillPaymentCard from '../components/chat/BillPaymentCard';
+import BillsPaidBadge from '../components/chat/BillsPaidBadge';
 import PaymentCompleteCard from '../components/chat/PaymentCompleteCard';
 import { useAuth } from '../context/AuthContext';
 import { useWorkflowChat } from '../hooks/useWorkflowChat';
@@ -85,25 +86,25 @@ export default function ChatScreen({ route, navigation }: Props) {
 
   useEffect(() => {
     if (isBillPayment) {
-      // Check if bill is already paid
+      // Check if bill is already paid — fetched alongside the payment
+      // method (rather than only when unpaid) so the card can always show
+      // the "Paying with ..." row and, once paid, land straight in the
+      // disabled "Paid" state instead of swapping to a different card.
       api.getBillPaymentStatus(event.id)
         .then((billPayment) => {
-          if (billPayment) {
-            setPaidBillData(billPayment);
-          } else {
-            // Bill not paid yet, fetch payment method
-            api.getCustomerPaymentMethods()
-              .then((method) => {
-                if (method.id) {
-                  setPaymentMethodId(method.id);
-                  setPaymentMethodBrand(method.brand || '');
-                  setPaymentMethodLast4(method.last4 || '');
-                }
-              })
-              .catch((err) => console.warn('[ChatScreen] Failed to fetch payment method:', err));
-          }
+          if (billPayment) setPaidBillData(billPayment);
         })
         .catch((err) => console.warn('[ChatScreen] Failed to check bill payment status:', err));
+
+      api.getCustomerPaymentMethods()
+        .then((method) => {
+          if (method.id) {
+            setPaymentMethodId(method.id);
+            setPaymentMethodBrand(method.brand || '');
+            setPaymentMethodLast4(method.last4 || '');
+          }
+        })
+        .catch((err) => console.warn('[ChatScreen] Failed to fetch payment method:', err));
 
       // Initialize bill chat if not already done
       if (items.length === 0) {
@@ -154,27 +155,37 @@ export default function ChatScreen({ route, navigation }: Props) {
                 <ChatItemView key={item.id} item={item} />
               ))}
 
-              {/* Show payment complete if already paid */}
-              {paidBillData ? (
-                <PaymentCompleteCard
-                  insuranceId={paidBillData.payment_intent_id}
-                  insuranceAmount={paidBillData.amount}
-                  insuranceCurrency={paidBillData.bill_details?.bill_currency || 'USD'}
-                  cardBrand={paymentMethodBrand}
-                  cardLast4={paymentMethodLast4}
-                />
-              ) : paymentMethodId ? (
-                <BillPaymentCard
-                  bill={event}
-                  paymentMethodBrand={paymentMethodBrand}
-                  paymentMethodLast4={paymentMethodLast4}
-                  savedPaymentMethodId={paymentMethodId}
-                  onSuccess={() => {
-                    billPaymentResult.handlePaymentSuccess({});
-                    setTimeout(() => navigation.goBack(), 2000);
-                  }}
-                  onError={(error) => billPaymentResult.handlePaymentError(error)}
-                />
+              {paidBillData || paymentMethodId ? (
+                <>
+                  <BillPaymentCard
+                    bill={event}
+                    paymentMethodBrand={paymentMethodBrand}
+                    paymentMethodLast4={paymentMethodLast4}
+                    savedPaymentMethodId={paymentMethodId}
+                    alreadyPaid={!!paidBillData}
+                    onSuccess={() => {
+                      billPaymentResult.handlePaymentSuccess({});
+                      api.getBillPaymentStatus(event.id)
+                        .then((billPayment) => {
+                          if (billPayment) setPaidBillData(billPayment);
+                        })
+                        .catch((err) => console.warn('[ChatScreen] Failed to refresh bill payment status:', err));
+                    }}
+                    onError={(error) => billPaymentResult.handlePaymentError(error)}
+                  />
+                  {paidBillData && (
+                    <>
+                      <BillsPaidBadge />
+                      <PaymentCompleteCard
+                        insuranceId={paidBillData.payment_intent_id}
+                        insuranceAmount={paidBillData.amount}
+                        insuranceCurrency={paidBillData.bill_details?.bill_currency || 'USD'}
+                        cardBrand={paymentMethodBrand}
+                        cardLast4={paymentMethodLast4}
+                      />
+                    </>
+                  )}
+                </>
               ) : (
                 <LoadingStream items={INITIAL_STREAM_EVENTS} />
               )}

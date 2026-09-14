@@ -26,8 +26,8 @@ interface Country {
 }
 
 const COUNTRY_CODES: Country[] = [
-  { code: '+1', name: 'United States', flag: '🇺🇸' },
   { code: '+44', name: 'United Kingdom', flag: '🇬🇧' },
+  { code: '+1', name: 'United States', flag: '🇺🇸' },
   { code: '+33', name: 'France', flag: '🇫🇷' },
   { code: '+49', name: 'Germany', flag: '🇩🇪' },
   { code: '+39', name: 'Italy', flag: '🇮🇹' },
