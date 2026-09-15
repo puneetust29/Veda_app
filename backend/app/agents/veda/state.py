@@ -9,7 +9,10 @@ class VedaAgentState(AgentState, total=False):
     customer: dict
     user_message: str
     history: list[dict]
+    location_context: Optional[str]
+    enriched_location_context: Optional[dict]
 
     reply: str
     share_text: Optional[str]
     on_topic: bool
+    location_action: Optional[dict]

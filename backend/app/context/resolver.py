@@ -19,11 +19,23 @@ def _calendar_event_fetcher(principal: dict, subject: Optional[dict]) -> Optiona
     return (subject or {}).get("calendar_event")
 
 
+def _location_context_fetcher(principal: dict, subject: Optional[dict]) -> Optional[str]:
+    from app.context.location_context import location_context_fetcher
+    return location_context_fetcher(principal, subject)
+
+
+def _enriched_location_context_fetcher(principal: dict, subject: Optional[dict]) -> Optional[dict]:
+    from app.context.location_context import enriched_location_context_fetcher
+    return enriched_location_context_fetcher(principal, subject)
+
+
 class ContextResolver:
     def __init__(self) -> None:
         self._fetchers: Dict[str, Callable[[dict, Optional[dict]], object]] = {
             "customer": _customer_fetcher,
             "calendar_event": _calendar_event_fetcher,
+            "location_context": _location_context_fetcher,
+            "enriched_location_context": _enriched_location_context_fetcher,
         }
 
     def register(self, key: str, fetcher: Callable[[dict, Optional[dict]], object]) -> None:

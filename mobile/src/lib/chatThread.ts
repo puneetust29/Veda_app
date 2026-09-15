@@ -97,11 +97,13 @@ export function applyStreamEvent(items: ChatItem[], event: AgentStreamEvent): Ch
       return next;
     }
 
-    case 'text':
+    case 'text': {
+      const withoutStatus = removeAllStatuses(items);
       return [
-        ...items,
+        ...withoutStatus,
         { id: nextId(), createdAt: Date.now(), kind: 'text', role: event.data.role, text: event.data.text },
       ];
+    }
 
     case 'recommendation_ready': {
       // uber_ride is dev-only — ignore in the main chat flow
@@ -162,6 +164,23 @@ export function applyStreamEvent(items: ChatItem[], event: AgentStreamEvent): Ch
           // Kept so the UI can special-case outcomes like `no_plan_found`
           // (offer travel insurance instead of a retry).
           code: event.data.code,
+        },
+      ];
+    }
+
+    case 'geofence_event':
+      // Background geofence crossings are handled natively; no chat UI item needed.
+      return items;
+
+    case 'location_action': {
+      const clean = removeAllStatuses(items);
+      return [
+        ...clean,
+        {
+          id: nextId(),
+          createdAt: Date.now(),
+          kind: 'location_action' as const,
+          action: event.data,
         },
       ];
     }

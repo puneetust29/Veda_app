@@ -12,7 +12,9 @@
       "infoPlist": {
         "NSCalendarsUsageDescription": "Veda reads your calendar to detect upcoming flights and suggest roaming plans before you travel.",
         "NSLocationWhenInUseUsageDescription": "Veda uses your location to show local weather on your dashboard.",
-        "NSContactsUsageDescription": "Veda reads your contacts to help you message, call, and get context for your relationships."
+        "NSContactsUsageDescription": "Veda reads your contacts to help you message, call, and get context for your relationships.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Veda monitors saved locations (home, work, or custom) in the background so it can provide timely, context-aware assistance when you arrive or leave.",
+        "UIBackgroundModes": ["location", "fetch"]
       }
     },
     "android": {
@@ -31,7 +33,10 @@
         "android.permission.READ_CALENDAR",
         "android.permission.WRITE_CALENDAR",
         "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.ACCESS_FINE_LOCATION"
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.POST_NOTIFICATIONS"
       ],
       "package": "com.anonymous.vedacompanion"
     },
@@ -49,7 +54,17 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Veda uses your location to show local weather on your dashboard."
+          "locationWhenInUsePermission": "Veda uses your location to show local weather on your dashboard.",
+          "locationAlwaysAndWhenInUsePermission": "Veda monitors saved locations in the background to provide timely, context-aware assistance.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#c0392b"
         }
       ],
       [
