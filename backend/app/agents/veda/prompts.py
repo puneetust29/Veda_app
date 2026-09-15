@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+
 def veda_prompt(
     user_message: str,
     history: list[dict] = None,
