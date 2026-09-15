@@ -1,6 +1,6 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useRef, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import AiDisclaimer from '../components/chat/AiDisclaimer';
@@ -18,7 +18,8 @@ export default function VedaChatScreen({ navigation }: Props) {
   const [draft, setDraft] = useState('');
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0 } style={{ flex: 1 }}>
+      <SafeAreaView style={styles.container} edges={['bottom']}>
       <ScrollView
         ref={scrollViewRef}
         style={styles.thread}
@@ -49,7 +50,8 @@ export default function VedaChatScreen({ navigation }: Props) {
         editable={phase !== 'streaming'}
         sendDisabled={phase === 'streaming'}
       />
-    </SafeAreaView>
+      </SafeAreaView>
+    </KeyboardAvoidingView>
   );
 }
 

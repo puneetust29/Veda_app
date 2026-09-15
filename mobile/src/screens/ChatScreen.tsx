@@ -1,6 +1,6 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useRef, useState, useEffect } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View, KeyboardAvoidingView, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import AiDisclaimer from '../components/chat/AiDisclaimer';
@@ -17,6 +17,7 @@ import { useBillPaymentChat } from '../hooks/useBillPaymentChat';
 import { api } from '../lib/api';
 import { INITIAL_STREAM_EVENTS } from '../lib/mockStream';
 import type { RootStackParamList } from '../types';
+
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Chat'>;
 
@@ -121,6 +122,9 @@ export default function ChatScreen({ route, navigation }: Props) {
   }, [items]);
 
   return (
+    <KeyboardAvoidingView style={{ flex: 1 }}
+  behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+  keyboardVerticalOffset={Platform.OS === 'ios' ? -20 : 0}>
     <View style={styles.container}>
       <DashboardHeader
         avatarInitial={firstName.charAt(0).toUpperCase()}
@@ -259,8 +263,10 @@ export default function ChatScreen({ route, navigation }: Props) {
           sendDisabled={phase === 'streaming'}
           bottomInset={insets.bottom}
         />
+
       </View>
     </View>
+    </KeyboardAvoidingView>
   );
 }
 
