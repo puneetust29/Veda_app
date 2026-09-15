@@ -43,7 +43,7 @@ export default function TaxiChatScreen({ navigation }: Props) {
       createdAt: Date.now(),
       kind: 'text',
       role: 'agent',
-      text: "Where would you like to go? I'll book you a ride from your current location.",
+      text: "Where would you like to book a taxi to?",
     },
   ]);
   const [selectedDestination, setSelectedDestination] = useState<string>('');

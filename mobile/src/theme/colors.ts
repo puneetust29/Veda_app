@@ -50,6 +50,7 @@ export const colors = {
   toggleThumbOffStart: '#ff8e8e',
   toggleThumbOffEnd: '#e60000',
   buttonBackground: '#f5f5f5',
+  rowBackground: '#f7f7f7',
 
   accentRed: '#E8332B',
   pinkTile: '#FFEBEB',
