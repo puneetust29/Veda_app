@@ -1,5 +1,5 @@
-import { Ionicons } from '@expo/vector-icons';
 import { ActivityIndicator, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { SvgXml } from 'react-native-svg';
 
 import { colors } from '../../theme';
 
@@ -18,11 +18,15 @@ type Props = {
   bottomInset?: number;
 };
 
-const CONTROL_HEIGHT = 52;
+const CONTROL_HEIGHT = 40;
+
+const sendArrow = `<svg width="13.2144" height="13.2136" viewBox="0 0 13.2144 13.2136" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M0.607639 6.61057H12.6059" stroke="white" stroke-width="1.21528" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M6.60764 0.607639L12.6068 6.60679L6.60764 12.6059" stroke="white" stroke-width="1.21528" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>`;
 
 /**
- * Shared pill-style chat composer: a rounded text field with a light outline
- * and a separate circular grey send button with a paper-plane icon.
+ * Shared pill-style chat composer with a compact red arrow send button.
  */
 export default function ChatInputBar({
   value,
@@ -37,68 +41,71 @@ export default function ChatInputBar({
   const canSend = !sendDisabled && !loading && value.trim().length > 0;
 
   return (
-    <View style={[styles.container, { paddingBottom: Math.max(bottomInset, 12) }]}>
-      <TextInput
-        style={styles.input}
-        placeholder={placeholder}
-        placeholderTextColor="#8A8A8A"
-        value={value}
-        onChangeText={onChangeText}
-        editable={editable}
-        returnKeyType="send"
-        onSubmitEditing={canSend ? onSend : undefined}
-        blurOnSubmit={false}
-      />
-      <TouchableOpacity
-        style={[styles.sendButton, !canSend && styles.sendButtonDisabled]}
-        onPress={onSend}
-        disabled={!canSend}
-        accessibilityRole="button"
-        accessibilityLabel="Send"
-        activeOpacity={0.7}
-      >
-        {loading ? (
-          <ActivityIndicator color="#555555" size="small" />
-        ) : (
-          <Ionicons name="paper-plane-outline" size={22} color="#555555" />
-        )}
-      </TouchableOpacity>
+    <View style={[styles.wrapper, { paddingBottom: Math.max(bottomInset, 12) }]}>
+      <View style={styles.container}>
+        <TextInput
+          style={styles.input}
+          placeholder={placeholder}
+          placeholderTextColor="#6B7280"
+          value={value}
+          onChangeText={onChangeText}
+          editable={editable}
+          returnKeyType="send"
+          onSubmitEditing={canSend ? onSend : undefined}
+          blurOnSubmit={false}
+        />
+        <TouchableOpacity
+          style={[styles.sendButton, !canSend && styles.sendButtonDisabled]}
+          onPress={onSend}
+          disabled={!canSend}
+          accessibilityRole="button"
+          accessibilityLabel="Send"
+          activeOpacity={0.7}
+        >
+          {loading ? (
+            <ActivityIndicator color={colors.white} size="small" />
+          ) : (
+            <SvgXml xml={sendArrow} width={13.2144} height={13.2136} />
+          )}
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  wrapper: {
+    paddingHorizontal: 8,
+    backgroundColor: colors.white,
+  },
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingTop: 12,
+    height: 62,
+    paddingHorizontal: 11,
     backgroundColor: colors.white,
-    // Soft shadow along the top edge instead of a hard divider.
+    borderWidth: 1,
+    borderColor: '#EBEBEB',
+    borderRadius: 24,
     shadowColor: colors.black,
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 3,
   },
   input: {
     flex: 1,
     height: CONTROL_HEIGHT,
-    borderRadius: CONTROL_HEIGHT / 2,
-    borderWidth: 1,
-    borderColor: '#E6E6E6',
-    backgroundColor: colors.white,
-    paddingHorizontal: 20,
+    paddingHorizontal: 12,
     paddingVertical: 0,
-    fontSize: 17,
-    color: colors.textPrimary,
+    fontSize: 14,
+    color: colors.textSecondary,
   },
   sendButton: {
     width: CONTROL_HEIGHT,
     height: CONTROL_HEIGHT,
     borderRadius: CONTROL_HEIGHT / 2,
-    backgroundColor: '#F0F0F0',
+    backgroundColor: '#E60000',
     alignItems: 'center',
     justifyContent: 'center',
   },
