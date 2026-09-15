@@ -4,13 +4,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import CheckmarkIcon from '../icons/CheckmarkIcon';
 import { colors, fonts, spacing } from '../../theme';
 
-type Props = {
-  planType: 'roaming' | 'insurance';
-};
-
-export default function ({ planType }: Props) {
-  const displayText = planType === 'roaming' ? 'Roaming plan confirmed' : 'Travel insurance confirmed';
-
+// Same visual language as ConfirmationSuccessCard (the roaming/insurance
+// "confirmed" badge) — gradient card + CheckmarkIcon seal — but self-sized
+// and centered per Figma node 78:35556 ("Bills Paid" badge) rather than
+// stretched full-width.
+export default function BillsPaidBadge() {
   return (
     <View style={styles.container}>
       <LinearGradient
@@ -20,10 +18,8 @@ export default function ({ planType }: Props) {
         end={{ x: 1, y: 0.47 }}
         style={styles.content}
       >
-        <View style={styles.iconContainer}>
-          <CheckmarkIcon size={32} />
-        </View>
-        <Text style={styles.text}>{displayText}</Text>
+        <CheckmarkIcon size={24} />
+        <Text style={styles.text}>Bills Paid</Text>
       </LinearGradient>
     </View>
   );
@@ -31,16 +27,14 @@ export default function ({ planType }: Props) {
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: spacing.md,
-    marginHorizontal: spacing.xxxl,
+    alignSelf: 'center',
+    marginVertical: spacing.md,
     backgroundColor: colors.white,
     borderRadius: 24,
-    // iOS shadow
     shadowColor: '#FF0000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.122,
     shadowRadius: 16,
-    // Android elevation
     elevation: 4,
   },
   content: {
@@ -48,14 +42,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 24,
     overflow: 'hidden',
-    padding: spacing.lg,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
     gap: spacing.sm,
-  },
-  iconContainer: {
-    width: 32,
-    height: 32,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   text: {
     fontSize: 16,
