@@ -317,7 +317,7 @@ export type AgentStreamEvent =
 // Sources shown as small overlapping icons above an agent message, indicating
 // where the info in that message was pulled from (e.g. the bill's source
 // inbox and provider).
-export type ConnectAppSource = 'gmail' | 'vodafone';
+export type ConnectAppSource = 'gmail' | 'vodafone' | 'gmaps' | 'google' | 'uber';
 
 type ChatItemBase = { id: string; createdAt: number };
 

@@ -44,6 +44,7 @@ export default function TaxiChatScreen({ navigation }: Props) {
       kind: 'text',
       role: 'agent',
       text: "Where would you like to book a taxi to?",
+      connectApps: ['gmaps', 'google', 'uber'],
     },
   ]);
   const [selectedDestination, setSelectedDestination] = useState<string>('');
