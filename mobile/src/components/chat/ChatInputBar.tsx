@@ -42,7 +42,7 @@ export default function ChatInputBar({
 
   return (
     <View style={[styles.wrapper, { paddingBottom: Math.max(bottomInset, 12) }]}>
-      <View style={styles.container}>
+      <View style={[styles.container, !editable && styles.containerDisabled]}>
         <TextInput
           style={styles.input}
           placeholder={placeholder}
@@ -110,6 +110,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   sendButtonDisabled: {
+    opacity: 0.6,
+  },
+  containerDisabled: {
+    backgroundColor: '#F5F5F5',
+    borderColor: '#DEDEDE',
     opacity: 0.6,
   },
 });
