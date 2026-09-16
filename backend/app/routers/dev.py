@@ -11,9 +11,42 @@ from app.agents.transport.tfl_client import LONDON_AIRPORTS, get_line_status, ge
 from app.config import get_settings
 from app.deps import get_current_customer
 from app.integrations.deliveroo_auth import get_auth_headers, get_deliveroo_token, token_info
+from app.llm import gateway_token
+from app.llm.factory import provider_info
 
 
 router = APIRouter(prefix="/dev", tags=["dev"])
+
+
+# ---------------------------------------------------------------------------
+# LLM gateway key (local only — 404 unless LLM_USE_GATEWAY=true)
+# ---------------------------------------------------------------------------
+
+def _require_gateway():
+    settings = get_settings()
+    if not settings.llm_use_gateway:
+        raise HTTPException(404, "LLM gateway disabled (LLM_USE_GATEWAY is not true)")
+    return settings
+
+
+@router.get("/llm-token")
+def dev_llm_token(_customer: dict = Depends(get_current_customer)):
+    """Non-secret metadata about the cached gateway key. Never fetches, never reveals the key."""
+    _require_gateway()
+    return {"enabled": True, **provider_info(), **gateway_token.token_info()}
+
+
+@router.post("/llm-token/refresh")
+def dev_llm_token_refresh(_customer: dict = Depends(get_current_customer)):
+    """Force a re-fetch of the gateway key from Azure Key Vault."""
+    settings = _require_gateway()
+    if not settings.llm_gateway_configured:
+        raise HTTPException(503, "LLM gateway enabled but AZURE_* Key Vault credentials are not configured")
+    try:
+        gateway_token.refresh_gateway_key()
+    except Exception as e:
+        raise HTTPException(502, f"Gateway key refresh failed: {e}") from e
+    return {"ok": True, **gateway_token.token_info()}
 
 
 @router.get("/maps/route")

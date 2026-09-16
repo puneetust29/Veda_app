@@ -1,8 +1,39 @@
 """Intelligent airport-to-country mapper with hybrid caching strategy."""
 from typing import Optional
-import anthropic
-from app.config import get_settings
 from app.db.client import get_supabase
+from app.llm.factory import get_chat_model
+
+# The two Claude fallbacks below asked for Opus specifically; kept as the model
+# override in Anthropic mode. Gateway mode uses its single configured model.
+_CLAUDE_FALLBACK_MODEL = "claude-opus-5"
+
+
+def _text_of(message) -> str:
+    """Plain text of a chat model reply. `.content` is a str for most providers but
+    can be a list of content blocks (Anthropic)."""
+    content = getattr(message, "content", message)
+    if isinstance(content, str):
+        return content.strip()
+    if isinstance(content, list):
+        parts = []
+        for block in content:
+            if isinstance(block, str):
+                parts.append(block)
+            elif isinstance(block, dict) and block.get("type", "text") == "text":
+                parts.append(str(block.get("text", "")))
+        return "".join(parts).strip()
+    return str(content).strip()
+
+
+def _ask_claude_for_country(prompt: str) -> Optional[str]:
+    """Run a bare-country-name prompt; None on any error or an UNKNOWN answer."""
+    try:
+        response_text = _text_of(get_chat_model(model=_CLAUDE_FALLBACK_MODEL).invoke(prompt))
+    except Exception:
+        return None
+    if response_text and response_text != "UNKNOWN":
+        return response_text
+    return None
 
 # Hardcoded mapping of common airports to countries (~150 most-used routes)
 COMMON_AIRPORTS = {
@@ -282,10 +313,7 @@ def get_country_from_airport_claude(airport_code: str) -> Optional[str]:
     if not airport_code:
         return None
 
-    try:
-        client = anthropic.Anthropic(api_key=get_settings().anthropic_api_key)
-
-        prompt = f"""You are an airport-to-country mapping assistant.
+    prompt = f"""You are an airport-to-country mapping assistant.
 Given an airport code or city name, identify the country it belongs to.
 
 Input: {airport_code}
@@ -294,40 +322,7 @@ Return ONLY the country name (e.g., "United States", "France", "Japan") in your 
 If you cannot identify the country, respond with "UNKNOWN".
 Do not include any explanation or additional text."""
 
-        message = client.messages.create(
-            model="claude-opus-5",
-            max_tokens=50,
-            tools=[
-                {
-                    "name": "web_search",
-                    "description": "Search the web for information about airports and their locations",
-                    "input_schema": {
-                        "type": "object",
-                        "properties": {
-                            "query": {
-                                "type": "string",
-                                "description": f"Search query to find what country {airport_code} airport is in"
-                            }
-                        },
-                        "required": ["query"]
-                    }
-                }
-            ],
-            messages=[{"role": "user", "content": prompt}]
-        )
-
-        # Extract country name from response
-        response_text = ""
-        for block in message.content:
-            if hasattr(block, "text"):
-                response_text = block.text.strip()
-                break
-
-        if response_text and response_text != "UNKNOWN":
-            return response_text
-        return None
-    except Exception:
-        return None
+    return _ask_claude_for_country(prompt)
 
 
 def extract_country_from_event_text(event: dict) -> Optional[str]:
@@ -344,33 +339,14 @@ def extract_country_from_event_text(event: dict) -> Optional[str]:
     if not event_text.strip():
         return None
 
-    try:
-        client = anthropic.Anthropic(api_key=get_settings().anthropic_api_key)
-
-        prompt = f"""Extract the destination country from this flight event text.
+    prompt = f"""Extract the destination country from this flight event text.
 Event: {event_text}
 
 Return ONLY the country name (e.g., "United States", "France", "Japan").
 If you cannot identify the country, respond with "UNKNOWN".
 Do not include any explanation or additional text."""
 
-        message = client.messages.create(
-            model="claude-opus-5",
-            max_tokens=50,
-            messages=[{"role": "user", "content": prompt}]
-        )
-
-        response_text = ""
-        for block in message.content:
-            if hasattr(block, "text"):
-                response_text = block.text.strip()
-                break
-
-        if response_text and response_text != "UNKNOWN":
-            return response_text
-        return None
-    except Exception:
-        return None
+    return _ask_claude_for_country(prompt)
 
 
 def is_domestic_flight(destination: Optional[str], customer_country: Optional[str]) -> bool:

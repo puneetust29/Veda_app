@@ -4,7 +4,6 @@ from __future__ import annotations
 import logging
 from datetime import datetime
 
-from langchain_anthropic import ChatAnthropic
 from langgraph.graph import END, StateGraph
 from langgraph.types import StreamWriter
 
@@ -12,7 +11,7 @@ from app.agents.maps.maps_client import geocode, get_route, reverse_geocode
 from app.agents.uber.prompts import suggest_ride_prompt
 from app.agents.uber.schemas import RideSuggestion
 from app.agents.uber.state import UberAgentState
-from app.config import get_settings
+from app.llm.factory import get_chat_model
 from app.tools.uber_deeplink import (
     build_airport_deeplink_options,
     build_uber_deeplink,
@@ -25,10 +24,8 @@ logger = logging.getLogger(__name__)
 
 
 def _llm():
-    settings = get_settings()
-    if settings.anthropic_api_key:
-        return ChatAnthropic(model=settings.anthropic_model, api_key=settings.anthropic_api_key)
-    raise RuntimeError("No LLM key configured — set ANTHROPIC_API_KEY or OPENAI_API_KEY in backend/.env")
+    # Module-level seam: tests monkeypatch this symbol.
+    return get_chat_model()
 
 
 def _trip_duration_days(calendar_event: dict) -> int:

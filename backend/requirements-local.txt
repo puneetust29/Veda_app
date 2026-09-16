@@ -1,0 +1,6 @@
+# Local-development extras: Azure Key Vault access for the LLM gateway key
+# (LLM_USE_GATEWAY=true). Not needed in deployed environments, which use
+# ANTHROPIC_API_KEY directly. Install with: pip install -r requirements-local.txt
+-r requirements.txt
+azure-identity==1.19.0
+azure-keyvault-secrets==4.9.0

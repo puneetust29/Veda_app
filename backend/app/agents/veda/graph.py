@@ -1,18 +1,15 @@
-from langchain_anthropic import ChatAnthropic
 from langgraph.graph import END, StateGraph
 from langgraph.types import StreamWriter
 
 from app.agents.veda.prompts import veda_prompt
 from app.agents.veda.schemas import VedaReply
 from app.agents.veda.state import VedaAgentState
-from app.config import get_settings
+from app.llm.factory import get_chat_model
 
 
 def _llm():
-    settings = get_settings()
-    if settings.anthropic_api_key:
-        return ChatAnthropic(model=settings.anthropic_model, api_key=settings.anthropic_api_key)
-    raise RuntimeError("No LLM key configured — set ANTHROPIC_API_KEY or OPENAI_API_KEY in backend/.env")
+    # Module-level seam: tests monkeypatch this symbol.
+    return get_chat_model()
 
 
 def node_veda_reply(state: VedaAgentState, writer: StreamWriter) -> dict:

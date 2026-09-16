@@ -1,8 +1,6 @@
 import logging
 from typing import Optional
 
-from langchain_anthropic import ChatAnthropic
-
 log = logging.getLogger("app.agents.roaming")
 from langgraph.graph import END, StateGraph
 from langgraph.types import StreamWriter
@@ -11,7 +9,7 @@ from app.agents.roaming.prompts import followup_prompt, judge_prompt, recommend_
 from app.agents.roaming.schemas import FollowUpVerdict, JudgeVerdict, PlanRecommendation
 from app.agents.roaming.state import RoamingAgentState
 from app.agents.roaming.trip import extract_trip_context
-from app.config import get_settings
+from app.llm.factory import get_chat_model
 from app.tools.mobile import fetch_roaming_catalog, subscribe_roaming_plan
 from app.utils.airport_mapper import normalize_country_name
 
@@ -19,15 +17,8 @@ MAX_RETRIES = 2
 
 
 def _llm():
-    settings = get_settings()
-    if settings.anthropic_api_key:
-        log.info("[llm] using Anthropic model=%s", settings.anthropic_model)
-        return ChatAnthropic(model=settings.anthropic_model, api_key=settings.anthropic_api_key)
-    if settings.openai_api_key:
-        from langchain_openai import ChatOpenAI
-        log.info("[llm] using OpenAI model=%s", settings.openai_model)
-        return ChatOpenAI(model=settings.openai_model, api_key=settings.openai_api_key, temperature=0)
-    raise RuntimeError("No LLM key configured — set ANTHROPIC_API_KEY or OPENAI_API_KEY in backend/.env")
+    # Module-level seam: tests monkeypatch this symbol. Provider selection lives in app.llm.factory.
+    return get_chat_model()
 
 
 def node_extract_trip_context(state: RoamingAgentState, writer: StreamWriter) -> dict:

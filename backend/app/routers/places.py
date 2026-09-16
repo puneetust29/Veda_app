@@ -7,13 +7,13 @@ from datetime import datetime, timezone
 from typing import Optional
 
 import httpx
-from langchain_anthropic import ChatAnthropic
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.agents.uber.schemas import DestinationExtraction
 from app.config import get_settings
 from app.db.client import get_supabase
 from app.deps import get_current_customer
+from app.llm.factory import get_chat_model, llm_configured
 from app.schemas.location import (
     CATEGORY_TO_GOOGLE_TYPE,
     NearbyPlaceResult,
@@ -298,15 +298,11 @@ def extract_destination(
     _customer: dict = Depends(get_current_customer),
 ):
     """Extract destination from user message and validate relevance using Claude."""
-    settings = get_settings()
-    api_key = settings.anthropic_api_key
-
-    if not api_key:
+    if not llm_configured():
         return {"destination": "", "is_relevant": False, "error": "Anthropic API key not configured"}
 
     try:
-        llm = ChatAnthropic(model=settings.anthropic_model, api_key=api_key)
-        structured_llm = llm.with_structured_output(DestinationExtraction)
+        structured_llm = get_chat_model().with_structured_output(DestinationExtraction)
 
         prompt = (
             "You are a taxi/Uber booking assistant. Your role is to help users book rides.\n\n"

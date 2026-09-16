@@ -18,6 +18,31 @@ class Settings(BaseSettings):
     # "anthropic" | "openai" — agents that support both check this to pick the provider
     llm_provider: str = "anthropic"
 
+    # Local-only OpenAI-compatible LLM gateway. Off by default. When true, EVERY LLM call
+    # goes through the gateway with the single model below and the Anthropic settings are
+    # ignored. The gateway key is pulled from Azure Key Vault (AZURE_* below) and cached
+    # in-process; it is re-fetched only when the gateway answers 401 or on an explicit
+    # POST /dev/llm-token/refresh. See app/llm/.
+    llm_use_gateway: bool = False
+    llm_gateway_url: str = "https://llmproxy.ustdev.com/"
+    llm_gateway_model: str = "claude-sonnet-5-designExp"
+    # False -> httpx verify=False for the gateway + connection_verify=False for Key Vault.
+    # Never patches the global ssl context.
+    llm_gateway_verify_ssl: bool = True
+    # "json_schema" | "json_mode" | "function_calling" — how with_structured_output talks
+    # to the gateway. The UST proxy drops the `tools` array for Claude, so tool-based
+    # ("function_calling") structured output fails there; json_schema was verified to work.
+    llm_gateway_structured_method: str = "json_schema"
+    llm_gateway_secret_name: str = "designExperienceDelivery-kvs"
+    # Empty string -> latest secret version.
+    llm_gateway_secret_version: str = "8f93e8fddb3440ac849787ba9ea05a28"
+
+    # Azure Key Vault service principal that can read the gateway key. No defaults.
+    azure_vault_url: str = ""
+    azure_tenant_id: str = ""
+    azure_client_id: str = ""
+    azure_client_secret: str = ""
+
     # Google OAuth (unified for Calendar + Gmail). Optional: the app boots without these,
     # and Google routes answer 503 until configured. Deliberate, so a deployment that
     # hasn't done the Cloud Console setup isn't a hard boot failure.
@@ -64,6 +89,12 @@ class Settings(BaseSettings):
     deliveroo_client_secret: str = ""
     deliveroo_env: str = "sandbox"  # "sandbox" | "production"
     deliveroo_webhook_secret: str = ""
+
+    @property
+    def llm_gateway_configured(self) -> bool:
+        return bool(
+            self.azure_vault_url and self.azure_tenant_id and self.azure_client_id and self.azure_client_secret
+        )
 
     @property
     def deliveroo_configured(self) -> bool:

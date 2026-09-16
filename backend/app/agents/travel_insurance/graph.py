@@ -1,6 +1,5 @@
 """LangGraph for travel insurance plan recommendation and judgment."""
 from typing import TypedDict, Optional
-from langchain_anthropic import ChatAnthropic
 from langgraph.graph import END, StateGraph
 from langgraph.types import StreamWriter
 import logging
@@ -8,7 +7,7 @@ import logging
 from app.agents.roaming.trip import extract_trip_context
 from app.agents.travel_insurance.prompts import recommend_prompt
 from app.agents.travel_insurance.schemas import PlanRecommendation
-from app.config import get_settings
+from app.llm.factory import get_chat_model
 from app.tools.insurance import fetch_insurance_catalog
 
 logger = logging.getLogger(__name__)
@@ -35,10 +34,8 @@ class TravelInsuranceAgentState(TypedDict, total=False):
 
 
 def _llm():
-    settings = get_settings()
-    if settings.anthropic_api_key:
-        return ChatAnthropic(model=settings.anthropic_model, api_key=settings.anthropic_api_key)
-    raise RuntimeError("No LLM key configured — set ANTHROPIC_API_KEY or OPENAI_API_KEY in backend/.env")
+    # Module-level seam: tests monkeypatch this symbol.
+    return get_chat_model()
 
 
 def _format_date(date_str: str) -> str:

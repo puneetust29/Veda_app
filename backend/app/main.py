@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
@@ -31,6 +32,17 @@ async def lifespan(_app: FastAPI):
     # manifest (unregistered tool, missing context resolver, etc.) raises here, at
     # boot, instead of failing on the first request that happens to hit it.
     get_orchestrator()
+
+    # Local-only LLM gateway: warm the Key Vault key at boot so the first chat request
+    # doesn't pay for it. Fail soft — the first LLM call retries the fetch.
+    if settings.llm_use_gateway:
+        from app.llm.gateway_token import get_gateway_key
+
+        try:
+            await asyncio.to_thread(get_gateway_key)
+            _app_log.info("[llm] gateway key warmed up")
+        except Exception as e:
+            _app_log.warning("[llm] gateway key warm-up failed (will retry on first LLM call): %s", e)
     yield
 
 

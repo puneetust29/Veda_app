@@ -10,10 +10,9 @@ from __future__ import annotations
 import re
 from typing import Optional
 
-from langchain_anthropic import ChatAnthropic
 from pydantic import BaseModel, Field
 
-from app.config import get_settings
+from app.llm.factory import get_chat_model
 
 # Two-to-three letter airline code + 1-4 digit flight number, e.g. "AA 123",
 # "BA0284", "UA1849" -- deliberately loose; false positives here just mean an
@@ -36,8 +35,8 @@ class FlightClassification(BaseModel):
 
 
 def _llm():
-    settings = get_settings()
-    return ChatAnthropic(model=settings.anthropic_model, api_key=settings.anthropic_api_key)
+    # Module-level seam: tests monkeypatch this symbol.
+    return get_chat_model()
 
 
 def _regex_prefilter(title: str, location: str, notes: str) -> Optional[bool]:
