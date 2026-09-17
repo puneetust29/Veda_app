@@ -96,10 +96,10 @@ export default function TaxiChatScreen({ navigation }: Props) {
     search(destination, pickup?.latitude ?? undefined, pickup?.longitude ?? undefined);
   };
 
-  const handleSendMessage = async () => {
-    if (!draft.trim()) return;
+  const handleSendMessage = async (message?: string) => {
+    const messageToExtract = message ?? draft;
+    if (!messageToExtract.trim()) return;
 
-    const messageToExtract = draft;
     try {
       setPhase('loading');
       setDraft('');
@@ -393,23 +393,28 @@ export default function TaxiChatScreen({ navigation }: Props) {
           contentContainerStyle={styles.threadContent}
           onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
         >
-          {items.map((item) =>
-            item.kind === 'card' ? (
-              <View key={item.id} style={styles.cardContainer}>
-                <RecommendationCard card={item.card} />
-              </View>
-            ) : (
-              <ChatItemView key={item.id} item={item} />
-            ),
-          )}
+          {items.map((item, index) => (
+            <View key={item.id}>
+              {item.kind === 'card' ? (
+                <View style={styles.cardContainer}>
+                  <RecommendationCard card={item.card} />
+                </View>
+              ) : (
+                <ChatItemView item={item} />
+              )}
 
-          {phase === 'input' && (
-            <YourPlacesCard
-              homeAddress={customer?.address}
-              workAddress={customer?.work_address}
-              onSelectPlace={(address) => setDraft(address)}
-            />
-          )}
+              {index === 0 && (
+                <YourPlacesCard
+                  homeAddress={customer?.address}
+                  workAddress={customer?.work_address}
+                  onSelectPlace={(address) => {
+                    setDraft(address);
+                    void handleSendMessage(address);
+                  }}
+                />
+              )}
+            </View>
+          ))}
 
           {(phase === 'input' || (phase === 'loading' && displayPredictions.length > 0)) && displayPredictions.length > 0 && (
             <MessageBubble text="Here are some destinations you can pick from:" tone="agent" />
