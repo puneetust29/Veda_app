@@ -3,8 +3,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, radii, typography } from '../../theme';
 import LocationSuggestions from './LocationSuggestions';
-
-type Prediction = { place_id: string; description: string };
+import type { Prediction } from '../../hooks/usePlacesAutocomplete';
+import LocationCurrentIcon from '../../../assets/location-current.svg';
 
 type Props = {
   visible: boolean;
@@ -51,9 +51,11 @@ export default function LocationPickerModal({
             style={styles.currentLocationButton}
             onPress={onUseCurrentLocation}
             activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel="Use current location"
           >
             <View style={styles.currentLocationIcon}>
-              <Ionicons name="navigate" size={16} color={colors.white} />
+              <LocationCurrentIcon width={16} height={16} />
             </View>
             <Text style={styles.currentLocationButtonText}>Use Current Location</Text>
           </TouchableOpacity>
@@ -105,15 +107,16 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: colors.backdrop,
+    justifyContent: 'flex-end',
   },
   modal: {
-    flex: 1,
-    backgroundColor: colors.background,
-    borderTopLeftRadius: radii.xl,
-    borderTopRightRadius: radii.xl,
-    marginTop: spacing.xxl,
+    width: '100%',
+    maxHeight: '100%',
+    minHeight: '85%',
+    backgroundColor: colors.white,
+    borderRadius: radii.xl,
     shadowColor: colors.black,
-    shadowOffset: { width: 0, height: -4 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 12,
     elevation: 8,
@@ -154,7 +157,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
-    backgroundColor: colors.brand,
+    backgroundColor: colors.brandBackGround,
     borderRadius: radii.md,
     gap: spacing.md,
     shadowColor: colors.brand,
@@ -164,9 +167,9 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   currentLocationIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: radii.sm,
+    width: 32,
+    height: 32,
+    borderRadius: radii.pill,
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',

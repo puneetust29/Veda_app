@@ -27,7 +27,7 @@ export default function VedaChatScreen({ navigation, route }: Props) {
   const [draft, setDraft] = useState('');
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0} style={{ flex: 1 }}>
+    <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0} style={{ flex: 1 }}>
       <SafeAreaView style={styles.container} edges={['bottom']}>
         <ScrollView
           ref={scrollViewRef}

@@ -79,6 +79,8 @@ def places_autocomplete(
                 "radius": 50000.0,
             }
         }
+        # With an origin, Google returns distanceMeters (straight-line) per prediction.
+        payload["origin"] = {"latitude": latitude, "longitude": longitude}
 
     try:
         with httpx.Client() as client:
@@ -93,6 +95,7 @@ def places_autocomplete(
                 predictions.append({
                     "place_id": place_prediction.get("placeId", ""),
                     "description": place_prediction.get("text", {}).get("text", ""),
+                    "distance_meters": place_prediction.get("distanceMeters"),
                 })
 
         print(f"[Places] Got {len(predictions)} predictions for '{input}'")

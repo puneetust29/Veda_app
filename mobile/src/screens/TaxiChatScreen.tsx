@@ -1,6 +1,6 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useEffect, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import * as Location from 'expo-location';
 
 import AiDisclaimer from '../components/chat/AiDisclaimer';
@@ -159,7 +159,6 @@ export default function TaxiChatScreen({ navigation }: Props) {
 
     setItems((prev) => [
       ...prev,
-      { id: nextId(), createdAt: Date.now(), kind: 'text', role: 'user', text: description },
       { id: nextId(), createdAt: Date.now(), kind: 'text', role: 'agent', text: `Drop location set to ${description}.` },
     ]);
 
@@ -365,7 +364,10 @@ export default function TaxiChatScreen({ navigation }: Props) {
   }, [predictions]);
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView style={{ flex: 1 }}
+      behavior="padding"
+      keyboardVerticalOffset={Platform.OS === 'ios' ? -20 : 0}>
+      <View style={styles.container}>
       <DashboardHeader
         avatarInitial={firstName.charAt(0).toUpperCase()}
         onPressHistory={() => navigation.goBack()}
@@ -448,7 +450,8 @@ export default function TaxiChatScreen({ navigation }: Props) {
           loading={autocompleteLoading}
         />
       )}
-    </View>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 

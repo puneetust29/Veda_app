@@ -408,7 +408,9 @@ export const api = {
       params.append('latitude', latitude.toString());
       params.append('longitude', longitude.toString());
     }
-    return authedFetch<{ predictions: Array<{ place_id: string; description: string }> }>(
+    return authedFetch<{
+      predictions: Array<{ place_id: string; description: string; distance_meters?: number | null }>;
+    }>(
       `/places/autocomplete?${params.toString()}`,
       {
         method: 'GET',
