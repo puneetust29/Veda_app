@@ -48,7 +48,7 @@ def _format_date(date_str: str) -> str:
         dt = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
         day = dt.day
         suffix = 'st' if day % 10 == 1 and day != 11 else 'nd' if day % 10 == 2 and day != 12 else 'rd' if day % 10 == 3 and day != 13 else 'th'
-        return dt.strftime(f'%{day}{suffix} %B %Y').replace(f'%{day}', f'{day}{suffix}')
+        return f"{day}{suffix} {dt.strftime('%B %Y')}"
     except:
         return date_str
 
