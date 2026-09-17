@@ -237,7 +237,6 @@ export default function RecommendationCard({ card, confirmation, onConfirm, onDe
 
 const styles = StyleSheet.create({
   cardShadow: {
-    marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,

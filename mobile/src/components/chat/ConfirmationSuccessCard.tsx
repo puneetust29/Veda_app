@@ -31,7 +31,7 @@ export default function ({ planType }: Props) {
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: spacing.md,
+    marginBottom: spacing.xl,
     marginHorizontal: spacing.xxxl,
     backgroundColor: colors.white,
     borderRadius: 24,
