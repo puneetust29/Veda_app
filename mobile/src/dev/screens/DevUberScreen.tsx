@@ -40,6 +40,7 @@ export default function DevUberScreen() {
           airport_options: [],
           alternative_options: [],
           drive_mins_to_airport: null,
+          distance_km: null,
         };
         setCard(payload);
       } catch (e) {

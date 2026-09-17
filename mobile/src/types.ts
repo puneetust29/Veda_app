@@ -501,6 +501,7 @@ export type RecommendationCardPayload =
       airport_options: UberAirportOption[];
       alternative_options: UberAirportOption[];
       drive_mins_to_airport: number | null;
+      distance_km: number | null;
     };
 
 export type HotelBooking = {

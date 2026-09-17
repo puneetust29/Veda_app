@@ -170,6 +170,8 @@ export default function TaxiChatScreen({ navigation }: Props) {
 
       let destLat: number | null = null;
       let destLng: number | null = null;
+      let distanceKm: number | null = null;
+      let driveMins: number | null = null;
 
       if (pickupLocation?.latitude != null && pickupLocation?.longitude != null) {
         const coordResult = await api.getPlaceCoordinates(description, pickupLocation.latitude, pickupLocation.longitude);
@@ -195,6 +197,11 @@ export default function TaxiChatScreen({ navigation }: Props) {
           setPhase('error');
           return;
         }
+
+        distanceKm = Math.round(distance * 10) / 10;
+        // Rough city-driving estimate for this straight-line distance (no routing API in this flow).
+        const AVG_CITY_SPEED_KMH = 30;
+        driveMins = Math.max(1, Math.round((distanceKm / AVG_CITY_SPEED_KMH) * 60));
       }
 
       const params = new URLSearchParams({ destination: description });
@@ -247,7 +254,8 @@ export default function TaxiChatScreen({ navigation }: Props) {
         deep_link_url: raw.deep_link_url,
         airport_options: [],
         alternative_options: [],
-        drive_mins_to_airport: null,
+        drive_mins_to_airport: driveMins,
+        distance_km: distanceKm,
       };
 
       setItems((prev) => [
