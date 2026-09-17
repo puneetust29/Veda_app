@@ -375,7 +375,7 @@ export default function TaxiChatScreen({ navigation }: Props) {
   return (
     <KeyboardAvoidingView style={{ flex: 1 }}
       behavior="padding"
-      keyboardVerticalOffset={Platform.OS === 'ios' ? -20 : 0}>
+      keyboardVerticalOffset={Platform.OS === 'ios' ? -20 : -20}>
       <View style={styles.container}>
         <DashboardHeader
           avatarInitial={firstName.charAt(0).toUpperCase()}

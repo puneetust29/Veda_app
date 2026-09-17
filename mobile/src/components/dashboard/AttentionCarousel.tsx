@@ -48,6 +48,8 @@ const SOURCE_LOGOS: Record<'google' | 'gmail', ImageSourcePropType> = {
   gmail: require('../../../assets/dashboard/app-gmail.png'),
 };
 
+const billImage = require('../../../assets/dashboard/bill-image.png');
+
 function SourceBadge({ source }: { source: CalendarEvent['source'] }) {
   return (
     <View style={styles.sourceBadge}>
@@ -240,14 +242,9 @@ function AttentionCard({
         {/* Banner with image */}
         <View style={styles.banner}>
           <Image
-            source={
-              imageLoadFailed
-                ? getRandomFallbackImage(event.id)
-                : { uri: `https://picsum.photos/seed/${encodeURIComponent(event.id)}/600/300` }
-            }
+            source={billImage}
             style={StyleSheet.absoluteFill}
             resizeMode="cover"
-            onError={() => setImageLoadFailed(true)}
           />
           <View style={styles.badgeRow}>
             <SourceBadge source={event.source} />

@@ -200,12 +200,6 @@ export default function DashboardScreen({ navigation }: Props) {
       connectAppIcons: [{ source: ellipse1 }, { source: ellipse3 }],
       comingSoon: true,
     },
-    {
-      id: 'nearby',
-      iconXml: tileLocation,
-      label: 'Find places nearby',
-      onPress: () => navigation.navigate('VedaChat', { initialMessage: "What's near me right now?" }),
-    },
   ];
 
   // No dedicated profile/settings screen exists in the Figma design yet, so
