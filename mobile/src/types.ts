@@ -10,6 +10,7 @@ export type Customer = {
   phone_number: string;
   full_name: string;
   address: string;
+  work_address?: string | null;
   telecom_plan: string;
   account_number: string;
   created_at: string;
@@ -501,6 +502,7 @@ export type RecommendationCardPayload =
       airport_options: UberAirportOption[];
       alternative_options: UberAirportOption[];
       drive_mins_to_airport: number | null;
+      distance_km: number | null;
     };
 
 export type HotelBooking = {

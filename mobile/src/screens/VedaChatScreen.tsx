@@ -1,6 +1,6 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useRef, useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import AiDisclaimer from '../components/chat/AiDisclaimer';
@@ -27,38 +27,40 @@ export default function VedaChatScreen({ navigation, route }: Props) {
   const [draft, setDraft] = useState('');
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
-      <ScrollView
-        ref={scrollViewRef}
-        style={styles.thread}
-        contentContainerStyle={styles.threadContent}
-        onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
-      >
-        {items.map((item) => (
-          <ChatItemView key={item.id} item={item} />
-        ))}
-        <AiDisclaimer />
-      </ScrollView>
+    <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0} style={{ flex: 1 }}>
+      <SafeAreaView style={styles.container} edges={['bottom']}>
+        <ScrollView
+          ref={scrollViewRef}
+          style={styles.thread}
+          contentContainerStyle={styles.threadContent}
+          onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
+        >
+          {items.map((item) => (
+            <ChatItemView key={item.id} item={item} />
+          ))}
+          <AiDisclaimer />
+        </ScrollView>
 
-      {phase === 'failed' && (
-        <View style={styles.footer}>
-          <TouchableOpacity style={styles.primaryButton} onPress={retry}>
-            <Text style={styles.primaryButtonText}>Retry</Text>
-          </TouchableOpacity>
-        </View>
-      )}
+        {phase === 'failed' && (
+          <View style={styles.footer}>
+            <TouchableOpacity style={styles.primaryButton} onPress={retry}>
+              <Text style={styles.primaryButtonText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
-      <ChatInputBar
-        value={draft}
-        onChangeText={setDraft}
-        onSend={() => {
-          sendMessage(draft);
-          setDraft('');
-        }}
-        editable={phase !== 'streaming'}
-        sendDisabled={phase === 'streaming'}
-      />
-    </SafeAreaView>
+        <ChatInputBar
+          value={draft}
+          onChangeText={setDraft}
+          onSend={() => {
+            sendMessage(draft);
+            setDraft('');
+          }}
+          editable={phase !== 'streaming'}
+          sendDisabled={phase === 'streaming'}
+        />
+      </SafeAreaView>
+    </KeyboardAvoidingView>
   );
 }
 

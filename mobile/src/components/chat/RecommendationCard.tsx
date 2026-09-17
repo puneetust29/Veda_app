@@ -5,6 +5,8 @@ import type { RecommendationCardPayload, ChatItem } from '../../types';
 import { vodafoneIcon } from '../dashboard/figmaSvgs';
 import CheckIcon from '../icons/CheckIcon';
 import { openUber } from '../../lib/uberDeeplink';
+import { colors, fonts } from '../../theme';
+import UberIcon from '../../../assets/dashboard/svg/uber-icon.svg';
 
 type ConfirmationItem = Extract<ChatItem, { kind: 'confirmation' }>;
 
@@ -52,61 +54,61 @@ export default function RecommendationCard({ card, confirmation, onConfirm, onDe
       return (
         <View style={styles.cardShadow}>
           <View style={styles.planCard}>
-          {/* Background Pattern */}
-          <View style={styles.backgroundPattern} />
-          {/* Provider Section */}
-          <View style={styles.providerSection}>
-            <View style={styles.providerBadge}>
-              <SvgXml xml={vodafoneIcon} width={21} height={21} />
+            {/* Background Pattern */}
+            <View style={styles.backgroundPattern} />
+            {/* Provider Section */}
+            <View style={styles.providerSection}>
+              <View style={styles.providerBadge}>
+                <SvgXml xml={vodafoneIcon} width={21} height={21} />
+              </View>
+              <View style={styles.providerInfo}>
+                <Text style={styles.providerName}>vodafone</Text>
+              </View>
             </View>
-            <View style={styles.providerInfo}>
-              <Text style={styles.providerName}>vodafone</Text>
+            <View style={styles.providerSection}>
+              <Text style={styles.providerName}>{card.plan.plan_name}</Text>
             </View>
-          </View>
-          <View style={styles.providerSection}>
-            <Text style={styles.providerName}>{card.plan.plan_name}</Text>
-          </View>
-          {/* Plan Name */}
+            {/* Plan Name */}
 
-          {/* Divider */}
-          <View style={styles.divider} />
+            {/* Divider */}
+            <View style={styles.divider} />
 
-          {/* Why This One Section */}
-          <Text style={styles.sectionHeader}>Why this one</Text>
-          <View style={styles.reasoningList}>
-            {parseReasoningPoints(card.reasoning).map((line, idx) => (
-              <View key={idx} style={styles.reasoningItem}>
-                <CheckIcon size={12} />
-                <Text style={styles.reasoningText}>{line}</Text>
-              </View>
-            ))}
-          </View>
+            {/* Why This One Section */}
+            <Text style={styles.sectionHeader}>Why this one</Text>
+            <View style={styles.reasoningList}>
+              {parseReasoningPoints(card.reasoning).map((line, idx) => (
+                <View key={idx} style={styles.reasoningItem}>
+                  <CheckIcon size={12} />
+                  <Text style={styles.reasoningText}>{line}</Text>
+                </View>
+              ))}
+            </View>
 
-          {/* Total & Buttons Section */}
-          {confirmation && price && confirmation.state === 'pending' && confirmation.risk === 'commit' && (
-            <>
-              <View style={styles.divider} />
-              <View style={styles.totalRow}>
-                <Text style={styles.totalLabel}>Total</Text>
-                <Text style={styles.totalPrice}>{price}</Text>
-              </View>
+            {/* Total & Buttons Section */}
+            {confirmation && price && confirmation.state === 'pending' && confirmation.risk === 'commit' && (
+              <>
+                <View style={styles.divider} />
+                <View style={styles.totalRow}>
+                  <Text style={styles.totalLabel}>Total</Text>
+                  <Text style={styles.totalPrice}>{price}</Text>
+                </View>
 
-              <View style={styles.actions}>
-                <TouchableOpacity
-                  style={styles.secondaryButton}
-                  onPress={() => onDecline?.(confirmation.actionId)}
-                >
-                  <Text style={styles.secondaryButtonText} numberOfLines={1}>Not now</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.primaryButton}
-                  onPress={() => onConfirm?.(confirmation.actionId)}
-                >
-                  <Text style={styles.primaryButtonText} numberOfLines={1}>Approve roaming</Text>
-                </TouchableOpacity>
-              </View>
-            </>
-          )}
+                <View style={styles.actions}>
+                  <TouchableOpacity
+                    style={styles.secondaryButton}
+                    onPress={() => onDecline?.(confirmation.actionId)}
+                  >
+                    <Text style={styles.secondaryButtonText} numberOfLines={1}>Not now</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.primaryButton}
+                    onPress={() => onConfirm?.(confirmation.actionId)}
+                  >
+                    <Text style={styles.primaryButtonText} numberOfLines={1}>Approve roaming</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
           </View>
         </View>
       );
@@ -128,7 +130,7 @@ export default function RecommendationCard({ card, confirmation, onConfirm, onDe
           {/* Header */}
           <View style={uberStyles.header}>
             <View style={uberStyles.wordmark}>
-              <Text style={uberStyles.wordmarkText}>UBER</Text>
+              <UberIcon width={48} height={16} />
             </View>
             <Text style={uberStyles.tagline}>{card.suggested_message}</Text>
           </View>
@@ -137,36 +139,44 @@ export default function RecommendationCard({ card, confirmation, onConfirm, onDe
           <View style={uberStyles.route}>
             <View style={uberStyles.routeTimeline}>
               <View style={uberStyles.dotPickup} />
-              <View style={uberStyles.routeConnector} />
+              <View style={uberStyles.routeConnector}>
+                <View style={uberStyles.routeConnectorDash} />
+                <View style={uberStyles.routeConnectorDash} />
+                <View style={uberStyles.routeConnectorDash} />
+              </View>
               <View style={uberStyles.dotDropoff} />
             </View>
             <View style={uberStyles.routeLabels}>
               <View style={uberStyles.routeStop}>
-                <Text style={uberStyles.routeStopLabel}>Pickup</Text>
+                <View style={uberStyles.routeStopValueRow}>
+                  <Text style={uberStyles.routeStopLabel}>Pick up location</Text>
+                  {(card.distance_km != null || card.drive_mins_to_airport != null) && (
+                    <Text style={uberStyles.routeDistance} numberOfLines={1}>
+                      {[
+                        card.distance_km != null ? `${card.distance_km.toFixed(1)} km` : null,
+                        card.drive_mins_to_airport != null
+                          ? card.drive_mins_to_airport < 60
+                            ? `${card.drive_mins_to_airport} Min`
+                            : `${Math.floor(card.drive_mins_to_airport / 60)}h ${card.drive_mins_to_airport % 60}m`
+                          : null,
+                      ]
+                        .filter(Boolean)
+                        .join(' • ')}
+                    </Text>
+                  )}
+                </View>
                 <Text style={uberStyles.routeStopValue} numberOfLines={1}>
                   {card.pickup_label || 'Current location'}
                 </Text>
               </View>
               <View style={uberStyles.routeStop}>
-                <Text style={uberStyles.routeStopLabel}>Drop-off</Text>
+                <Text style={uberStyles.routeStopLabel}>Drop-off location</Text>
                 <Text style={uberStyles.routeStopValue} numberOfLines={1}>
                   {card.dropoff_label || 'Destination'}
                 </Text>
               </View>
             </View>
           </View>
-
-          {/* Drive time estimate */}
-          {card.drive_mins_to_airport != null && (
-            <View style={uberStyles.etaRow}>
-              <Text style={uberStyles.etaValue}>
-                ~{card.drive_mins_to_airport < 60
-                  ? `${card.drive_mins_to_airport} min`
-                  : `${Math.floor(card.drive_mins_to_airport / 60)}h ${card.drive_mins_to_airport % 60}m`}
-              </Text>
-              <Text style={uberStyles.etaLabel}> to airport</Text>
-            </View>
-          )}
 
           {/* Direct book CTA */}
           {hasDirectLink && !hasAirportOptions && (
@@ -182,7 +192,7 @@ export default function RecommendationCard({ card, confirmation, onConfirm, onDe
           {/* Airport options */}
           {hasAirportOptions && (
             <>
-              <Text style={uberStyles.optionsLabel}>Choose your airport</Text>
+              <Text style={uberStyles.optionsLabel}>Book Ride in Uber</Text>
               {card.airport_options.map((opt, i) => (
                 <TouchableOpacity
                   key={opt.label}
@@ -226,7 +236,7 @@ export default function RecommendationCard({ card, confirmation, onConfirm, onDe
 }
 
 const styles = StyleSheet.create({
-    cardShadow: {
+  cardShadow: {
     marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -410,33 +420,25 @@ const styles = StyleSheet.create({
 
 const uberStyles = StyleSheet.create({
   card: {
-    borderRadius: 16,
+    borderRadius: 24,
     backgroundColor: '#FFFFFF',
     marginBottom: 12,
-    overflow: 'hidden',
+    // overflow: 'hidden',
     borderWidth: 1,
     borderColor: '#E8E8E8',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
+    boxShadow: '0px 2px 8px 0px #0000001F',
     elevation: 2,
   },
   header: {
     backgroundColor: '#000000',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     paddingHorizontal: 20,
     paddingTop: 20,
-    paddingBottom: 20,
     gap: 6,
   },
   wordmark: {
     alignSelf: 'flex-start',
-  },
-  wordmarkText: {
-    fontSize: 22,
-    fontWeight: '900',
-    color: '#FFFFFF',
-    letterSpacing: 2,
   },
   tagline: {
     fontSize: 14,
@@ -466,9 +468,16 @@ const uberStyles = StyleSheet.create({
   routeConnector: {
     flex: 1,
     width: 2,
-    backgroundColor: '#E0E0E0',
-    marginVertical: 4,
     minHeight: 20,
+    marginVertical: 4,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  routeConnectorDash: {
+    width: 2,
+    height: 8,
+    borderRadius: 1,
+    backgroundColor: '#E0E0E0',
   },
   dotDropoff: {
     width: 10,
@@ -487,43 +496,39 @@ const uberStyles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     color: '#9E9E9E',
-    textTransform: 'uppercase',
     letterSpacing: 0.5,
+  },
+  routeStopValueRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    gap: 6,
   },
   routeStopValue: {
     fontSize: 15,
     fontWeight: '600',
     color: '#1F1F1F',
+    flexShrink: 1,
   },
-  etaRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-  },
-  etaValue: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#1F1F1F',
-  },
-  etaLabel: {
-    fontSize: 13,
-    color: '#9E9E9E',
-    fontWeight: '400',
+  routeDistance: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#1A1A1A',
   },
   ctaButton: {
     marginHorizontal: 20,
     marginBottom: 20,
-    backgroundColor: '#000000',
-    borderRadius: 12,
-    paddingVertical: 16,
+    flex: 1,
+    height: 49,
+    backgroundColor: colors.accentCta,
+    borderRadius: 16,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   ctaButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    letterSpacing: 0.3,
+    fontFamily: fonts.bold,
+    fontSize: 14,
+    color: 'white',
   },
   optionsLabel: {
     fontSize: 11,

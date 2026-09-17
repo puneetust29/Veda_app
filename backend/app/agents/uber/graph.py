@@ -118,6 +118,7 @@ def node_build_deeplink(state: UberAgentState, writer: StreamWriter) -> dict:
     uber_app_url = None
     web_fallback_url = None
     drive_mins_to_airport: int | None = None
+    distance_km: float | None = None
 
     if dropoff_coords:
         dropoff_lat, dropoff_lng = dropoff_coords
@@ -137,6 +138,7 @@ def node_build_deeplink(state: UberAgentState, writer: StreamWriter) -> dict:
             route = get_route(pickup_addr, dropoff_addr, api_key, "DRIVE")
             if route:
                 drive_mins_to_airport = max(1, round(route["duration_secs"] / 60))
+                distance_km = round(route["distance_m"] / 1000, 1)
                 logger.info("uber graph drive time to airport: %d min", drive_mins_to_airport)
 
         if origin_type in ("train_station", "ferry") and pickup_latitude and pickup_longitude:
@@ -182,6 +184,7 @@ def node_build_deeplink(state: UberAgentState, writer: StreamWriter) -> dict:
         "airport_options": airport_options,
         "alternative_options": alternative_options,
         "drive_mins_to_airport": drive_mins_to_airport,
+        "distance_km": distance_km,
     }
 
 

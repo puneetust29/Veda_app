@@ -84,6 +84,7 @@ def get_or_create_customer(phone_number: str) -> dict:
                 "phone_number": phone_number,
                 "full_name": "New Customer",
                 "address": "Unknown",
+                "work_address": None,
                 "telecom_plan": "Standard Mobile",
                 "account_number": phone_number,
                 "current_plans": DEFAULT_CURRENT_PLANS,
