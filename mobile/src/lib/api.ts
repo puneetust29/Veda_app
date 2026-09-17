@@ -7,6 +7,8 @@ import type {
   Customer,
   DeviceCalendarEvent,
   DeviceSyncResult,
+  EnrichedLocationContext,
+  GeofenceEvent,
   GoogleCalendarEvent,
   GoogleCalendarStatus,
   GoogleSyncResult,
@@ -223,6 +225,8 @@ export const api = {
   streamVedaConversation: async (params: {
     message: string;
     history?: Array<{ role: 'user' | 'agent'; text: string }>;
+    locationContext?: string | null;
+    enrichedLocationContext?: EnrichedLocationContext | null;
     signal: AbortSignal;
     onEvent: (event: AgentStreamEvent) => void;
     onError: (err: unknown) => void;
@@ -237,11 +241,16 @@ export const api = {
       throw new Error('Not authenticated');
     }
 
-    const body = {
+    const body: Record<string, unknown> = {
       capability: 'general_assistant',
       message: params.message,
       history: params.history || [],
+      location_context: params.locationContext ?? null,
     };
+
+    if (params.enrichedLocationContext) {
+      body.enriched_location_context = params.enrichedLocationContext;
+    }
 
     return streamSse({
       url: `${API_BASE_URL}/chat/stream`,
@@ -439,4 +448,19 @@ export const api = {
         method: 'POST',
       },
     ),
+
+  // --- Geofence events ---
+  reportGeofenceEvent: (event: GeofenceEvent) =>
+    authedFetch<{ recorded: boolean; id: string | null }>('/geofence/event', {
+      method: 'POST',
+      body: JSON.stringify({
+        type: event.type,
+        geofence_id: event.geofenceId,
+        geofence_label: event.geofenceLabel,
+        geofence_type: event.geofenceType,
+        timestamp: event.timestamp,
+        latitude: event.latitude,
+        longitude: event.longitude,
+      }),
+    }),
 };

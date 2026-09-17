@@ -3,9 +3,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../../theme';
 import VedaIcon from '../icons/VedaIcon';
 import VodafoneIcon from '../../../assets/dashboard/svg/vodafone-icon.svg';
+import GmapsIcon from '../../../assets/dashboard/svg/gmaps-icon.svg';
+import UberIcon from '../../../assets/dashboard/svg/uber-icon.svg';
 import type { ConnectAppSource } from '../../types';
 
 const appGmail = require('../../../assets/dashboard/app-gmail.png');
+const appGoogle = require('../../../assets/dashboard/app-google.png');
 
 type Props = {
   text: string;
@@ -16,10 +19,23 @@ type Props = {
 };
 
 function ConnectAppIcon({ source }: { source: ConnectAppSource }) {
-  if (source === 'gmail') {
-    return <Image source={appGmail} style={styles.connectIconInset} resizeMode="contain" />;
+  switch (source) {
+    case 'gmail':
+      return <Image source={appGmail} style={styles.connectIconInset} resizeMode="contain" />;
+    case 'google':
+      return <Image source={appGoogle} style={styles.connectIconInsetSmall} />;
+    case 'gmaps':
+      return <GmapsIcon width={12} height={18} />;
+    case 'uber':
+      return (
+        <View style={styles.connectIconUberBg}>
+          <UberIcon width={16} height={6} />
+        </View>
+      );
+    case 'vodafone':
+    default:
+      return <VodafoneIcon width={16} height={16} />;
   }
-  return <VodafoneIcon width={16} height={16} />;
 }
 
 // Minimal **bold** markdown support — the only rich-text agent messages need
@@ -130,6 +146,15 @@ const styles = StyleSheet.create({
   },
   connectIconGap: { marginLeft: -6 },
   connectIconInset: { width: 14, height: 14 },
+  connectIconInsetSmall: { width: 16, height: 16 },
+  connectIconUberBg: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#000000',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   bubble: {
     borderRadius: 12,
     paddingVertical: 12,

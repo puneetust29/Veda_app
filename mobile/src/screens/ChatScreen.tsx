@@ -259,8 +259,8 @@ export default function ChatScreen({ route, navigation }: Props) {
             sendMessage(draft);
             setDraft('');
           }}
-          editable={phase !== 'streaming'}
-          sendDisabled={phase === 'streaming'}
+          editable={!isBillPayment && phase !== 'streaming'}
+          sendDisabled={isBillPayment || phase === 'streaming'}
           bottomInset={insets.bottom}
         />
 

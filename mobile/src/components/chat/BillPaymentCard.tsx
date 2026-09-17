@@ -19,6 +19,15 @@ type BillLineItem = {
   dueDate: string | null;
 };
 
+const BILL_NAME_OVERRIDES: Record<string, string> = {
+  broadband: 'Vodafone Home Broadband',
+};
+
+function displayBillName(name: string): string {
+  const override = BILL_NAME_OVERRIDES[name.trim().toLowerCase()];
+  return override || name;
+}
+
 function formatDueDate(dueDate: unknown): string | null {
   if (typeof dueDate !== 'string' || !dueDate) return null;
   const parsed = new Date(dueDate);
@@ -106,7 +115,7 @@ export default function BillPaymentCard({
       }
 
       return {
-        name: name.charAt(0).toUpperCase() + name.slice(1),
+        name: displayBillName(name.charAt(0).toUpperCase() + name.slice(1)),
         amount: Number.isFinite(amount) ? amount : 0,
         dueDate: formatDueDate(item?.due_date ?? rawDetails.due_date),
       };
@@ -114,7 +123,7 @@ export default function BillPaymentCard({
     .filter(Boolean) as BillLineItem[];
 
   const fallbackItem: BillLineItem = {
-    name: billType.charAt(0).toUpperCase() + billType.slice(1),
+    name: displayBillName(billType.charAt(0).toUpperCase() + billType.slice(1)),
     amount: billAmount,
     dueDate: formatDueDate(rawDetails.due_date),
   };
@@ -218,16 +227,6 @@ export default function BillPaymentCard({
             </Text>
           </View>
         ))}
-      </View>
-
-      <View style={styles.divider} />
-
-      {/* Total */}
-      <View style={styles.totalRow}>
-        <Text style={styles.totalLabel}>Total</Text>
-        <Text style={styles.totalAmount}>
-          {currencySymbol}{totalAmount.toFixed(2)}
-        </Text>
       </View>
 
       <View style={styles.divider} />
@@ -354,25 +353,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 19,
     color: '#181818',
-  },
-  totalRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-  },
-  totalLabel: {
-    fontFamily: fonts.body,
-    fontSize: 13,
-    lineHeight: 18,
-    color: '#6b7075',
-  },
-  totalAmount: {
-    fontFamily: fonts.bold,
-    fontSize: 18,
-    lineHeight: 22,
-    color: '#212529',
   },
   paymentMethod: {
     flexDirection: 'row',

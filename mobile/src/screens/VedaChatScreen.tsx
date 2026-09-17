@@ -1,5 +1,5 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useRef, useState } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -12,44 +12,53 @@ import { colors, spacing, typography } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'VedaChat'>;
 
-export default function VedaChatScreen({ navigation }: Props) {
+export default function VedaChatScreen({ navigation, route }: Props) {
   const { items, phase, sendMessage, retry } = useVedaChat();
+  const initialMessage = route.params?.initialMessage;
+  const didAutoSend = useRef(false);
+
+  useEffect(() => {
+    if (initialMessage && !didAutoSend.current) {
+      didAutoSend.current = true;
+      sendMessage(initialMessage);
+    }
+  }, [initialMessage, sendMessage]);
   const scrollViewRef = useRef<ScrollView>(null);
   const [draft, setDraft] = useState('');
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0 } style={{ flex: 1 }}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0} style={{ flex: 1 }}>
       <SafeAreaView style={styles.container} edges={['bottom']}>
-      <ScrollView
-        ref={scrollViewRef}
-        style={styles.thread}
-        contentContainerStyle={styles.threadContent}
-        onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
-      >
-        {items.map((item) => (
-          <ChatItemView key={item.id} item={item} />
-        ))}
-        <AiDisclaimer />
-      </ScrollView>
+        <ScrollView
+          ref={scrollViewRef}
+          style={styles.thread}
+          contentContainerStyle={styles.threadContent}
+          onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
+        >
+          {items.map((item) => (
+            <ChatItemView key={item.id} item={item} />
+          ))}
+          <AiDisclaimer />
+        </ScrollView>
 
-      {phase === 'failed' && (
-        <View style={styles.footer}>
-          <TouchableOpacity style={styles.primaryButton} onPress={retry}>
-            <Text style={styles.primaryButtonText}>Retry</Text>
-          </TouchableOpacity>
-        </View>
-      )}
+        {phase === 'failed' && (
+          <View style={styles.footer}>
+            <TouchableOpacity style={styles.primaryButton} onPress={retry}>
+              <Text style={styles.primaryButtonText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
-      <ChatInputBar
-        value={draft}
-        onChangeText={setDraft}
-        onSend={() => {
-          sendMessage(draft);
-          setDraft('');
-        }}
-        editable={phase !== 'streaming'}
-        sendDisabled={phase === 'streaming'}
-      />
+        <ChatInputBar
+          value={draft}
+          onChangeText={setDraft}
+          onSend={() => {
+            sendMessage(draft);
+            setDraft('');
+          }}
+          editable={phase !== 'streaming'}
+          sendDisabled={phase === 'streaming'}
+        />
       </SafeAreaView>
     </KeyboardAvoidingView>
   );
