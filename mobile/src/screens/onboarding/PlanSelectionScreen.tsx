@@ -600,7 +600,7 @@ const ACCESS_LEVELS: AccessLevel[] = [
         icons: [
           { name: 'logo-whatsapp', color: brandIcons.whatsappGreen },
           { name: 'chatbubble', color: brandIcons.googleBlue },
-          { name: 'logo-linkedin', color: brandIcons.linkedinBlue },
+          // { name: 'logo-linkedin', color: brandIcons.linkedinBlue }, //commented out linkedin as per design suggesstion
           { name: 'person', color: brandIcons.googleBlue },
           { name: 'mail', color: brandIcons.gmailRed },
         ],
@@ -1488,7 +1488,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
 
-  ctaText: { color: colors.white, fontSize: 16, fontWeight: '700', textAlign: 'center' },
+  ctaText: { color: colors.white, fontSize: 16, fontWeight: '700', fontFamily: fonts.bold, textAlign: 'center' },
 
   ctaDisabled: {
     opacity: 0.5,
