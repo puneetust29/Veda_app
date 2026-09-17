@@ -35,6 +35,7 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing.xxxl,
     backgroundColor: colors.white,
     borderRadius: 24,
+    alignSelf: 'center',
     // iOS shadow
     shadowColor: '#FF0000',
     shadowOffset: { width: 0, height: 4 },
