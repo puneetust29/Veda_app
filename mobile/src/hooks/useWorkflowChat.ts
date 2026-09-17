@@ -101,6 +101,7 @@ export function useWorkflowChat(event: CalendarEvent) {
 
   const [items, setItems] = useState<ChatItem[]>(() => []);
   const [phase, setPhase] = useState<ChatPhase>('idle');
+  const [insuranceRecommendationLoading, setInsuranceRecommendationLoading] = useState(false);
   const [showTripPrep, setShowTripPrep] = useState(true);
 
   // Mirrors `items` synchronously so callbacks always read latest state
@@ -338,9 +339,9 @@ export function useWorkflowChat(event: CalendarEvent) {
             .then((pos) => {
               deviceLocationRef.current = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
             })
-            .catch(() => {});
+            .catch(() => { });
         }
-      }).catch(() => {});
+      }).catch(() => { });
 
       try {
         if (cancelled) return;
@@ -955,7 +956,7 @@ export function useWorkflowChat(event: CalendarEvent) {
           return;
         }
 
-        // Show transition message
+        // Show transition message while the recommendation is fetched
         appendItems([
           {
             id: nextId(),
@@ -965,6 +966,8 @@ export function useWorkflowChat(event: CalendarEvent) {
             text: 'Great question! Let me show you our travel insurance options.',
           },
         ]);
+        setInsuranceRecommendationLoading(true);
+        setPhase('streaming');
 
         // Update workflow state to insurance
         setWorkflowState((prev) => ({
@@ -976,6 +979,7 @@ export function useWorkflowChat(event: CalendarEvent) {
         api
           .getInsuranceRecommendation(event.id)
           .then((plan) => {
+            setInsuranceRecommendationLoading(false);
             if (plan) {
               appendItems([
                 {
@@ -990,6 +994,7 @@ export function useWorkflowChat(event: CalendarEvent) {
             setPhase('complete');
           })
           .catch((err) => {
+            setInsuranceRecommendationLoading(false);
             if (__DEV__) console.warn('[useWorkflowChat] Failed to fetch insurance', err);
             setPhase('complete');
           });
@@ -1169,5 +1174,5 @@ export function useWorkflowChat(event: CalendarEvent) {
     }
   }, [appendItems, event.id, startStream]);
 
-  return { items, phase, confirm, decline, retry, sendMessage, handleInsurancePurchased, workflowState, continueWorkflow, continueToInsurance };
+  return { items, phase, insuranceRecommendationLoading, confirm, decline, retry, sendMessage, handleInsurancePurchased, workflowState, continueWorkflow, continueToInsurance };
 }

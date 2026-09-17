@@ -60,6 +60,7 @@ export default function ChatScreen({ route, navigation }: Props) {
   const billPaymentResult = useBillPaymentChat(event);
 
   const { items, phase } = isBillPayment ? billPaymentResult : workflowResult;
+  const insuranceRecommendationLoading = !isBillPayment && workflowResult.insuranceRecommendationLoading;
   const { confirm, decline, retry, sendMessage, handleInsurancePurchased, workflowState, continueWorkflow, continueToInsurance } = isBillPayment
     ? { confirm: () => { }, decline: () => { }, retry: () => { }, sendMessage: () => { }, handleInsurancePurchased: () => { }, workflowState: {}, continueWorkflow: () => { }, continueToInsurance: () => { } }
     : workflowResult;
@@ -228,6 +229,12 @@ export default function ChatScreen({ route, navigation }: Props) {
                 />
               );
             })}
+            {insuranceRecommendationLoading && (
+              <LoadingStream
+                items={[{ text: 'Finding the right travel insurance plan…', state: 'active' }]}
+                isSingleItem
+              />
+            )}
             {!showInitialLoader && <AiDisclaimer />}
           </ScrollView>
 

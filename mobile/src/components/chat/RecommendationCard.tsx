@@ -139,16 +139,17 @@ export default function RecommendationCard({ card, confirmation, onConfirm, onDe
           <View style={uberStyles.route}>
             <View style={uberStyles.routeTimeline}>
               <View style={uberStyles.dotPickup} />
-              <View style={uberStyles.routeConnector} />
+              <View style={uberStyles.routeConnector}>
+                <View style={uberStyles.routeConnectorDash} />
+                <View style={uberStyles.routeConnectorDash} />
+                <View style={uberStyles.routeConnectorDash} />
+              </View>
               <View style={uberStyles.dotDropoff} />
             </View>
             <View style={uberStyles.routeLabels}>
               <View style={uberStyles.routeStop}>
-                <Text style={uberStyles.routeStopLabel}>Pick up location</Text>
                 <View style={uberStyles.routeStopValueRow}>
-                  <Text style={uberStyles.routeStopValue} numberOfLines={1}>
-                    {card.pickup_label || 'Current location'}
-                  </Text>
+                  <Text style={uberStyles.routeStopLabel}>Pick up location</Text>
                   {(card.distance_km != null || card.drive_mins_to_airport != null) && (
                     <Text style={uberStyles.routeDistance} numberOfLines={1}>
                       {[
@@ -164,6 +165,9 @@ export default function RecommendationCard({ card, confirmation, onConfirm, onDe
                     </Text>
                   )}
                 </View>
+                <Text style={uberStyles.routeStopValue} numberOfLines={1}>
+                  {card.pickup_label || 'Current location'}
+                </Text>
               </View>
               <View style={uberStyles.routeStop}>
                 <Text style={uberStyles.routeStopLabel}>Drop-off location</Text>
@@ -464,9 +468,16 @@ const uberStyles = StyleSheet.create({
   routeConnector: {
     flex: 1,
     width: 2,
-    backgroundColor: '#E0E0E0',
-    marginVertical: 4,
     minHeight: 20,
+    marginVertical: 4,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  routeConnectorDash: {
+    width: 2,
+    height: 8,
+    borderRadius: 1,
+    backgroundColor: '#E0E0E0',
   },
   dotDropoff: {
     width: 10,
