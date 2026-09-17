@@ -175,6 +175,7 @@ export default function DashboardScreen({ navigation }: Props) {
     },
     { id: 'school-fees', iconXml: tileMap, label: 'Pay school fees', comingSoon: true },
     { id: 'health-checkup', iconXml: tileHealth, label: 'Book annual health checkup', comingSoon: true },
+    { id: 'broadband', iconXml: tileBuildings, label: 'Renew home broadband', comingSoon: true },
     {
       id: 'groceries',
       iconXml: tileEcommerce,

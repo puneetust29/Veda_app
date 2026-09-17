@@ -65,8 +65,8 @@ export default function SuggestionGrid({ suggestions, onShuffle }: Props) {
             disabled={item.comingSoon}
           >
             <View style={styles.tileTop}>
-              <View style={[styles.iconBox, item.comingSoon && styles.iconBoxDisabled]}>
-                <SvgXml xml={item.iconXml} width={20} height={20} opacity={item.comingSoon ? 0.5 : 1} />
+              <View style={styles.iconBox}>
+                <SvgXml xml={item.iconXml} width={20} height={20} />
               </View>
               {item.connectAppIcons && !item.comingSoon ? (
                 <View style={styles.connectRow}>
@@ -93,10 +93,10 @@ export default function SuggestionGrid({ suggestions, onShuffle }: Props) {
               ) : null}
             </View>
             <View style={styles.tileBottom}>
-              <Text style={[styles.tileLabel, item.comingSoon && styles.tileLabelDisabled]} numberOfLines={2}>
+              <Text style={styles.tileLabel} numberOfLines={2}>
                 {item.label}
               </Text>
-              <SvgXml xml={tileArrow} width={20} height={20} opacity={item.comingSoon ? 0.5 : 1} />
+              <SvgXml xml={tileArrow} width={20} height={20} />
             </View>
             {item.comingSoon && (
               <>
@@ -151,7 +151,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    backgroundColor: 'rgba(240, 4, 5, 0.3)',
     borderRadius: 20,
     zIndex: 9,
   },
@@ -162,14 +162,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
-    backgroundColor: '#E8E8E8',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.6)',
+    backgroundColor: '#5a3a33',
     zIndex: 10,
   },
   comingSoonBadgeText: {
     fontFamily: fonts.medium,
     fontSize: 12,
     lineHeight: 14,
-    color: colors.black,
+    color: '#FFFFFF',
     fontWeight: '500',
   },
   tileTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
@@ -177,7 +179,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 8,
-    backgroundColor: colors.neutralFillLight,
+    backgroundColor: colors.badgeTint,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -218,14 +220,5 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     flexShrink: 1,
     marginRight: spacing.sm,
-  },
-  tileDisabled: {
-    opacity: 0.5,
-  },
-  iconBoxDisabled: {
-    backgroundColor: colors.neutralFillLight,
-  },
-  tileLabelDisabled: {
-    color: colors.textMuted,
   },
 });
