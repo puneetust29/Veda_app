@@ -56,7 +56,7 @@ export default function TaxiChatScreen({ navigation }: Props) {
   const [pickupSearchInput, setPickupSearchInput] = useState<string>('');
   const [pendingDestination, setPendingDestination] = useState<string>('');
 
-  const { predictions, loading: autocompleteLoading, search } = usePlacesAutocomplete();
+  const { predictions, search } = usePlacesAutocomplete();
   const { predictions: pickupPredictions, loading: pickupLoading, search: searchPickup } = usePlacesAutocomplete();
   const firstName = customer?.full_name?.split(' ')[0] ?? 'User';
 
@@ -466,10 +466,10 @@ export default function TaxiChatScreen({ navigation }: Props) {
           <ChatInputBar
             value={draft}
             onChangeText={handleDestinationSearch}
-            onSend={handleSendMessage}
+            onSend={() => void handleSendMessage()}
             placeholder="Where would you like to go?"
-            editable={!autocompleteLoading}
-            loading={autocompleteLoading}
+            editable={phase !== 'loading'}
+            sendDisabled={phase === 'loading'}
           />
         )}
       </View>
