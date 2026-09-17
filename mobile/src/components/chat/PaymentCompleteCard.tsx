@@ -102,7 +102,7 @@ export default function PaymentCompleteCard({ insuranceId, insuranceAmount, insu
 
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Transaction ID</Text>
-            <Text style={styles.detailValue}>{transactionId}</Text>
+            <Text style={[styles.detailValue, styles.transactionIdValue]}>{transactionId}</Text>
           </View>
 
           <View style={styles.divider} />
@@ -185,7 +185,7 @@ const styles = StyleSheet.create({
   paymentMethodValue: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 0,
   },
   paymentBrandWrap: {
     width: 52,
@@ -222,5 +222,10 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     fontWeight: '700',
     color: '#1a1a1a',
+  },
+  transactionIdValue: {
+    flex: 1,
+    flexWrap: 'wrap',
+    textAlign: 'right',
   },
 });

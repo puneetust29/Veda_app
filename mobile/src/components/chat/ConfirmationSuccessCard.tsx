@@ -31,10 +31,11 @@ export default function ({ planType }: Props) {
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: spacing.md,
+    marginBottom: spacing.xl,
     marginHorizontal: spacing.xxxl,
     backgroundColor: colors.white,
     borderRadius: 24,
+    alignSelf: 'center',
     // iOS shadow
     shadowColor: '#FF0000',
     shadowOffset: { width: 0, height: 4 },

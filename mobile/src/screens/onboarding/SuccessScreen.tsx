@@ -4,7 +4,7 @@ import { Animated, StyleSheet, Text, View } from 'react-native';
 
 import SuccessBadge from '../../components/onboarding/SuccessBadge';
 import { useAuth } from '../../context/AuthContext';
-import { colors, spacing, typography } from '../../theme';
+import { colors, fonts, spacing } from '../../theme';
 import type { OnboardingStackParamList } from '../../types';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'Success'>;
@@ -54,8 +54,8 @@ export default function SuccessScreen(_props: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
-  title: { ...typography.title, color: colors.textPrimary, fontSize: 32, textAlign: 'center' },
+  title: { fontSize: 32, fontWeight: '700', fontFamily: fonts.bold, color: colors.textPrimary, textAlign: 'center', lineHeight: 40 },
   subtitleRow: { flexDirection: 'row', justifyContent: 'center' },
-  subtitle: { ...typography.caption, color: colors.textSecondary },
+  subtitle: { fontSize: 13, fontWeight: '400', fontFamily: fonts.body, color: colors.textSecondary, lineHeight: 19 },
   dots: { color: colors.brand, fontWeight: '700', minWidth: 18 },
 });

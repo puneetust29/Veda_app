@@ -8,8 +8,8 @@ type Props = {
 
 export default function AskVedaButton({ onPress }: Props) {
   return (
-    <TouchableOpacity style={styles.button} onPress={onPress} activeOpacity={0.85}>
-      <Text style={styles.label}>Tap to ask Veda</Text>
+    <TouchableOpacity style={[styles.button, styles.disabled]} onPress={onPress} activeOpacity={1} disabled>
+      <Text style={[styles.label, styles.disabledLabel]}>Tap to ask Veda</Text>
     </TouchableOpacity>
   );
 }
@@ -27,4 +27,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   label: { color: colors.white, fontFamily: fonts.bold, fontSize: 16 },
+  disabled: { opacity: 1, backgroundColor: colors.textDisabled },
+  disabledLabel: { color: colors.textMuted },
 });

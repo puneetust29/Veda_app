@@ -80,6 +80,7 @@ export default function TravelInsuranceCardChat({
     if (onInsurancePurchased) {
       onInsurancePurchased({
         ...purchaseData,
+        insuranceId: purchaseData.payment_intent_id,
         cardBrand: paymentMethodBrand,
         cardLast4: paymentMethodLast4,
         insuranceAmount: plan.premiumAmount,
@@ -141,6 +142,5 @@ export default function TravelInsuranceCardChat({
 const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 0,
-    marginBottom: 12,
   },
 });
