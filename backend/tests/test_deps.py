@@ -95,3 +95,5 @@ def test_get_current_customer_auto_provisions_new_profile(monkeypatch):
 
     assert customer["phone_number"] == "+15559998888"
     assert customer["id"] == "new-customer-id"
+    assert "work_address" in customer
+    assert customer["work_address"] is None

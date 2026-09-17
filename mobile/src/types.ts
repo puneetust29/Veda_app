@@ -10,6 +10,7 @@ export type Customer = {
   phone_number: string;
   full_name: string;
   address: string;
+  work_address?: string | null;
   telecom_plan: string;
   account_number: string;
   created_at: string;

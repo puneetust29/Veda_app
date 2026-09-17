@@ -13,6 +13,7 @@ import PickupLocationRow from '../components/taxi/PickupLocationRow';
 import LocationPickerModal from '../components/taxi/LocationPickerModal';
 import LocationSuggestions from '../components/taxi/LocationSuggestions';
 import ErrorPanel from '../components/taxi/ErrorPanel';
+import YourPlacesCard from '../components/taxi/YourPlacesCard';
 import { usePlacesAutocomplete } from '../hooks/usePlacesAutocomplete';
 import { api } from '../lib/api';
 import { loadToken } from '../lib/authToken';
@@ -376,88 +377,96 @@ export default function TaxiChatScreen({ navigation }: Props) {
       behavior="padding"
       keyboardVerticalOffset={Platform.OS === 'ios' ? -20 : 0}>
       <View style={styles.container}>
-      <DashboardHeader
-        avatarInitial={firstName.charAt(0).toUpperCase()}
-        onPressHistory={() => navigation.goBack()}
-        onPressClose={() => navigation.goBack()}
-        menuItems={[]}
-      />
-      <PickupLocationRow
-        label={pickupLocation?.label ?? 'Current location'}
-        onChangePress={() => setPickerVisible(true)}
-      />
-      <ScrollView
-        ref={scrollViewRef}
-        style={styles.thread}
-        contentContainerStyle={styles.threadContent}
-        onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
-      >
-        {items.map((item) =>
-          item.kind === 'card' ? (
-            <View key={item.id} style={styles.cardContainer}>
-              <RecommendationCard card={item.card} />
-            </View>
-          ) : (
-            <ChatItemView key={item.id} item={item} />
-          ),
-        )}
-
-        {(phase === 'input' || (phase === 'loading' && displayPredictions.length > 0)) && displayPredictions.length > 0 && (
-          <MessageBubble text="Here are some destinations you can pick from:" tone="agent" />
-        )}
-
-        {(phase === 'input' || (phase === 'loading' && displayPredictions.length > 0)) && (
-          <LocationSuggestions
-            predictions={displayPredictions}
-            onSelect={handleSelectPrediction}
-          />
-        )}
-
-        {phase === 'loading' && displayPredictions.length === 0 && (
-          <LoadingStream
-            items={[
-              { text: 'Extracting destination…', delayMs: 500 },
-              { text: 'Searching available rides…', delayMs: 600 },
-              { text: 'Booking your taxi…', delayMs: 700 },
-            ]}
-          />
-        )}
-
-        {phase === 'error' && (
-          <ErrorPanel message={errorMessage} onRetry={handleRetry} />
-        )}
-        <AiDisclaimer />
-      </ScrollView>
-
-      <LocationPickerModal
-        visible={pickerVisible}
-        onClose={() => {
-          setPickerVisible(false);
-          setPickupSearchInput('');
-          if (pendingDestination) {
-            setPendingDestination('');
-            setPhase('input');
-          }
-        }}
-        onUseCurrentLocation={handleUseCurrentLocation}
-        permissionError={pickerPermissionError}
-        searchInput={pickupSearchInput}
-        onSearchChange={handlePickupLocationSearch}
-        predictions={pickupPredictions}
-        loading={pickupLoading}
-        onPredictionSelect={handleSelectPickupPrediction}
-      />
-
-      {(phase === 'input' || phase === 'card' || (phase === 'loading' && displayPredictions.length > 0)) && (
-        <ChatInputBar
-          value={draft}
-          onChangeText={handleDestinationSearch}
-          onSend={handleSendMessage}
-          placeholder="Where would you like to go?"
-          editable={!autocompleteLoading}
-          loading={autocompleteLoading}
+        <DashboardHeader
+          avatarInitial={firstName.charAt(0).toUpperCase()}
+          onPressHistory={() => navigation.goBack()}
+          onPressClose={() => navigation.goBack()}
+          menuItems={[]}
         />
-      )}
+        <PickupLocationRow
+          label={pickupLocation?.label ?? 'Current location'}
+          onChangePress={() => setPickerVisible(true)}
+        />
+        <ScrollView
+          ref={scrollViewRef}
+          style={styles.thread}
+          contentContainerStyle={styles.threadContent}
+          onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
+        >
+          {items.map((item) =>
+            item.kind === 'card' ? (
+              <View key={item.id} style={styles.cardContainer}>
+                <RecommendationCard card={item.card} />
+              </View>
+            ) : (
+              <ChatItemView key={item.id} item={item} />
+            ),
+          )}
+
+          {phase === 'input' && (
+            <YourPlacesCard
+              homeAddress={customer?.address}
+              workAddress={customer?.work_address}
+              onSelectPlace={(address) => setDraft(address)}
+            />
+          )}
+
+          {(phase === 'input' || (phase === 'loading' && displayPredictions.length > 0)) && displayPredictions.length > 0 && (
+            <MessageBubble text="Here are some destinations you can pick from:" tone="agent" />
+          )}
+
+          {(phase === 'input' || (phase === 'loading' && displayPredictions.length > 0)) && (
+            <LocationSuggestions
+              predictions={displayPredictions}
+              onSelect={handleSelectPrediction}
+            />
+          )}
+
+          {phase === 'loading' && displayPredictions.length === 0 && (
+            <LoadingStream
+              items={[
+                { text: 'Extracting destination…', delayMs: 500 },
+                { text: 'Searching available rides…', delayMs: 600 },
+                { text: 'Booking your taxi…', delayMs: 700 },
+              ]}
+            />
+          )}
+
+          {phase === 'error' && (
+            <ErrorPanel message={errorMessage} onRetry={handleRetry} />
+          )}
+          <AiDisclaimer />
+        </ScrollView>
+
+        <LocationPickerModal
+          visible={pickerVisible}
+          onClose={() => {
+            setPickerVisible(false);
+            setPickupSearchInput('');
+            if (pendingDestination) {
+              setPendingDestination('');
+              setPhase('input');
+            }
+          }}
+          onUseCurrentLocation={handleUseCurrentLocation}
+          permissionError={pickerPermissionError}
+          searchInput={pickupSearchInput}
+          onSearchChange={handlePickupLocationSearch}
+          predictions={pickupPredictions}
+          loading={pickupLoading}
+          onPredictionSelect={handleSelectPickupPrediction}
+        />
+
+        {(phase === 'input' || phase === 'card' || (phase === 'loading' && displayPredictions.length > 0)) && (
+          <ChatInputBar
+            value={draft}
+            onChangeText={handleDestinationSearch}
+            onSend={handleSendMessage}
+            placeholder="Where would you like to go?"
+            editable={!autocompleteLoading}
+            loading={autocompleteLoading}
+          />
+        )}
       </View>
     </KeyboardAvoidingView>
   );
