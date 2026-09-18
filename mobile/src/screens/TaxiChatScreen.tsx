@@ -150,7 +150,8 @@ export default function TaxiChatScreen({ navigation }: Props) {
     }
   };
 
-  const handleSelectPrediction = async (description: string) => {
+  const handleSelectPrediction = async (description: string, pickupOverride?: PickupLocation | null) => {
+    const effectivePickup = pickupOverride ?? pickupLocation;
     setDraft('');
     setDisplayPredictions([]);
     search('');
@@ -174,8 +175,8 @@ export default function TaxiChatScreen({ navigation }: Props) {
       let distanceKm: number | null = null;
       let driveMins: number | null = null;
 
-      if (pickupLocation?.latitude != null && pickupLocation?.longitude != null) {
-        const coordResult = await api.getPlaceCoordinates(description, pickupLocation.latitude, pickupLocation.longitude);
+      if (effectivePickup?.latitude != null && effectivePickup?.longitude != null) {
+        const coordResult = await api.getPlaceCoordinates(description, effectivePickup.latitude, effectivePickup.longitude);
         if (coordResult.error || coordResult.latitude == null || coordResult.longitude == null) {
           setErrorMessage(coordResult.message || 'Could not find location coordinates.');
           setPhase('error');
@@ -186,8 +187,8 @@ export default function TaxiChatScreen({ navigation }: Props) {
         destLng = coordResult.longitude;
 
         const distance = calculateDistance(
-          pickupLocation.latitude,
-          pickupLocation.longitude,
+          effectivePickup.latitude,
+          effectivePickup.longitude,
           destLat,
           destLng,
         );
@@ -206,11 +207,11 @@ export default function TaxiChatScreen({ navigation }: Props) {
       }
 
       const params = new URLSearchParams({ destination: description });
-      if (pickupLocation?.latitude != null && pickupLocation?.longitude != null) {
-        params.set('pickup_latitude', String(pickupLocation.latitude));
-        params.set('pickup_longitude', String(pickupLocation.longitude));
-      } else if (pickupLocation?.label) {
-        params.set('pickup_description', pickupLocation.label);
+      if (effectivePickup?.latitude != null && effectivePickup?.longitude != null) {
+        params.set('pickup_latitude', String(effectivePickup.latitude));
+        params.set('pickup_longitude', String(effectivePickup.longitude));
+      } else if (effectivePickup?.label) {
+        params.set('pickup_description', effectivePickup.label);
       }
 
       const res = await fetch(`${API_BASE_URL}/dev/uber/deeplink?${params}`, {
@@ -249,7 +250,7 @@ export default function TaxiChatScreen({ navigation }: Props) {
         origin_type: 'current_location',
         reasoning: '',
         suggested_message: '',
-        pickup_label: pickupLocation?.label ?? 'Current location',
+        pickup_label: effectivePickup?.label ?? 'Current location',
         dropoff_label: raw.destination,
         uber_app_url: raw.uber_app_url,
         deep_link_url: raw.deep_link_url,
@@ -334,6 +335,18 @@ export default function TaxiChatScreen({ navigation }: Props) {
       const destination = pendingDestination;
       setPendingDestination('');
       await proceedToDestinationSuggestions(destination, newPickupLocation);
+      return;
+    }
+
+    const existingRide = items.find((item) => item.kind === 'card' && item.card.kind === 'uber_ride');
+    if (existingRide?.kind === 'card' && existingRide.card.kind === 'uber_ride') {
+      const destination = existingRide.card.dropoff_label;
+      if (!destination) return;
+      setItems((prev) => {
+        const cardIndex = prev.findIndex((item) => item.id === existingRide.id);
+        return cardIndex >= 0 ? prev.slice(0, cardIndex) : prev;
+      });
+      await handleSelectPrediction(destination, newPickupLocation);
     }
   };
 

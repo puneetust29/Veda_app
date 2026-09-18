@@ -548,9 +548,11 @@ export function useWorkflowChat(event: CalendarEvent) {
           }));
 
           // Fetch and show insurance recommendation
+          setInsuranceRecommendationLoading(true);
           api
             .getInsuranceRecommendation(event.id)
             .then((plan) => {
+              setInsuranceRecommendationLoading(false);
               if (plan) {
                 appendItems([
                   {
@@ -565,6 +567,7 @@ export function useWorkflowChat(event: CalendarEvent) {
               setPhase('complete');
             })
             .catch((err) => {
+              setInsuranceRecommendationLoading(false);
               if (__DEV__) console.warn('[useWorkflowChat] Failed to fetch insurance', err);
               setPhase('complete');
             });
@@ -647,9 +650,11 @@ export function useWorkflowChat(event: CalendarEvent) {
 
         // Fetch and show insurance recommendation
         console.log('[useWorkflowChat] Fetching insurance for event:', event.id);
+        setInsuranceRecommendationLoading(true);
         api
           .getInsuranceRecommendation(event.id)
           .then((plan) => {
+            setInsuranceRecommendationLoading(false);
             console.log('[useWorkflowChat] Insurance plan fetched:', plan);
             if (plan) {
               appendItems([
@@ -665,6 +670,7 @@ export function useWorkflowChat(event: CalendarEvent) {
             setPhase('complete');
           })
           .catch((err) => {
+            setInsuranceRecommendationLoading(false);
             if (__DEV__) console.warn('[useWorkflowChat] Failed to fetch insurance after skipping roaming', err);
             setPhase('complete');
           });
@@ -836,10 +842,12 @@ export function useWorkflowChat(event: CalendarEvent) {
       completedSteps: prev.completedSteps,
     }));
     setPhase('streaming');
+    setInsuranceRecommendationLoading(true);
 
     api
       .getInsuranceRecommendation(event.id)
       .then((plan) => {
+        setInsuranceRecommendationLoading(false);
         if (plan) {
           appendItems([
             {
@@ -1123,9 +1131,11 @@ export function useWorkflowChat(event: CalendarEvent) {
       setPhase('streaming');
 
       // Fetch and show insurance
+      setInsuranceRecommendationLoading(true);
       api
         .getInsuranceRecommendation(event.id)
         .then((plan) => {
+          setInsuranceRecommendationLoading(false);
           if (plan) {
             appendItems([
               {
@@ -1140,6 +1150,7 @@ export function useWorkflowChat(event: CalendarEvent) {
           setPhase('complete');
         })
         .catch((err) => {
+          setInsuranceRecommendationLoading(false);
           if (__DEV__) console.warn('[useWorkflowChat] Failed to fetch insurance', err);
           setPhase('complete');
         });
