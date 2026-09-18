@@ -3,6 +3,8 @@ around the underlying agent clients so each integration can be tested in isolati
 without a full calendar event / streaming session."""
 from __future__ import annotations
 
+from typing import Optional
+
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
 
@@ -123,6 +125,9 @@ def dev_transport_status(
 @router.get("/uber/deeplink")
 def dev_uber_deeplink(
     destination: str = Query("London Heathrow Airport", description="Destination name"),
+    pickup_latitude: Optional[float] = Query(None),
+    pickup_longitude: Optional[float] = Query(None),
+    pickup_description: Optional[str] = Query(None),
     _customer: dict = Depends(get_current_customer),
 ):
     """Return an Uber deeplink for a ride to the given destination."""
@@ -136,7 +141,15 @@ def dev_uber_deeplink(
     if not latlng:
         return {"error": f"Could not geocode destination: {destination}"}
 
+    if (pickup_latitude is None or pickup_longitude is None) and pickup_description:
+        pickup_latlng = geocode(pickup_description, api_key)
+        if pickup_latlng:
+            pickup_latitude, pickup_longitude = pickup_latlng["lat"], pickup_latlng["lng"]
+
     app_url, web_url = build_uber_deeplink(
+        pickup_latitude=pickup_latitude,
+        pickup_longitude=pickup_longitude,
+        pickup_nickname=pickup_description,
         dropoff_latitude=latlng["lat"],
         dropoff_longitude=latlng["lng"],
         dropoff_nickname=destination,
