@@ -37,7 +37,6 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
   NOK: 'kr',
 };
 
-
 type Props = {
   insuranceId?: string;
   insuranceAmount?: number;
