@@ -183,7 +183,6 @@ export default function AccountSelectionScreen({ navigation }: Props) {
       </View>
 
       <View style={styles.footer}>
-        {status?.connected && <Text style={styles.selectionNote}>Select at least one account for each app.</Text>}
         <TouchableOpacity style={styles.cta} onPress={() => navigation.navigate('Consent')}>
           <Text style={styles.ctaText}>Continue</Text>
         </TouchableOpacity>
