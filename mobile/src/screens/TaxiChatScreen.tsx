@@ -262,7 +262,7 @@ export default function TaxiChatScreen({ navigation }: Props) {
       setItems((prev) => [
         ...prev,
         { id: nextId(), createdAt: Date.now(), kind: 'card', card },
-        { id: nextId(), createdAt: Date.now(), kind: 'text', role: 'agent', text: 'Changed your mind? Start again.' },
+        { id: nextId(), createdAt: Date.now(), kind: 'text', role: 'agent', text: 'Would you like to book another ride ?.' },
       ]);
       setPhase('card');
     } catch (err) {

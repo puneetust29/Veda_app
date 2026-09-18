@@ -26,7 +26,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  label: { color: colors.white, fontFamily: fonts.bold, fontSize: 16 },
-  disabled: { opacity: 1, backgroundColor: colors.textDisabled },
-  disabledLabel: { color: colors.textMuted },
+  label: { fontFamily: fonts.bold, fontSize: 16, lineHeight: 26},
+  disabled: { opacity: 1, backgroundColor: colors.tileBorder},
+  disabledLabel: { color: '#7c7c7c' },
 });
