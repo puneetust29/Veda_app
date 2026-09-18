@@ -1,6 +1,7 @@
 import {
   Inter_300Light,
   Inter_400Regular,
+  Inter_600SemiBold,
 } from '@expo-google-fonts/inter';
 import {
   Urbanist_400Regular,
@@ -14,6 +15,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StripeProvider } from '@stripe/stripe-react-native';
 
 import { AuthProvider } from './src/context/AuthContext';
+import { GeofenceProvider } from './src/context/GeofenceContext';
 import { SubscriptionInsuranceProvider } from './src/context/SubscriptionInsuranceContext';
 import RootNavigator from './src/navigation/RootNavigator';
 
@@ -27,6 +29,7 @@ export default function App() {
     Urbanist_700Bold,
     Inter_300Light,
     Inter_400Regular,
+    Inter_600SemiBold,
   });
 
   if (!fontsLoaded) {
@@ -37,10 +40,12 @@ export default function App() {
     <SafeAreaProvider>
       <StripeProvider publishableKey={stripePublishableKey}>
         <AuthProvider>
-          <SubscriptionInsuranceProvider>
-            <StatusBar style="auto" />
-            <RootNavigator />
-          </SubscriptionInsuranceProvider>
+          <GeofenceProvider>
+            <SubscriptionInsuranceProvider>
+              <StatusBar style="auto" />
+              <RootNavigator />
+            </SubscriptionInsuranceProvider>
+          </GeofenceProvider>
         </AuthProvider>
       </StripeProvider>
     </SafeAreaProvider>

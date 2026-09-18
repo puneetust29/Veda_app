@@ -48,7 +48,7 @@ def _format_date(date_str: str) -> str:
         dt = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
         day = dt.day
         suffix = 'st' if day % 10 == 1 and day != 11 else 'nd' if day % 10 == 2 and day != 12 else 'rd' if day % 10 == 3 and day != 13 else 'th'
-        return dt.strftime(f'%{day}{suffix} %B %Y').replace(f'%{day}', f'{day}{suffix}')
+        return f"{day}{suffix} {dt.strftime('%B %Y')}"
     except:
         return date_str
 
@@ -62,10 +62,45 @@ def node_extract_trip_context(state: TravelInsuranceAgentState, writer: StreamWr
         # Extract and format trip dates
         start_datetime = state["calendar_event"].get("start_datetime", "")
         end_datetime = state["calendar_event"].get("end_datetime", "")
+
+        import sys
+        from datetime import datetime, timedelta
+
+        print(f"DEBUG: raw dates: start={start_datetime}, end={end_datetime}, days={days}, type(days)={type(days)}", file=sys.stderr)
+        logger.info(f"[extract_trip_context] raw dates: start={start_datetime}, end={end_datetime}, days={days}")
+
+        # If end_datetime is missing, same as start, or doesn't match trip duration, recalculate from duration
+        should_recalculate = not end_datetime or end_datetime == start_datetime
+
+        # Also check if the calculated duration doesn't match the trip days
+        if not should_recalculate and start_datetime and end_datetime and days and days > 0:
+            try:
+                dt_start = datetime.fromisoformat(start_datetime.replace('Z', '+00:00'))
+                dt_end = datetime.fromisoformat(end_datetime.replace('Z', '+00:00'))
+                actual_days = (dt_end - dt_start).days
+                print(f"DEBUG: actual_days={actual_days}, expected days={days}", file=sys.stderr)
+                if actual_days != days:
+                    should_recalculate = True
+                    print(f"DEBUG: Recalculating because actual_days != days", file=sys.stderr)
+            except:
+                pass
+
+        if should_recalculate:
+            if start_datetime and days and days > 0:
+                try:
+                    dt = datetime.fromisoformat(start_datetime.replace('Z', '+00:00'))
+                    dt_end = dt + timedelta(days=days)
+                    end_datetime = dt_end.isoformat()
+                    print(f"DEBUG: calculated end_datetime: {end_datetime}", file=sys.stderr)
+                    logger.info(f"[extract_trip_context] calculated end_datetime: {end_datetime}")
+                except Exception as e:
+                    print(f"DEBUG: failed to calculate: {e}", file=sys.stderr)
+                    logger.error(f"[extract_trip_context] failed to calculate end_datetime: {e}")
+
         trip_start_date = _format_date(start_datetime) if start_datetime else "Unknown"
         trip_end_date = _format_date(end_datetime) if end_datetime else "Unknown"
 
-        logger.info(f"[graph] extract_trip_context: country={country}, days={days}, dates={trip_start_date} to {trip_end_date}")
+        logger.info(f"[graph] extract_trip_context: country={country}, days={days}, formatted dates={trip_start_date} to {trip_end_date}")
         return {
             "destination_country": country,
             "trip_duration_days": days,

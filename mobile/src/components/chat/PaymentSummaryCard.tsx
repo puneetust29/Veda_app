@@ -100,7 +100,10 @@ export default function PaymentSummaryCard({
 
       setState('success');
       setTimeout(() => {
-        onSuccess(purchaseData);
+        onSuccess({
+          ...purchaseData,
+          payment_intent_id: paymentIntentId,
+        });
       }, 1500);
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : 'Payment failed');

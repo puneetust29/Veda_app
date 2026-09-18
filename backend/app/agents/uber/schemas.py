@@ -53,3 +53,4 @@ class UberRideSuggestionCard(BaseModel):
     airport_options: list[UberAirportOption] = Field(default_factory=list)
     alternative_options: list[UberAirportOption] = Field(default_factory=list)
     drive_mins_to_airport: Optional[int] = None
+    distance_km: Optional[float] = None

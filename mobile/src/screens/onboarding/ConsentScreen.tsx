@@ -111,7 +111,7 @@ function PrivacyAccordions({
   onToggle: (id: AccordionId, expanded: boolean) => void;
   detailed?: boolean;
 }) {
-  const [openId, setOpenId] = useState<AccordionId | null>(null);
+  const [openId, setOpenId] = useState<AccordionId | null>('use');
 
   const handleToggle = (id: AccordionId, expanded: boolean) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -189,7 +189,7 @@ function PrivacyAccordions({
             </Text>
           </>
         ) : (
-          <Text style={styles.sectionExtra}>
+          <Text style={styles.sectionExtraEmphasis}>
             Veda never sells your personal information or shares your private data without your permission.
           </Text>
         )}
@@ -258,7 +258,7 @@ function PrivacyAccordions({
 // until each accordion has been opened at least once.
 export default function ConsentScreen({ navigation }: Props) {
   const [openedAccordions, setOpenedAccordions] = useState<Record<AccordionId, boolean>>({
-    use: false,
+    use: true,
     safe: false,
     ai: false,
     control: false,
@@ -285,7 +285,7 @@ export default function ConsentScreen({ navigation }: Props) {
 
       <Animated.ScrollView contentContainerStyle={styles.body}>
         <StepProgressBar step={5} totalSteps={5}/>
-        <Text style={styles.title}>Your data belongs to you.</Text>
+        <Text style={styles.title}>Your data{'\n'}belongs to you.</Text>
         <Text style={styles.subtitle}>
           Veda only accesses information you've approved, and you can change or remove permissions anytime.
         </Text>
@@ -311,7 +311,12 @@ export default function ConsentScreen({ navigation }: Props) {
             <Animated.Text style={styles.ctaText}>Agree & Continue</Animated.Text>
           </Animated.View>
         </TouchableOpacity>
-        <Text style={styles.counterText}>{openedCount}/{TOTAL_ACCORDIONS} Terms read.</Text>
+        {!allOpened && (
+          <Text style={styles.counterText}>
+            Open {TOTAL_ACCORDIONS - openedCount} more section{TOTAL_ACCORDIONS - openedCount > 1 ? 's' : ''} to
+            continue
+          </Text>
+        )}
       </View>
 
       <Modal
@@ -343,44 +348,121 @@ export default function ConsentScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   body: { paddingHorizontal: spacing.xl,paddingTop: spacing.xl,paddingBottom: spacing.xl },
-  title: { ...typography.title, color: colors.textPrimary, marginBottom: spacing.sm, fontSize: 38 },
-  subtitle: { ...typography.caption, color: colors.textSecondary, marginBottom: spacing.lg },
-  sectionIntro: {
-    ...typography.caption,
+  title: {
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
+    fontFamily: fonts.semiBold,
+    fontSize: 38,
+    fontWeight: '600',
+    lineHeight: 48,
+    letterSpacing: -0.76,
+  },
+  subtitle: {
     fontFamily: fonts.bodyLight,
     fontWeight: '300',
-    color: colors.textMuted,
+    fontSize: 14,
+    lineHeight: 21,
+    letterSpacing: 0,
+    color: colors.textConnect,
+    marginBottom: spacing.lg,
+  },
+  sectionIntro: {
+    fontFamily: fonts.bodyLight,
+    fontWeight: '300',
+    fontSize: 13,
+    lineHeight: 20,
+    letterSpacing: 0,
+    color: colors.textConnect,
     marginBottom: spacing.sm,
-    lineHeight: 20
   },
   bulletRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, marginBottom: spacing.xs },
-  bulletDot: { ...typography.caption, fontFamily: fonts.bodyLight, fontWeight: '300', color: colors.textMuted },
-  bulletText: {
-    ...typography.caption,
+  bulletDot: {
     fontFamily: fonts.bodyLight,
     fontWeight: '300',
-    color: colors.textMuted,
+    fontSize: 13,
+    lineHeight: 20,
+    letterSpacing: 0,
+    color: colors.textConnect,
+  },
+  bulletText: {
+    fontFamily: fonts.bodyLight,
+    fontWeight: '300',
+    fontSize: 13,
+    lineHeight: 20,
+    letterSpacing: 0,
+    color: colors.textConnect,
     flex: 1,
-    lineHeight: 18,
   },
   sectionExtra: {
-    ...typography.caption,
     fontFamily: fonts.bodyLight,
     fontWeight: '300',
-    color: colors.textMuted,
+    fontSize: 13,
+    lineHeight: 20,
+    letterSpacing: 0,
+    color: colors.textConnect,
     marginTop: spacing.sm,
-    lineHeight: 18,
   },
-  agreement: { ...typography.small, color: colors.textMuted, marginTop: spacing.lg, lineHeight: 16 },
-  agreementBold: { color: colors.textPrimary, fontWeight: '700' },
+  sectionExtraEmphasis: {
+    fontFamily: 'Inter_500Medium',
+    fontWeight: '500',
+    fontSize: 13,
+    lineHeight: 20,
+    letterSpacing: 0,
+    color: colors.textConnect,
+    marginTop: spacing.sm,
+  },
+  agreement: {
+    fontFamily: fonts.bodyLight,
+    fontWeight: '300',
+    fontSize: 12,
+    lineHeight: 18,
+    letterSpacing: 0,
+    color: colors.textConnect,
+    marginTop: spacing.lg,
+  },
+  agreementBold: {
+    fontFamily: 'Inter_500Medium',
+    fontWeight: '500',
+    fontSize: 12,
+    lineHeight: 18,
+    letterSpacing: 0,
+    color: colors.black,
+  },
   policyContainer: { paddingHorizontal: spacing.xl, paddingBottom: spacing.xl, borderTopColor: colors.border, borderTopWidth: 1},
   legalLinks: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
-  link: { ...typography.small, color: colors.brandText, fontWeight: '700' },
-  legalDivider: { ...typography.small, color: colors.textMuted },
+  link: {
+    fontFamily: fonts.semiBold,
+    fontWeight: '600',
+    fontSize: 14,
+    lineHeight: 18,
+    letterSpacing: 0,
+    color: colors.brandBackGround,
+  },
+  legalDivider: {
+    fontFamily: fonts.body,
+    fontWeight: '400',
+    fontSize: 12,
+    lineHeight: 18,
+    letterSpacing: 0,
+    color: colors.textConnect,
+  },
   footer: { paddingHorizontal: spacing.xl, paddingBottom: spacing.xl, paddingTop: spacing.sm },
   cta: { backgroundColor: colors.brandBackGround,borderRadius: radii.pill, paddingVertical: spacing.lg, alignItems: 'center' },
-  ctaText: { ...typography.bodyBold, color: colors.white, fontSize: 16 },
-  counterText: { ...typography.small, color: colors.textMuted, textAlign: 'center', marginTop: spacing.sm },
+  ctaText: {
+    ...typography.bodyBold,
+    color: colors.white,
+    fontSize: 16,
+    fontWeight: '700',
+    fontFamily: fonts.bold,
+  },
+  counterText: {
+    fontFamily: fonts.body,
+    fontWeight: '400',
+    fontSize: 11,
+    color: colors.textDisabled,
+    textAlign: 'center',
+    marginTop: spacing.sm,
+  },
   modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',

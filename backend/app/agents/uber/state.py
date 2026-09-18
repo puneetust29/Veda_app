@@ -22,3 +22,4 @@ class UberAgentState(AgentState, total=False):
     airport_options: list[dict]
     alternative_options: list[dict]
     drive_mins_to_airport: Optional[int]
+    distance_km: Optional[float]

@@ -28,6 +28,8 @@ export type Suggestion = {
    * wired up yet). */
   connectAppIcons?: ConnectAppIcon[];
   onPress?: () => void;
+  /** Show "Coming soon" badge and disable interaction. */
+  comingSoon?: boolean;
 };
 
 type Props = {
@@ -47,7 +49,7 @@ export default function SuggestionGrid({ suggestions, onShuffle }: Props) {
   return (
     <View>
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Things you can ask me</Text>
+        <Text style={styles.sectionTitle}>Things you can ask Veda</Text>
         <TouchableOpacity onPress={onShuffle} disabled={!onShuffle} hitSlop={8}>
           <SvgXml xml={shuffleXml} width={24} height={24} />
         </TouchableOpacity>
@@ -60,12 +62,13 @@ export default function SuggestionGrid({ suggestions, onShuffle }: Props) {
             style={styles.tile}
             onPress={item.onPress}
             activeOpacity={0.7}
+            disabled={item.comingSoon}
           >
             <View style={styles.tileTop}>
-              <View style={styles.iconBox}>
-                <SvgXml xml={item.iconXml} width={20} height={20} />
+              <View style={[styles.iconBox, item.comingSoon && styles.iconBoxDisabled]}>
+                <SvgXml xml={item.iconXml} width={20} height={20} opacity={item.comingSoon ? 0.5 : 1} />
               </View>
-              {item.connectAppIcons ? (
+              {item.connectAppIcons && !item.comingSoon ? (
                 <View style={styles.connectRow}>
                   <Text style={styles.connectLabel}>Connect apps</Text>
                   <View style={styles.connectIcons}>
@@ -90,11 +93,19 @@ export default function SuggestionGrid({ suggestions, onShuffle }: Props) {
               ) : null}
             </View>
             <View style={styles.tileBottom}>
-              <Text style={styles.tileLabel} numberOfLines={2}>
+              <Text style={[styles.tileLabel, item.comingSoon && styles.tileLabelDisabled]} numberOfLines={2}>
                 {item.label}
               </Text>
-              <SvgXml xml={tileArrow} width={20} height={20} />
+              <SvgXml xml={tileArrow} width={20} height={20} opacity={item.comingSoon ? 0.5 : 1} />
             </View>
+            {item.comingSoon && (
+              <>
+                <View style={styles.comingSoonOverlay} pointerEvents="none" />
+                <View style={styles.comingSoonBadge} pointerEvents="none">
+                  <Text style={styles.comingSoonBadgeText}>Coming soon</Text>
+                </View>
+              </>
+            )}
           </TouchableOpacity>
         ))}
       </View>
@@ -113,7 +124,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontFamily: fonts.semiBold,
     fontSize: 20,
-    lineHeight: 22,
+    lineHeight: 26,
     letterSpacing: -0.4,
     color: colors.textPrimary,
   },
@@ -134,12 +145,39 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     justifyContent: 'space-between',
   },
+  comingSoonOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    borderRadius: 20,
+    zIndex: 9,
+  },
+  comingSoonBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: '#E8E8E8',
+    zIndex: 10,
+  },
+  comingSoonBadgeText: {
+    fontFamily: fonts.medium,
+    fontSize: 12,
+    lineHeight: 14,
+    color: colors.black,
+    fontWeight: '500',
+  },
   tileTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   iconBox: {
     width: 32,
     height: 32,
     borderRadius: 8,
-    backgroundColor: colors.badgeTint,
+    backgroundColor: colors.neutralFillLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -180,5 +218,14 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     flexShrink: 1,
     marginRight: spacing.sm,
+  },
+  tileDisabled: {
+    opacity: 0.5,
+  },
+  iconBoxDisabled: {
+    backgroundColor: colors.neutralFillLight,
+  },
+  tileLabelDisabled: {
+    color: colors.textMuted,
   },
 });

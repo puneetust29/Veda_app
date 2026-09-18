@@ -248,9 +248,9 @@ export default function WelcomeScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  body: { paddingHorizontal: spacing.xl, paddingTop:spacing.xl, flex: 1, flexDirection: 'column' },
-  title: { fontSize: 32, fontWeight: '700', fontFamily: fonts.bold, color: colors.textPrimary, marginBottom: spacing.sm, lineHeight: 40 },
-  subtitle: { fontSize: 14, fontWeight: '400', fontFamily: fonts.body, color: '#6b7280', marginBottom: spacing.lg, lineHeight: 21 },
+  body: { paddingHorizontal: spacing.xl, paddingTop: spacing.xs, flex: 1, flexDirection: 'column' },
+  title: { fontSize: 38, fontWeight: '600', fontFamily: fonts.semiBold, letterSpacing: -0.76, color: colors.textPrimary, marginBottom: spacing.sm, marginTop: -spacing.sm, lineHeight: 38 },
+  subtitle: { fontSize: 14, fontWeight: '300', fontFamily: fonts.bodyLight, letterSpacing: 0, color: '#6b7280', marginBottom: spacing.lg, lineHeight: 19.6 },
   viewContainer: { flex: 1, justifyContent: 'space-between' },
 
   // Holds the deck. Every card inside is absolutely positioned so its slot
@@ -259,7 +259,7 @@ const styles = StyleSheet.create({
     width: 260,
     height: 340,
     alignSelf: 'center',
-    marginTop: spacing.xxxl,
+    marginTop: spacing.md,
   },
 
   contentWrapper: {
@@ -272,7 +272,7 @@ const styles = StyleSheet.create({
     // show through and the layers bleed into each other while animating.
     backgroundColor: colors.background,
     borderColor: colors.borderMuted,
-    borderRadius: radii.xxl,
+    borderRadius: 24,
     overflow: 'hidden',
   },
 
@@ -306,7 +306,7 @@ const styles = StyleSheet.create({
 
   imageCard: {
     width: '100%',
-    borderRadius: radii.lg,
+    borderRadius: 20,
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
@@ -314,22 +314,24 @@ const styles = StyleSheet.create({
 
 
   cardTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    fontFamily: fonts.bold,
+    fontSize: 28,
+    fontWeight: '600',
+    fontFamily: fonts.semiBold,
+    letterSpacing: 0,
     color: colors.textPrimary,
     marginBottom: spacing.xs,
     marginTop: spacing.xl,
-    lineHeight: 20,
+    lineHeight: 33.6,
   },
 
   cardSubtitle: {
-    fontSize: 13,
-    fontWeight: '400',
-    fontFamily: fonts.body,
+    fontSize: 14,
+    fontWeight: '300',
+    fontFamily: fonts.bodyLight,
+    letterSpacing: 0,
     color: '#6b7280',
     marginBottom: spacing.lg,
-    lineHeight: 19,
+    lineHeight: 21,
   },
 
   bulletRow: {
@@ -342,7 +344,7 @@ const styles = StyleSheet.create({
     width: 16,
     height: 16,
     borderRadius: 8,
-    backgroundColor: colors.textPrimary,
+    backgroundColor: colors.black,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 2,
@@ -350,12 +352,13 @@ const styles = StyleSheet.create({
   },
 
   bulletText: {
-    fontSize: 14,
-    fontWeight: '600',
-    fontFamily: fonts.semiBold,
+    fontSize: 16,
+    fontWeight: '400',
+    fontFamily: fonts.body,
+    letterSpacing: 0,
     color: '#6b7280',
     flex: 1,
-    lineHeight: 21,
+    lineHeight: 20.8,
   },
 
   bottomSection: {

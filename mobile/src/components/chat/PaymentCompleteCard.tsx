@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { colors, fonts, spacing } from '../../theme';
 import CheckmarkIcon from '../icons/CheckmarkIcon';
-import HeaderBackground from '../icons/HeaderBackground';
 import { api } from '../../lib/api';
 import VisaLogo from '../../../assets/payment/visa.svg';
 import MastercardLogo from '../../../assets/payment/mastercard.svg';
@@ -23,6 +22,20 @@ const PAYMENT_BRAND_LOGOS: Record<string, BrandLogoConfig> = {
   'american express': { Logo: AmexLogo, width: 52, height: 34 },
 };
 
+// Kept in sync with BillPaymentCard's map so a bill's currency renders the
+// same symbol on both the payment card and this completion card.
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  USD: '$',
+  EUR: '€',
+  GBP: '£',
+  JPY: '¥',
+  INR: '₹',
+  CAD: 'C$',
+  AUD: 'A$',
+  CHF: 'CHF',
+  SEK: 'kr',
+  NOK: 'kr',
+};
 
 type Props = {
   insuranceId?: string;
@@ -52,7 +65,7 @@ export default function PaymentCompleteCard({ insuranceId, insuranceAmount, insu
   }, [cardBrand, cardLast4]);
 
   const totalAmount = insuranceAmount || 0;
-  const currency = insuranceCurrency || '£';
+  const currency = CURRENCY_SYMBOLS[insuranceCurrency || ''] || insuranceCurrency || '£';
   const transactionId = insuranceId || 'N/A';
   const normalizedBrand = (paymentMethodBrand || '').trim().toLowerCase();
   const brandConfig = PAYMENT_BRAND_LOGOS[normalizedBrand];
@@ -60,13 +73,9 @@ export default function PaymentCompleteCard({ insuranceId, insuranceAmount, insu
   return (
     <View>
       <View style={styles.card}>
-        <View style={styles.pattern} pointerEvents="none">
-          <HeaderBackground width={366} height={141} />
-        </View>
-
         <View style={styles.headerSection}>
           <View style={styles.iconContainer}>
-            <CheckmarkIcon size={24} color={colors.brand} />
+            <CheckmarkIcon size={24} color="#f00405" />
           </View>
           <Text style={styles.headerTitle}>Payment Complete</Text>
         </View>
@@ -92,7 +101,7 @@ export default function PaymentCompleteCard({ insuranceId, insuranceAmount, insu
 
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Transaction ID</Text>
-            <Text style={styles.detailValue}>{transactionId}</Text>
+            <Text style={[styles.detailValue, styles.transactionIdValue]}>{transactionId}</Text>
           </View>
 
           <View style={styles.divider} />
@@ -113,21 +122,13 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.white,
     borderRadius: 24,
-    padding: 16,
+    padding: 20,
     marginBottom: spacing.lg,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  pattern: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 141,
-    opacity: 0.16,
+    shadowRadius: 16,
+    elevation: 3,
   },
   headerSection: {
     flexDirection: 'row',
@@ -168,22 +169,22 @@ const styles = StyleSheet.create({
   },
   detailLabel: {
     fontFamily: fonts.body,
-    fontSize: 11,
-    lineHeight: 13,
+    fontSize: 14,
+    lineHeight: 18,
     fontWeight: '400',
-    color: '#000000',
+    color: '#181818',
   },
   detailValue: {
     fontFamily: fonts.semiBold,
-    fontSize: 11,
-    lineHeight: 13,
+    fontSize: 14,
+    lineHeight: 18,
     fontWeight: '600',
-    color: '#000000',
+    color: '#181818',
   },
   paymentMethodValue: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 0,
   },
   paymentBrandWrap: {
     width: 52,
@@ -208,17 +209,22 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   totalLabel: {
-    fontFamily: fonts.semiBold,
-    fontSize: 14,
-    lineHeight: 17,
-    fontWeight: '600',
-    color: '#1a1a1a',
+    fontFamily: fonts.body,
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '400',
+    color: '#6b7075',
   },
   totalValue: {
     fontFamily: fonts.bold,
-    fontSize: 16,
-    lineHeight: 19,
+    fontSize: 18,
+    lineHeight: 22,
     fontWeight: '700',
     color: '#1a1a1a',
+  },
+  transactionIdValue: {
+    flex: 1,
+    flexWrap: 'wrap',
+    textAlign: 'right',
   },
 });

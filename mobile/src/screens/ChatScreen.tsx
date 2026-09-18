@@ -1,12 +1,15 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useRef, useState, useEffect } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View, KeyboardAvoidingView, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import AiDisclaimer from '../components/chat/AiDisclaimer';
+import ChatInputBar from '../components/chat/ChatInputBar';
 import ChatItemView from '../components/chat/ChatItemView';
 import DashboardHeader from '../components/dashboard/DashboardHeader';
 import LoadingStream from '../components/chat/LoadingStream';
 import BillPaymentCard from '../components/chat/BillPaymentCard';
+import BillsPaidBadge from '../components/chat/BillsPaidBadge';
 import PaymentCompleteCard from '../components/chat/PaymentCompleteCard';
 import { useAuth } from '../context/AuthContext';
 import { useWorkflowChat } from '../hooks/useWorkflowChat';
@@ -14,6 +17,7 @@ import { useBillPaymentChat } from '../hooks/useBillPaymentChat';
 import { api } from '../lib/api';
 import { INITIAL_STREAM_EVENTS } from '../lib/mockStream';
 import type { RootStackParamList } from '../types';
+
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Chat'>;
 
@@ -25,6 +29,21 @@ function isInsuranceAlreadyPurchased(items: any[], currentIdx: number): boolean 
     }
   }
   return false;
+}
+
+function hasActiveTravelInsurance(items: any[], workflowState: any): boolean {
+  const hasInsuranceConfirmation = items.some(
+    (item) => item.kind === 'confirmation_success' && item.planType === 'insurance'
+  );
+
+  const hasInsuranceInTripPrep = items.some(
+    (item) => item.kind === 'trip_preparation' && item.hasInsuranceActive
+  );
+
+  const hasInsuranceCompleted = Array.isArray(workflowState?.completedSteps)
+    && workflowState.completedSteps.includes('insurance');
+
+  return hasInsuranceConfirmation || hasInsuranceInTripPrep || hasInsuranceCompleted;
 }
 
 export default function ChatScreen({ route, navigation }: Props) {
@@ -41,9 +60,15 @@ export default function ChatScreen({ route, navigation }: Props) {
   const billPaymentResult = useBillPaymentChat(event);
 
   const { items, phase } = isBillPayment ? billPaymentResult : workflowResult;
-  const { confirm, decline, retry, sendMessage, handleInsurancePurchased, workflowState, continueWorkflow } = isBillPayment
-    ? { confirm: () => { }, decline: () => { }, retry: () => { }, sendMessage: () => { }, handleInsurancePurchased: () => { }, workflowState: {}, continueWorkflow: () => { } }
+  const insuranceRecommendationLoading = !isBillPayment && workflowResult.insuranceRecommendationLoading;
+  const { confirm, decline, retry, sendMessage, handleInsurancePurchased, workflowState, continueWorkflow, continueToInsurance } = isBillPayment
+    ? { confirm: () => { }, decline: () => { }, retry: () => { }, sendMessage: () => { }, handleInsurancePurchased: () => { }, workflowState: {}, continueWorkflow: () => { }, continueToInsurance: () => { } }
     : workflowResult;
+
+  // Roaming finished with nothing to recommend — offer travel insurance in the
+  // footer instead of a retry-and-bail pair of buttons.
+  const hasNoRoamingPlan = items.some((item) => item.kind === 'error' && item.code === 'no_plan_found');
+  const insuranceAlreadyActive = hasActiveTravelInsurance(items, workflowState);
 
   const scrollViewRef = useRef<ScrollView>(null);
   const [draft, setDraft] = useState('');
@@ -55,27 +80,33 @@ export default function ChatScreen({ route, navigation }: Props) {
   const firstName = customer?.full_name?.split(' ')[0] ?? 'User';
   const insets = useSafeAreaInsets();
 
+  // Mirrors the LoadingStream conditions below — hide the AI disclaimer while
+  // the initial loader is the only thing on screen.
+  const showInitialLoader = isBillPayment
+    ? !paidBillData && !paymentMethodId
+    : items.length === 0 && phase === 'idle';
+
   useEffect(() => {
     if (isBillPayment) {
-      // Check if bill is already paid
+      // Check if bill is already paid — fetched alongside the payment
+      // method (rather than only when unpaid) so the card can always show
+      // the "Paying with ..." row and, once paid, land straight in the
+      // disabled "Paid" state instead of swapping to a different card.
       api.getBillPaymentStatus(event.id)
         .then((billPayment) => {
-          if (billPayment) {
-            setPaidBillData(billPayment);
-          } else {
-            // Bill not paid yet, fetch payment method
-            api.getCustomerPaymentMethods()
-              .then((method) => {
-                if (method.id) {
-                  setPaymentMethodId(method.id);
-                  setPaymentMethodBrand(method.brand || '');
-                  setPaymentMethodLast4(method.last4 || '');
-                }
-              })
-              .catch((err) => console.warn('[ChatScreen] Failed to fetch payment method:', err));
-          }
+          if (billPayment) setPaidBillData(billPayment);
         })
         .catch((err) => console.warn('[ChatScreen] Failed to check bill payment status:', err));
+
+      api.getCustomerPaymentMethods()
+        .then((method) => {
+          if (method.id) {
+            setPaymentMethodId(method.id);
+            setPaymentMethodBrand(method.brand || '');
+            setPaymentMethodLast4(method.last4 || '');
+          }
+        })
+        .catch((err) => console.warn('[ChatScreen] Failed to fetch payment method:', err));
 
       // Initialize bill chat if not already done
       if (items.length === 0) {
@@ -92,15 +123,18 @@ export default function ChatScreen({ route, navigation }: Props) {
   }, [items]);
 
   return (
-    <View style={styles.container}>
-      <DashboardHeader
-        avatarInitial={firstName.charAt(0).toUpperCase()}
-        onPressHistory={() => navigation.goBack()}
-        onPressClose={() => navigation.goBack()}
-        menuItems={[]}
-      />
-      <View style={styles.content}>
-        {/* <View style={styles.tripHeader}>
+    <KeyboardAvoidingView style={{ flex: 1 }}
+      behavior="padding"
+      keyboardVerticalOffset={Platform.OS === 'ios' ? -20 : -20}>
+      <View style={styles.container}>
+        <DashboardHeader
+          avatarInitial={firstName.charAt(0).toUpperCase()}
+          onPressHistory={() => navigation.goBack()}
+          onPressClose={() => navigation.goBack()}
+          menuItems={[]}
+        />
+        <View style={styles.content}>
+          {/* <View style={styles.tripHeader}>
         <Text style={styles.title}>{event.title}</Text>
         <Text style={styles.subtitle}>
           {event.origin} → {event.destination}
@@ -111,120 +145,135 @@ export default function ChatScreen({ route, navigation }: Props) {
         </Text>
       </View> */}
 
-        <ScrollView
-          ref={scrollViewRef}
-          style={styles.thread}
-          contentContainerStyle={styles.threadContent}
-          onContentSizeChange={() => {
-            scrollViewRef.current?.scrollToEnd({ animated: true });
-          }}
-        >
-          {isBillPayment ? (
-            <>
-              {/* Bill greeting message */}
-              {items.map((item) => (
-                <ChatItemView key={item.id} item={item} />
-              ))}
+          <ScrollView
+            ref={scrollViewRef}
+            style={styles.thread}
+            contentContainerStyle={styles.threadContent}
+            onContentSizeChange={() => {
+              scrollViewRef.current?.scrollToEnd({ animated: true });
+            }}
+          >
+            {isBillPayment ? (
+              <>
+                {/* Bill greeting message */}
+                {items.map((item) => (
+                  <ChatItemView key={item.id} item={item} />
+                ))}
 
-              {/* Show payment complete if already paid */}
-              {paidBillData ? (
-                <PaymentCompleteCard
-                  insuranceId={paidBillData.payment_intent_id}
-                  insuranceAmount={paidBillData.amount}
-                  insuranceCurrency={paidBillData.bill_details?.bill_currency || 'USD'}
-                  cardBrand={paymentMethodBrand}
-                  cardLast4={paymentMethodLast4}
-                />
-              ) : paymentMethodId ? (
-                <BillPaymentCard
-                  bill={event}
-                  paymentMethodBrand={paymentMethodBrand}
-                  paymentMethodLast4={paymentMethodLast4}
-                  savedPaymentMethodId={paymentMethodId}
-                  onSuccess={() => {
-                    billPaymentResult.handlePaymentSuccess({});
-                    setTimeout(() => navigation.goBack(), 2000);
-                  }}
-                  onError={(error) => billPaymentResult.handlePaymentError(error)}
-                />
-              ) : (
-                <View style={styles.loadingContainer}>
-                  <Text style={styles.loadingText}>Loading payment details...</Text>
-                </View>
-              )}
-            </>
-          ) : items.length === 0 && phase === 'idle' ? (
-            <LoadingStream items={INITIAL_STREAM_EVENTS} />
-          ) : null}
-          {!isBillPayment && items.map((item, idx) => {
-            // Skip hotel booking component
-            if (item.kind === 'hotel') return null;
+                {paidBillData || paymentMethodId ? (
+                  <>
+                    <BillPaymentCard
+                      bill={event}
+                      paymentMethodBrand={paymentMethodBrand}
+                      paymentMethodLast4={paymentMethodLast4}
+                      savedPaymentMethodId={paymentMethodId}
+                      alreadyPaid={!!paidBillData}
+                      onSuccess={() => {
+                        billPaymentResult.handlePaymentSuccess({});
+                        api.getBillPaymentStatus(event.id)
+                          .then((billPayment) => {
+                            if (billPayment) setPaidBillData(billPayment);
+                          })
+                          .catch((err) => console.warn('[ChatScreen] Failed to refresh bill payment status:', err));
+                      }}
+                      onError={(error) => billPaymentResult.handlePaymentError(error)}
+                    />
+                    {paidBillData && (
+                      <>
+                        <BillsPaidBadge />
+                        <PaymentCompleteCard
+                          insuranceId={paidBillData.payment_intent_id}
+                          insuranceAmount={paidBillData.amount}
+                          insuranceCurrency={paidBillData.bill_details?.bill_currency || 'USD'}
+                          cardBrand={paymentMethodBrand}
+                          cardLast4={paymentMethodLast4}
+                        />
+                      </>
+                    )}
+                  </>
+                ) : (
+                  <LoadingStream items={INITIAL_STREAM_EVENTS} />
+                )}
+              </>
+            ) : items.length === 0 && phase === 'idle' ? (
+              <LoadingStream items={INITIAL_STREAM_EVENTS} />
+            ) : null}
+            {!isBillPayment && items.map((item, idx) => {
+              // Skip hotel booking component
+              if (item.kind === 'hotel') return null;
 
-            // Skip rendering confirmation items for roaming plans - they're combined with the card
-            if (item.kind === 'confirmation' && item.risk === 'commit') {
-              const prevItem = idx > 0 ? items[idx - 1] : null;
-              if (prevItem?.kind === 'card' && prevItem.card.kind === 'roaming_plan') {
-                return null; // Skip - already rendered with the card
-              }
-            }
-
-            return (
-              <ChatItemView
-                key={item.id}
-                item={item}
-                onConfirm={confirm}
-                onDecline={decline}
-                onInsurancePurchased={handleInsurancePurchased}
-                onContinuePrep={continueWorkflow}
-                continuePrepLoading={phase === 'streaming'}
-                // Pass the next item if it's a confirmation for a roaming card
-                nextItem={
-                  item.kind === 'card' && item.card.kind === 'roaming_plan' && items[idx + 1]?.kind === 'confirmation'
-                    ? items[idx + 1]
-                    : undefined
+              // Skip rendering confirmation items for roaming plans - they're combined with the card
+              if (item.kind === 'confirmation' && item.risk === 'commit') {
+                const prevItem = idx > 0 ? items[idx - 1] : null;
+                if (prevItem?.kind === 'card' && prevItem.card.kind === 'roaming_plan') {
+                  return null; // Skip - already rendered with the card
                 }
+              }
+
+              return (
+                <ChatItemView
+                  key={item.id}
+                  item={item}
+                  onConfirm={confirm}
+                  onDecline={decline}
+                  onInsurancePurchased={handleInsurancePurchased}
+                  insurancePurchased={insuranceAlreadyActive}
+                  onContinuePrep={continueWorkflow}
+                  continuePrepLoading={phase === 'streaming'}
+                  // Pass the next item if it's a confirmation for a roaming card
+                  nextItem={
+                    item.kind === 'card' && item.card.kind === 'roaming_plan' && items[idx + 1]?.kind === 'confirmation'
+                      ? items[idx + 1]
+                      : undefined
+                  }
+                />
+              );
+            })}
+            {insuranceRecommendationLoading && (
+              <LoadingStream
+                items={[{ text: 'Finding the right travel insurance plan…', state: 'active' }]}
+                isSingleItem
               />
-            );
-          })}
-        </ScrollView>
+            )}
+            {!showInitialLoader && <AiDisclaimer />}
+          </ScrollView>
 
 
-        {phase === 'failed' && (
-          <View style={styles.footer}>
-            <TouchableOpacity style={styles.primaryButton} onPress={retry}>
-              <Text style={styles.primaryButtonText}>Retry</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.secondaryButton}
-              onPress={() => navigation.replace('FlightDetail', { event })}
-            >
-              <Text style={styles.secondaryButtonText}>Continue without chat</Text>
-            </TouchableOpacity>
-          </View>
-        )}
+          {phase === 'failed' && (
+            <View style={styles.footer}>
+              <TouchableOpacity style={styles.primaryButton} onPress={retry}>
+                <Text style={styles.primaryButtonText}>Retry</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.secondaryButton, hasNoRoamingPlan && styles.secondaryButtonNarrow]}
+                onPress={
+                  hasNoRoamingPlan && !insuranceAlreadyActive
+                    ? continueToInsurance
+                    : () => navigation.replace('FlightDetail', { event })
+                }
+              >
+                <Text style={styles.secondaryButtonText}>
+                  {hasNoRoamingPlan && !insuranceAlreadyActive ? 'Continue with travel insurance' : 'Continue without chat'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
-        <View style={[styles.inputContainer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
-          <TextInput
-            style={styles.input}
-            placeholder="Ask a follow-up question…"
+          <ChatInputBar
             value={draft}
             onChangeText={setDraft}
-            editable={phase !== 'streaming'}
-            placeholderTextColor="#999"
-          />
-          <TouchableOpacity
-            style={[styles.sendButton, phase === 'streaming' && styles.sendButtonDisabled]}
-            onPress={() => {
+            onSend={() => {
               sendMessage(draft);
               setDraft('');
             }}
-            disabled={phase === 'streaming' || !draft.trim()}
-          >
-            <Text style={styles.sendButtonText}>Send</Text>
-          </TouchableOpacity>
+            editable={!isBillPayment && phase !== 'streaming'}
+            sendDisabled={isBillPayment || phase === 'streaming'}
+            bottomInset={insets.bottom}
+          />
+
         </View>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -274,48 +323,15 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(230, 0, 0, 0.07)',
     backgroundColor: '#FFFFFF',
   },
+  // "Continue with travel insurance" is a long label to fit next to Retry —
+  // let it give up width and wrap instead of pushing the row off-screen.
+  secondaryButtonNarrow: {
+    flexShrink: 1,
+    paddingHorizontal: 14,
+  },
   secondaryButtonText: {
     color: '#E60000',
     fontSize: 13.5,
     fontWeight: '600',
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#E8E8E8',
-    gap: 8,
-  },
-  input: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 14,
-    backgroundColor: '#F9F9F9',
-    color: '#1F1F1F',
-  },
-  sendButton: {
-    backgroundColor: '#F00405',
-    borderRadius: 10,
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    justifyContent: 'center',
-  },
-  sendButtonDisabled: {
-    opacity: 0.6,
-  },
-  sendButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '600' },
-  loadingContainer: {
-    paddingHorizontal: 16,
-    paddingVertical: 24,
-    alignItems: 'center',
-  },
-  loadingText: {
-    fontSize: 14,
-    color: '#999999',
   },
 });

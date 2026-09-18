@@ -1,12 +1,12 @@
 name: vinto_agent
-version: 0.1.0
-description: General-purpose Veda travel assistant. Answers questions about the Veda app and travel plans, with guardrails against off-topic queries.
+version: 0.2.0
+description: General-purpose Veda travel & location assistant. Answers questions about the Veda app, travel plans, and nearby places with guardrails against off-topic queries.
 enabled: true
 priority: 5
 capabilities: [general_assistant]
 triggers:
   events: []
   rules: []
-required_context: [customer]
+required_context: [customer, location_context, enriched_location_context]
 tools: []
 actions: []

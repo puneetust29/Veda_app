@@ -2,8 +2,9 @@ import { Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, radii, typography } from '../../theme';
-
-type Prediction = { place_id: string; description: string };
+import LocationSuggestions from './LocationSuggestions';
+import type { Prediction } from '../../hooks/usePlacesAutocomplete';
+import LocationCurrentIcon from '../../../assets/location-current.svg';
 
 type Props = {
   visible: boolean;
@@ -50,9 +51,11 @@ export default function LocationPickerModal({
             style={styles.currentLocationButton}
             onPress={onUseCurrentLocation}
             activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel="Use current location"
           >
             <View style={styles.currentLocationIcon}>
-              <Ionicons name="navigate" size={16} color={colors.white} />
+              <LocationCurrentIcon width={16} height={16} />
             </View>
             <Text style={styles.currentLocationButtonText}>Use Current Location</Text>
           </TouchableOpacity>
@@ -88,20 +91,10 @@ export default function LocationPickerModal({
               contentContainerStyle={styles.predictionsContent}
               keyboardShouldPersistTaps="handled"
             >
-              {predictions.map((pred) => (
-                <TouchableOpacity
-                  key={pred.place_id}
-                  style={styles.predictionItem}
-                  onPress={() => onPredictionSelect(pred.description)}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.predictionIcon}>
-                    <Ionicons name="location" size={16} color={colors.brand} />
-                  </View>
-                  <Text style={styles.predictionText} numberOfLines={2}>{pred.description}</Text>
-                  <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
-                </TouchableOpacity>
-              ))}
+              <LocationSuggestions
+                predictions={predictions}
+                onSelect={onPredictionSelect}
+              />
             </ScrollView>
           )}
         </View>
@@ -114,15 +107,16 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: colors.backdrop,
+    justifyContent: 'flex-end',
   },
   modal: {
-    flex: 1,
-    backgroundColor: colors.background,
-    borderTopLeftRadius: radii.xl,
-    borderTopRightRadius: radii.xl,
-    marginTop: spacing.xxl,
+    width: '100%',
+    maxHeight: '100%',
+    minHeight: '85%',
+    backgroundColor: colors.white,
+    borderRadius: radii.xl,
     shadowColor: colors.black,
-    shadowOffset: { width: 0, height: -4 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 12,
     elevation: 8,
@@ -163,7 +157,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
-    backgroundColor: colors.brand,
+    backgroundColor: colors.brandBackGround,
     borderRadius: radii.md,
     gap: spacing.md,
     shadowColor: colors.brand,
@@ -173,9 +167,9 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   currentLocationIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: radii.sm,
+    width: 32,
+    height: 32,
+    borderRadius: radii.pill,
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -230,36 +224,8 @@ const styles = StyleSheet.create({
   },
   predictionsList: {
     flex: 1,
-    marginTop: spacing.md,
-    paddingHorizontal: spacing.lg,
   },
   predictionsContent: {
-    gap: spacing.sm,
     paddingBottom: spacing.lg,
-  },
-  predictionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radii.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    gap: spacing.md,
-  },
-  predictionIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: radii.sm,
-    backgroundColor: colors.badgeTint,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  predictionText: {
-    ...typography.body,
-    flex: 1,
-    fontSize: 14,
-    color: colors.textPrimary,
   },
 });

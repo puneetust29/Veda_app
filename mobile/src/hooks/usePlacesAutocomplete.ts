@@ -2,7 +2,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { api } from '../lib/api';
 
-type Prediction = { place_id: string; description: string };
+export type Prediction = {
+  place_id: string;
+  description: string;
+  /** Straight-line distance from the search origin, when the backend had one. */
+  distance_meters?: number | null;
+};
 
 export function usePlacesAutocomplete() {
   const [predictions, setPredictions] = useState<Prediction[]>([]);

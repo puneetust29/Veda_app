@@ -1,6 +1,8 @@
 import { memo } from 'react';
 
 import type { ChatItem } from '../../types';
+import { LocationActionCard } from './LocationActionCard';
+import { NearbyPlacesCard } from './NearbyPlacesCard';
 import ConfirmationPrompt from './ConfirmationPrompt';
 import ConfirmationSuccessCard from './ConfirmationSuccessCard';
 import HotelBookingCard from '../common/HotelBookingCard';
@@ -21,13 +23,15 @@ type Props = {
   onInsurancePurchased?: (data: any) => void;
   onContinuePrep?: () => void;
   continuePrepLoading?: boolean;
+  /** Insurance is already active for this trip — the card's CTA is disabled. */
+  insurancePurchased?: boolean;
   nextItem?: ChatItem;
 };
 
-function ChatItemViewImpl({ item, onConfirm, onDecline, onInsurancePurchased, onContinuePrep, continuePrepLoading, nextItem }: Props) {
+function ChatItemViewImpl({ item, onConfirm, onDecline, onInsurancePurchased, onContinuePrep, continuePrepLoading, insurancePurchased, nextItem }: Props) {
   switch (item.kind) {
     case 'text':
-      return <MessageBubble text={item.text} tone={item.role} />;
+      return <MessageBubble text={item.text} tone={item.role} connectApps={item.connectApps} />;
     case 'status':
       return <LoadingStream items={[{ text: item.label, state: item.state }]} isSingleItem />;
     case 'trip_preparation':
@@ -72,6 +76,7 @@ function ChatItemViewImpl({ item, onConfirm, onDecline, onInsurancePurchased, on
           plan={item.plan}
           calendarEventId={item.calendarEventId}
           onInsurancePurchased={onInsurancePurchased}
+          alreadyPurchased={insurancePurchased}
         />
       );
     case 'confirmation':
@@ -92,6 +97,10 @@ function ChatItemViewImpl({ item, onConfirm, onDecline, onInsurancePurchased, on
       );
     case 'trip_checklist':
       return <TripChecklistCard destination={item.destination} />;
+    case 'location_action':
+      return <LocationActionCard action={item.action} result={item.result} />;
+    case 'nearby_places':
+      return <NearbyPlacesCard places={item.places} category={item.category} searchLabel={item.searchLabel} />;
     case 'error':
       return <MessageBubble text={item.message} tone="error" />;
     default: {

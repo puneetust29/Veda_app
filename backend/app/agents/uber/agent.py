@@ -64,6 +64,7 @@ class UberAgent(BaseAgent):
             airport_options=final_state.get("airport_options", []),
             alternative_options=final_state.get("alternative_options", []),
             drive_mins_to_airport=final_state.get("drive_mins_to_airport"),
+            distance_km=final_state.get("distance_km"),
         ).model_dump()
 
         logger.info(
