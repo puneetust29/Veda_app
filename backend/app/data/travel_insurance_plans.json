@@ -873,5 +873,48 @@
       ]
     },
     "stripeAmountCents": 7500
+  },
+  {
+    "id": 22,
+    "country": "Germany",
+    "coverageDurationDays": 14,
+    "provider": "Allianz Assistance",
+    "planName": "Family Travel Insurance",
+    "planType": "Comprehensive family coverage",
+    "coverageStart": "12th August 2024",
+    "coverageEnd": "20th August 2024",
+    "premiumAmount": 60,
+    "currency": "£",
+    "currencyCode": "gbp",
+    "whyThisOne": [
+      "Covers medical emergencies up to £250,000",
+      "Trip cancellation up to £1,000 per person",
+      "Baggage and personal effects up to £500",
+      "24/7 emergency support in 150+ countries"
+    ],
+    "benefitsSummary": "Comprehensive family coverage with medical emergency support, trip cancellation, and 24/7 global assistance.",
+    "fullCoverageDetails": {
+      "Medical Coverage": [
+        "Emergency medical expenses: £250,000",
+        "Dental treatment: £500",
+        "Prescription medications abroad: Covered"
+      ],
+      "Trip Protection": [
+        "Trip cancellation: £1,000 per person",
+        "Trip delay over 12 hours: £50",
+        "Missed connection: £100"
+      ],
+      "Baggage & Personal": [
+        "Baggage loss/delay: £500",
+        "Personal effects theft: £500",
+        "Travel documents replacement: £200"
+      ],
+      "Additional Benefits": [
+        "Personal liability: £1,000,000",
+        "Legal expenses: £50,000",
+        "Emergency evacuation: Unlimited"
+      ]
+    },
+    "stripeAmountCents": 4000
   }
 ]

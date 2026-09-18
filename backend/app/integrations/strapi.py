@@ -35,11 +35,39 @@ class StrapiClient:
         self._plans = {plan["id"]: TravelInsurancePlan(**plan) for plan in data}
 
     def get_travel_insurance_plans(self, country: Optional[str] = None) -> List[TravelInsurancePlan]:
-        """Return travel insurance plans, optionally filtered by country (case-insensitive)."""
+        """Return travel insurance plans, optionally filtered by country (case-insensitive).
+        Also tries to match by known city-to-country mappings (e.g. Berlin -> Germany)."""
         plans = list(self._plans.values())
         if country:
             country_lower = country.strip().lower()
-            plans = [p for p in plans if p.country and p.country.lower() == country_lower]
+            # First try exact country match
+            matched = [p for p in plans if p.country and p.country.lower() == country_lower]
+            if matched:
+                return matched
+
+            # If no match, try known city-to-country mappings
+            city_to_country = {
+                "berlin": "Germany",
+                "ber": "Germany",
+                "delhi": "India",
+                "del": "India",
+                "paris": "France",
+                "cdg": "France",
+                "london": "United Kingdom",
+                "lhr": "United Kingdom",
+                "new york": "United States",
+                "nyc": "United States",
+                "jfk": "United States",
+                "tokyo": "Japan",
+                "nrt": "Japan",
+            }
+
+            destination_country = city_to_country.get(country_lower)
+            if destination_country:
+                matched = [p for p in plans if p.country and p.country.lower() == destination_country.lower()]
+                if matched:
+                    return matched
+
         return plans
 
     def get_travel_insurance_plan(self, plan_id: int) -> Optional[TravelInsurancePlan]:
