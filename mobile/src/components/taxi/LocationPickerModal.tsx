@@ -214,10 +214,14 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    paddingVertical: spacing.md,
+    height: 48,
+    paddingVertical: 0,
     ...typography.body,
     fontSize: 14,
+    lineHeight: 20,
     color: colors.textPrimary,
+    textAlignVertical: 'center',
+    includeFontPadding: false,
   },
   searchSpinner: {
     marginLeft: spacing.sm,
