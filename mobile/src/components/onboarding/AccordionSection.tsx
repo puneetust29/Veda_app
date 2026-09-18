@@ -61,7 +61,7 @@ export default function AccordionSection({
       <Pressable style={styles.header} onPress={toggle}>
         <Text style={styles.title}>{title}</Text>
         <Animated.View style={{ transform: [{ rotate }] }}>
-          <Ionicons name="chevron-down" size={18} color={colors.textSecondary} />
+          <Ionicons name="chevron-down" size={18} color={colors.black} />
         </Animated.View>
       </Pressable>
       {expanded ? <View style={styles.body}>{children}</View> : null}
@@ -78,6 +78,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: spacing.xxl,
   },
-  title: { ...typography.bodyBold, color: colors.textPrimary, flex: 1 },
+  title: { ...typography.bodyBold, color: colors.textPrimary, fontSize: 16, flex: 1 },
   body: { paddingBottom: spacing.md },
 });
