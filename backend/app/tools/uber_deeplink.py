@@ -154,9 +154,7 @@ def _location_params(prefix: str, latitude: Optional[float], longitude: Optional
 
 
 def _build_query(params: dict) -> str:
-    # quote_via=quote with safe='[]' keeps bracket characters literal.
-    # Default urlencode encodes them as %5B/%5D which Uber silently ignores.
-    return urlencode(params, quote_via=quote, safe="[]")
+    return urlencode(params, quote_via=quote)
 
 
 def build_uber_deeplink(
