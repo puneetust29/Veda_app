@@ -185,11 +185,10 @@ export function useWorkflowChat(event: CalendarEvent) {
     const isRoundTrip = startFormatted !== endFormatted;
 
     const contactName = customer.emergency_contact_name || 'Emergency Contact';
-    const travellerName = customer.full_name?.split(' ')[0] || 'Your friend';
-    const destination = event.destination ?? 'their destination';
+    const destination = event.destination ?? 'my destination';
     const text = isRoundTrip
-      ? `Hi ${contactName},\n\n${travellerName} is travelling to ${destination} from ${startFormatted} to ${endFormatted}.`
-      : `Hi ${contactName},\n\n${travellerName} is travelling to ${destination} on ${startFormatted}.`;
+      ? `Hi ${contactName},\n\nI am travelling to ${destination} from ${startFormatted} to ${endFormatted}.`
+      : `Hi ${contactName},\n\nI am travelling to ${destination} on ${startFormatted}.`;
 
     return [
       {
