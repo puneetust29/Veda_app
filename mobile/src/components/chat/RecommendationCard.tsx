@@ -238,10 +238,10 @@ export default function RecommendationCard({ card, confirmation, onConfirm, onDe
 const styles = StyleSheet.create({
   cardShadow: {
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
     borderRadius: 24,
   },
   planCard: {
@@ -288,7 +288,7 @@ const styles = StyleSheet.create({
   },
   providerName: {
     fontSize: 17,
-    fontWeight: '700',
+    fontFamily: fonts.semiBold,
     color: '#1A1A1A',
   },
   planName: {
@@ -305,7 +305,7 @@ const styles = StyleSheet.create({
   },
   sectionHeader: {
     fontSize: 16,
-    fontWeight: '600',
+    fontFamily: fonts.semiBold,
     color: '#1F1F1F',
     marginBottom: 12,
   },
@@ -319,6 +319,7 @@ const styles = StyleSheet.create({
   },
   reasoningText: {
     fontSize: 12,
+    fontFamily: fonts.body,
     color: '#1A1A1A',
     flex: 1,
     lineHeight: 16,
@@ -331,12 +332,12 @@ const styles = StyleSheet.create({
   },
   totalLabel: {
     fontSize: 14,
-    fontWeight: '600',
+    fontFamily: fonts.semiBold,
     color: '#1A1A1A',
   },
   totalPrice: {
     fontSize: 16,
-    fontWeight: '700',
+    fontFamily: fonts.bold,
     color: '#1A1A1A',
     textAlign: 'right',
   },
@@ -357,7 +358,7 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: '700',
+    fontFamily: fonts.bold,
   },
   secondaryButton: {
     paddingHorizontal: 24,
@@ -372,7 +373,7 @@ const styles = StyleSheet.create({
   secondaryButtonText: {
     color: '#E60000',
     fontSize: 13.5,
-    fontWeight: '600',
+    fontFamily: fonts.semiBold,
   },
   uberBadge: {
     backgroundColor: '#000000',
