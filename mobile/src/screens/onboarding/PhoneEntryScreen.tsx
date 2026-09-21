@@ -42,6 +42,8 @@ export default function PhoneEntryScreen({ navigation }: Props) {
   const { phoneNumber, setPhoneNumber } = useOnboarding();
   const [selectedCountry, setSelectedCountry] = useState<Country>(COUNTRY_CODES[0]);
   const [localNumber, setLocalNumber] = useState(phoneNumber.replace(/^\+\d+/, ''));
+  const [hasAcceptedTerms, setHasAcceptedTerms] = useState(false);
+  const [showTermsError, setShowTermsError] = useState(false);
   const [helpVisible, setHelpVisible] = useState(false);
   const [countryPickerVisible, setCountryPickerVisible] = useState(false);
   const phoneInputRef = useRef<TextInput>(null);
@@ -56,6 +58,12 @@ export default function PhoneEntryScreen({ navigation }: Props) {
 
   const handleContinue = () => {
     Keyboard.dismiss();
+
+    if (!hasAcceptedTerms) {
+      setShowTermsError(true);
+      return;
+    }
+
     setPhoneNumber(`${selectedCountry.code}${localNumber.replace(/\s/g, '')}`);
     setTimeout(() => {
       navigation.navigate('OtpVerification');
@@ -69,67 +77,94 @@ export default function PhoneEntryScreen({ navigation }: Props) {
 
       <View style={styles.cardWrapper}>
         <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
-        <StepProgressBar step={1} totalSteps={5} />
-        <Text style={styles.title}>Let's get to know{'\n'}each other.</Text>
-        <Text style={styles.subtitle}>Your Vodafone number is the quickest way to personalise Veda.</Text>
+          <StepProgressBar step={1} totalSteps={5} />
+          <Text style={styles.title}>Let's get to know{'\n'}each other.</Text>
+          <Text style={styles.subtitle}>Your Vodafone number is the quickest way to personalise Veda.</Text>
 
-        <View style={styles.inputRow}>
-          <TouchableOpacity
-            style={styles.countrySelector}
-            onPress={() => setCountryPickerVisible(true)}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.flag}>{selectedCountry.flag}</Text>
-            <Text style={styles.countryCode}>{selectedCountry.code}</Text>
+          <View style={styles.inputRow}>
+            <TouchableOpacity
+              style={styles.countrySelector}
+              onPress={() => setCountryPickerVisible(true)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.flag}>{selectedCountry.flag}</Text>
+              <Text style={styles.countryCode}>{selectedCountry.code}</Text>
+            </TouchableOpacity>
+            <TextInput
+              ref={phoneInputRef}
+              style={styles.input}
+              placeholder="Vodafone mobile number"
+              placeholderTextColor={colors.textMuted}
+              keyboardType="phone-pad"
+              autoComplete="tel"
+              value={localNumber}
+              onChangeText={(text) => {
+                const digitsOnly = text.replace(/\D/g, '');
+                if (digitsOnly.length <= 13) {
+                  setLocalNumber(digitsOnly);
+                }
+              }}
+              maxLength={13}
+            />
+          </View>
+
+          <TouchableOpacity style={styles.helpLink} onPress={() => setHelpVisible(true)}>
+            <Ionicons name="shield-checkmark-outline" size={14} color={colors.brandText} />
+            <Text style={styles.helper}>How your number helps</Text>
           </TouchableOpacity>
-          <TextInput
-            ref={phoneInputRef}
-            style={styles.input}
-            placeholder="Vodafone mobile number"
-            placeholderTextColor={colors.textMuted}
-            keyboardType="phone-pad"
-            autoComplete="tel"
-            value={localNumber}
-            onChangeText={(text) => {
-              const digitsOnly = text.replace(/\D/g, '');
-              if (digitsOnly.length <= 13) {
-                setLocalNumber(digitsOnly);
+
+          <TouchableOpacity
+            style={styles.termsRow}
+            activeOpacity={0.7}
+            accessibilityRole="checkbox"
+            accessibilityLabel="Agree that Veda can access your profile details"
+            accessibilityState={{ checked: hasAcceptedTerms }}
+            onPress={() => {
+              const nextValue = !hasAcceptedTerms;
+              setHasAcceptedTerms(nextValue);
+              if (nextValue) {
+                setShowTermsError(false);
               }
             }}
-            maxLength={13}
-          />
-        </View>
-
-        <TouchableOpacity style={styles.helpLink} onPress={() => setHelpVisible(true)}>
-          <Ionicons name="shield-checkmark-outline" size={14} color={colors.brandText} />
-          <Text style={styles.helper}>How your number helps</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.cta, !isValid && styles.ctaDisabled]}
-          disabled={!isValid}
-          onPress={handleContinue}
-        >
-          <Text style={[styles.ctaText, !isValid && styles.ctaTextDisabled]}>Continue</Text>
-        </TouchableOpacity>
-
-        <View style={styles.footerLinks}>
-          <TouchableOpacity style={styles.footerRow}>
-            <View>
-              <Text style={styles.footerCaption}>Need a new line?</Text>
-              <Text style={styles.footerLinkText}>Get a Vodafone number</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.brandText} />
+          >
+            <Ionicons
+              name={hasAcceptedTerms ? 'checkbox' : 'square-outline'}
+              size={24}
+              color={showTermsError ? colors.brandText : hasAcceptedTerms ? colors.brandText : colors.textSecondary}
+            />
+            <Text style={styles.termsText}>I agree to allow Veda to access my Vodafone profile data to personalize my experience.</Text>
           </TouchableOpacity>
-          <View style={styles.footerDivider} />
-          <TouchableOpacity style={styles.footerRow}>
-            <View>
-              <Text style={styles.footerCaption}>Already with another network?</Text>
-              <Text style={styles.footerLinkText}>Switch to Vodafone</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.brandText} />
+          {showTermsError && (
+            <Text style={styles.termsError} accessibilityRole="alert">
+              Please agree to Veda accessing your Vodafone profile data.
+            </Text>
+          )}
+
+          <TouchableOpacity
+            style={[styles.cta, !isValid && styles.ctaDisabled]}
+            disabled={!isValid}
+            onPress={handleContinue}
+          >
+            <Text style={[styles.ctaText, !isValid && styles.ctaTextDisabled]}>Continue</Text>
           </TouchableOpacity>
-        </View>
+
+          <View style={styles.footerLinks}>
+            <TouchableOpacity style={styles.footerRow}>
+              <View>
+                <Text style={styles.footerCaption}>Need a new line?</Text>
+                <Text style={styles.footerLinkText}>Get a Vodafone number</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.brandText} />
+            </TouchableOpacity>
+            <View style={styles.footerDivider} />
+            <TouchableOpacity style={styles.footerRow}>
+              <View>
+                <Text style={styles.footerCaption}>Already with another network?</Text>
+                <Text style={styles.footerLinkText}>Switch to Vodafone</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.brandText} />
+            </TouchableOpacity>
+          </View>
         </ScrollView>
       </View>
 
@@ -233,6 +268,9 @@ const styles = StyleSheet.create({
   input: { flex: 1, paddingVertical: 0, fontSize: 14, color: colors.textPrimary, fontWeight: '400', fontFamily: fonts.body, paddingHorizontal: spacing.md, placeholderTextColor: '#808080' },
   helpLink: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.md },
   helper: { color: colors.brandText, fontWeight: '600', fontFamily: fonts.semiBold, fontSize: 14, lineHeight: 16 },
+  termsRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.xl },
+  termsText: { flex: 1, color: colors.textPrimary, fontSize: 14, lineHeight: 20, fontFamily: fonts.semiBold, },
+  termsError: { color: colors.brandText, fontSize: 12, lineHeight: 16, fontFamily: fonts.body, marginTop: spacing.sm, marginLeft: 32 },
   cta: {
     backgroundColor: '#f00405',
     borderRadius: 24,
