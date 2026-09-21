@@ -459,7 +459,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     fontWeight: '400',
     fontSize: 11,
-    color: colors.textDisabled,
+    color: colors.textMuted,
     textAlign: 'center',
     marginTop: spacing.sm,
   },
