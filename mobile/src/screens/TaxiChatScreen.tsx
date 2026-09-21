@@ -210,7 +210,8 @@ export default function TaxiChatScreen({ navigation }: Props) {
       if (effectivePickup?.latitude != null && effectivePickup?.longitude != null) {
         params.set('pickup_latitude', String(effectivePickup.latitude));
         params.set('pickup_longitude', String(effectivePickup.longitude));
-      } else if (effectivePickup?.label) {
+      }
+      if (effectivePickup?.label) {
         params.set('pickup_description', effectivePickup.label);
       }
 
@@ -338,14 +339,10 @@ export default function TaxiChatScreen({ navigation }: Props) {
       return;
     }
 
-    const existingRide = items.find((item) => item.kind === 'card' && item.card.kind === 'uber_ride');
+    const existingRide = [...items].reverse().find((item) => item.kind === 'card' && item.card.kind === 'uber_ride');
     if (existingRide?.kind === 'card' && existingRide.card.kind === 'uber_ride') {
       const destination = existingRide.card.dropoff_label;
       if (!destination) return;
-      setItems((prev) => {
-        const cardIndex = prev.findIndex((item) => item.id === existingRide.id);
-        return cardIndex >= 0 ? prev.slice(0, cardIndex) : prev;
-      });
       await handleSelectPrediction(destination, newPickupLocation);
     }
   };

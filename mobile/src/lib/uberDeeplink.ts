@@ -6,16 +6,18 @@ export type OpenUberParams = {
 };
 
 export async function openUber(params: OpenUberParams): Promise<void> {
-  if (params.uber_app_url) {
+  // The web universal link (m.uber.com/ul) honors pickup location correctly;
+  // the uber:// custom scheme silently drops it and falls back to GPS.
+  if (params.deep_link_url) {
     try {
-      await Linking.openURL(params.uber_app_url);
+      await Linking.openURL(params.deep_link_url);
       return;
     } catch {
-      // fall through to web fallback
+      // fall through to app scheme
     }
   }
-  if (params.deep_link_url) {
-    await Linking.openURL(params.deep_link_url);
+  if (params.uber_app_url) {
+    await Linking.openURL(params.uber_app_url);
   } else {
     throw new Error('No Uber deep link available');
   }
