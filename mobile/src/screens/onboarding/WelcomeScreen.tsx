@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
-import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import type { FC, SVGProps } from 'react';
 
 import StepHeader from '../../components/onboarding/StepHeader';
@@ -9,7 +9,6 @@ import StepProgressBar from '../../components/onboarding/StepProgressBar';
 import { useAuth } from '../../context/AuthContext';
 import { colors, fonts, radii, spacing, typography } from '../../theme';
 import type { CurrentPlanCard, OnboardingStackParamList } from '../../types';
-import Cmf2Pro from '../../../assets/CMF-2-pro.svg';
 import bigValueBundle from '../../../assets/big-value-bundle.svg';
 import connectedLines from '../../../assets/connected-lines.svg';
 import payAsYouGo from '../../../assets/pay-as-you-go.svg';
@@ -44,7 +43,6 @@ const DECK_SPRING = {
 const CARD_ICONS: Record<string, FC<SVGProps<SVGSVGElement>>> = {
   'pay-as-you-go': payAsYouGo,
   bundle: bigValueBundle,
-  phone: Cmf2Pro,
   lines: connectedLines,
 };
 
@@ -103,7 +101,11 @@ function CardFace({ card }: { card: CurrentPlanCard }) {
     <>
       <View style={styles.imageCard}>
         <View>
-          {CardIcon && <CardIcon />}
+          {card.id === 'phone' ? (
+            <Image source={require('../../../assets/CMF-2-pro.png')} style={styles.cmfImage} />
+          ) : (
+            CardIcon && <CardIcon />
+          )}
         </View>
       </View>
 
@@ -310,6 +312,11 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+
+  cmfImage: {
+    width: 256,
+    height: 190,
   },
 
 
