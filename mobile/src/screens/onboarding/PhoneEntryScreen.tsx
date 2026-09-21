@@ -117,7 +117,7 @@ export default function PhoneEntryScreen({ navigation }: Props) {
             style={styles.termsRow}
             activeOpacity={0.7}
             accessibilityRole="checkbox"
-            accessibilityLabel="Agree to Terms and Conditions"
+            accessibilityLabel="Agree that Veda can access your profile details"
             accessibilityState={{ checked: hasAcceptedTerms }}
             onPress={() => {
               const nextValue = !hasAcceptedTerms;
@@ -132,11 +132,11 @@ export default function PhoneEntryScreen({ navigation }: Props) {
               size={24}
               color={showTermsError ? colors.brandText : hasAcceptedTerms ? colors.brandText : colors.textSecondary}
             />
-            <Text style={styles.termsText}>By proceeding, you agree to our Terms and Conditions.</Text>
+            <Text style={styles.termsText}>I agree to allow Veda to access my Vodafone profile data to personalize my experience.</Text>
           </TouchableOpacity>
           {showTermsError && (
             <Text style={styles.termsError} accessibilityRole="alert">
-              Please agree to the Terms and Conditions to continue.
+              Please agree to Veda accessing your Vodafone profile data.
             </Text>
           )}
 
