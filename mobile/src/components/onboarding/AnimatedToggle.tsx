@@ -63,7 +63,7 @@ const styles = StyleSheet.create({
   },
   thumbWrap: { width: THUMB, height: THUMB },
   thumbLayer: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     borderRadius: THUMB / 2,
     overflow: 'hidden',
   },

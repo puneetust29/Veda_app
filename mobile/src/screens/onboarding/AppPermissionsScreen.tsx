@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
+import { PermissionStatus } from 'expo';
 import * as Calendar from 'expo-calendar';
 import * as Contacts from 'expo-contacts';
 import * as Linking from 'expo-linking';
@@ -220,7 +221,7 @@ function countApps(categories: CategorySpec[]): number {
 // here, before account linking, in the same flow.
 export default function AppPermissionsScreen({ navigation }: Props) {
   const { planTier } = useOnboarding();
-  const [devicePermission, setDevicePermission] = useState<Calendar.PermissionStatus | null>(null);
+  const [devicePermission, setDevicePermission] = useState<PermissionStatus | null>(null);
   const [locationPermission, setLocationPermission] = useState<Location.PermissionStatus | null>(null);
   const [contactsPermission, setContactsPermission] = useState<Contacts.PermissionStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -238,7 +239,7 @@ export default function AppPermissionsScreen({ navigation }: Props) {
 
   const loadPermissions = useCallback(async () => {
     const [devicePermissions, locationPermissions, contactsPermissions] = await Promise.all([
-      Calendar.getCalendarPermissionsAsync(),
+      Calendar.getCalendarPermissions(),
       Location.getForegroundPermissionsAsync(),
       Contacts.getPermissionsAsync(),
     ]);
@@ -259,16 +260,16 @@ export default function AppPermissionsScreen({ navigation }: Props) {
   const handleGrantDeviceCalendar = async () => {
     setDeviceBusy(true);
     try {
-      const { status } = await Calendar.requestCalendarPermissionsAsync();
+      const { status } = await Calendar.requestCalendarPermissions();
       setDevicePermission(status);
-      if (status === Calendar.PermissionStatus.GRANTED) {
+      if (status === PermissionStatus.GRANTED) {
         try {
           const events = await readDeviceCalendarEvents();
           await api.syncDeviceCalendar(events, true);
         } catch (err) {
           Alert.alert('Could not sync flights', err instanceof Error ? err.message : String(err));
         }
-      } else if (status === Calendar.PermissionStatus.DENIED) {
+      } else if (status === PermissionStatus.DENIED) {
         Alert.alert(
           'Calendar access denied',
           'Open Settings to allow Veda to access your calendars, then come back here.',
@@ -334,7 +335,7 @@ export default function AppPermissionsScreen({ navigation }: Props) {
       void handleGrantDeviceCalendar();
       return;
     }
-    if (devicePermission === Calendar.PermissionStatus.GRANTED) {
+    if (devicePermission === PermissionStatus.GRANTED) {
       Alert.alert(
         'Manage Calendar access',
         'To turn this off, open Settings and disable Calendar access for Veda.',
@@ -505,7 +506,7 @@ export default function AppPermissionsScreen({ navigation }: Props) {
                 <ActivityIndicator />
               ) : (
                 <AnimatedToggle
-                  value={devicePermission === Calendar.PermissionStatus.GRANTED}
+                  value={devicePermission === PermissionStatus.GRANTED}
                   onValueChange={handleToggleDeviceCalendar}
                 />
               )}

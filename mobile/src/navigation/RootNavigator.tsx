@@ -42,7 +42,7 @@ export default function RootNavigator() {
 
   return (
     <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false, headerBackTitleVisible: false }}>
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
         {showOnboarding ? (
           <Stack.Screen name="Onboarding" component={OnboardingNavigator} />
         ) : (

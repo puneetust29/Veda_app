@@ -21,7 +21,8 @@ import type { GeofenceEvent } from '../types';
 // Show alerts when a notification arrives while the app is foregrounded.
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
     shouldPlaySound: false,
     shouldSetBadge: false,
   }),

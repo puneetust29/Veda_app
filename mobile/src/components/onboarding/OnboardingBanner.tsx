@@ -39,7 +39,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   rings: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   swooshContainer: {
     position: 'absolute',

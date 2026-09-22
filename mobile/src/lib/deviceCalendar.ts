@@ -38,7 +38,7 @@ export function classifyDeviceCalendarSource(source: Calendar.Source | undefined
 // tagging each event with the source calendar it came from so callers can
 // group/label a merged list instead of treating this as Apple-only.
 export async function readDeviceCalendarEvents(): Promise<DeviceCalendarEvent[]> {
-  const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
+  const calendars = await Calendar.getCalendars(Calendar.EntityTypes.EVENT);
   const calendarMeta = new Map<string, { title: string; source: DeviceCalendarSource }>(
     calendars.map((cal) => [cal.id, { title: cal.title, source: classifyDeviceCalendarSource(cal.source) }]),
   );
@@ -46,7 +46,7 @@ export async function readDeviceCalendarEvents(): Promise<DeviceCalendarEvent[]>
   const now = new Date();
   const end = new Date(now.getTime() + LOOKAHEAD_DAYS * 24 * 60 * 60 * 1000);
 
-  const rawEvents = await Calendar.getEventsAsync(
+  const rawEvents = await Calendar.listEvents(
     calendars.map((cal) => cal.id),
     now,
     end,

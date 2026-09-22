@@ -89,7 +89,7 @@ const styles = StyleSheet.create({
   boxSuccess: { borderColor: colors.success, borderWidth: 1 },
   digit: { fontSize: 20, fontWeight: '700', color: colors.textPrimary },
   hiddenInput: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     opacity: 0,
   },
 });

@@ -27,7 +27,7 @@ export default function LandingScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, justifyContent: 'flex-end' },
-  backgroundGif: { ...StyleSheet.absoluteFillObject },
+  backgroundGif: { ...StyleSheet.absoluteFill },
   footer: {
     paddingHorizontal: 24,
     paddingBottom: spacing.xxxl,

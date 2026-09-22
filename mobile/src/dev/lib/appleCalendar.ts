@@ -1,3 +1,4 @@
+import { PermissionStatus } from 'expo';
 import * as Calendar from 'expo-calendar';
 
 const LOOKAHEAD_DAYS = 30;
@@ -23,15 +24,15 @@ function isAppleCalendarSource(source: Calendar.Source | undefined): boolean {
 }
 
 export async function getAppleCalendarSample(): Promise<{ summary: string }> {
-  let permission = await Calendar.getCalendarPermissionsAsync();
-  if (permission.status !== Calendar.PermissionStatus.GRANTED) {
-    permission = await Calendar.requestCalendarPermissionsAsync();
+  let permission = await Calendar.getCalendarPermissions();
+  if (permission.status !== PermissionStatus.GRANTED) {
+    permission = await Calendar.requestCalendarPermissions();
   }
-  if (permission.status !== Calendar.PermissionStatus.GRANTED) {
+  if (permission.status !== PermissionStatus.GRANTED) {
     throw new Error('Calendar permission denied — enable it in Settings to test this integration.');
   }
 
-  const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
+  const calendars = await Calendar.getCalendars(Calendar.EntityTypes.EVENT);
   const appleCalendars = calendars.filter((cal) => isAppleCalendarSource(cal.source));
   if (!appleCalendars.length) {
     return { summary: 'No Apple Calendar found on this device.' };
@@ -39,7 +40,7 @@ export async function getAppleCalendarSample(): Promise<{ summary: string }> {
 
   const now = new Date();
   const end = new Date(now.getTime() + LOOKAHEAD_DAYS * 24 * 60 * 60 * 1000);
-  const events = await Calendar.getEventsAsync(
+  const events = await Calendar.listEvents(
     appleCalendars.map((cal) => cal.id),
     now,
     end,

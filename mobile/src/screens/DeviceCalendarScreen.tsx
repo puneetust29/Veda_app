@@ -1,4 +1,5 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { PermissionStatus } from 'expo';
 import * as Calendar from 'expo-calendar';
 import { useCallback, useState } from 'react';
 import {
@@ -40,7 +41,7 @@ const SOURCE_COLORS: Record<DeviceCalendarSource, string> = {
 // level and iOS/Android mirrors it into the calendar database this screen
 // reads, same as Apple Calendar.
 export default function DeviceCalendarScreen({ navigation }: Props) {
-  const [permission, setPermission] = useState<Calendar.PermissionStatus | null>(null);
+  const [permission, setPermission] = useState<PermissionStatus | null>(null);
   const [events, setEvents] = useState<DeviceCalendarEvent[]>([]);
   const [sourceCounts, setSourceCounts] = useState<Record<DeviceCalendarSource, number>>({
     google: 0,
@@ -52,9 +53,9 @@ export default function DeviceCalendarScreen({ navigation }: Props) {
   const [lastSyncSummary, setLastSyncSummary] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const { status } = await Calendar.getCalendarPermissionsAsync();
+    const { status } = await Calendar.getCalendarPermissions();
     setPermission(status);
-    if (status !== Calendar.PermissionStatus.GRANTED) {
+    if (status !== PermissionStatus.GRANTED) {
       setEvents([]);
       return;
     }
@@ -75,9 +76,9 @@ export default function DeviceCalendarScreen({ navigation }: Props) {
   const handleRequestPermission = async () => {
     setBusy(true);
     try {
-      const { status } = await Calendar.requestCalendarPermissionsAsync();
+      const { status } = await Calendar.requestCalendarPermissions();
       setPermission(status);
-      if (status === Calendar.PermissionStatus.GRANTED) {
+      if (status === PermissionStatus.GRANTED) {
         const fresh = await readDeviceCalendarEvents();
         setEvents(fresh);
         setSourceCounts(countDeviceEventsBySource(fresh));
@@ -119,7 +120,7 @@ export default function DeviceCalendarScreen({ navigation }: Props) {
     return <ActivityIndicator style={styles.loading} />;
   }
 
-  if (permission !== Calendar.PermissionStatus.GRANTED) {
+  if (permission !== PermissionStatus.GRANTED) {
     return (
       <View style={styles.container}>
         <View style={styles.notice}>

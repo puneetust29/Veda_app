@@ -1192,7 +1192,7 @@ const styles = StyleSheet.create({
   },
 
   heroHalo: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: withOpacity(colors.white, 0.06),
   },
 
@@ -1226,7 +1226,7 @@ const styles = StyleSheet.create({
   },
 
   heroFace: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: 'center',
     justifyContent: 'center',
     backfaceVisibility: 'hidden',
@@ -1379,7 +1379,7 @@ const styles = StyleSheet.create({
   categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
 
   cardOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: withOpacity(colors.white, 0.8),
     alignItems: 'center',
     justifyContent: 'center',

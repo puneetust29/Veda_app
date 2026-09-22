@@ -1,5 +1,6 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
+import { PermissionStatus } from 'expo';
 import * as Calendar from 'expo-calendar';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -58,8 +59,8 @@ async function silentlySyncCalendars(): Promise<void> {
       }
     })(),
     (async () => {
-      const { status } = await Calendar.getCalendarPermissionsAsync();
-      if (status === Calendar.PermissionStatus.GRANTED) {
+      const { status } = await Calendar.getCalendarPermissions();
+      if (status === PermissionStatus.GRANTED) {
         const events = await readDeviceCalendarEvents();
         await api.syncDeviceCalendar(events, true);
       }
