@@ -9,4 +9,5 @@ export type DevStackParamList = {
   DevTransport: undefined;
   DevUber: undefined;
   DevDeliveroo: undefined;
+  DevTicketTailor: undefined;
 };

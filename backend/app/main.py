@@ -20,7 +20,7 @@ if not _app_log.handlers:
     _h.setFormatter(logging.Formatter("%(levelname)s %(name)s: %(message)s"))
     _app_log.addHandler(_h)
     _app_log.propagate = False  # avoid double-printing via uvicorn's root handler
-from app.routers import auth, calendar, conversation, dev, geofence, gmail, google_auth, roaming, subscriptions, insurance, payments, places
+from app.routers import auth, calendar, conversation, dev, geofence, gmail, google_auth, roaming, subscriptions, insurance, payments, places, tickettailor
 
 settings = get_settings()
 
@@ -57,6 +57,7 @@ app.include_router(payments.router)
 app.include_router(places.router)
 app.include_router(geofence.router)
 app.include_router(dev.router)
+app.include_router(tickettailor.router)
 
 
 @app.get("/health")

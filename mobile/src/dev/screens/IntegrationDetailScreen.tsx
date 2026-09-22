@@ -52,6 +52,10 @@ export default function IntegrationDetailScreen({ route, navigation }: Props) {
       navigation.navigate('DevUber');
       return;
     }
+    if (entry.id === 'tickettailor') {
+      navigation.navigate('DevTicketTailor');
+      return;
+    }
 
     setRunning(true);
     setError(null);

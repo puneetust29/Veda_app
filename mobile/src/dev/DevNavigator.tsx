@@ -8,6 +8,7 @@ import DevMapsScreen from './screens/DevMapsScreen';
 import DevTransportScreen from './screens/DevTransportScreen';
 import DevUberScreen from './screens/DevUberScreen';
 import DevDeliverooScreen from './screens/DevDeliverooScreen';
+import DevTicketTailorScreen from './screens/DevTicketTailorScreen';
 import type { DevStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<DevStackParamList>();
@@ -36,6 +37,7 @@ export default function DevNavigator() {
       <Stack.Screen name="DevTransport" component={DevTransportScreen} options={{ title: 'TfL Transport' }} />
       <Stack.Screen name="DevUber" component={DevUberScreen} options={{ title: 'Uber' }} />
       <Stack.Screen name="DevDeliveroo" component={DevDeliverooScreen} options={{ title: 'Deliveroo' }} />
+      <Stack.Screen name="DevTicketTailor" component={DevTicketTailorScreen} options={{ title: 'Ticket Tailor' }} />
     </Stack.Navigator>
   );
 }

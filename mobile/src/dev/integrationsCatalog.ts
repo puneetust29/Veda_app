@@ -6,6 +6,7 @@ import { sendGmailSample } from './lib/gmailSend';
 import { getGoogleCalendarSample } from './lib/googleCalendar';
 import { getMapsRouteSample } from './lib/maps';
 import { getTflStatusSample } from './lib/tfl';
+import { getTicketTailorOverviewSample } from './lib/tickettailor';
 import { getUberDeeplinkSample } from './lib/uber';
 import { getDeliverooAuthSample } from './lib/deliveroo';
 import { getWeatherSample } from './lib/weather';
@@ -239,6 +240,20 @@ export const INTEGRATIONS_CATALOG: IntegrationCatalogEntry[] = [
     status: 'Not Started',
     priority: 'Tier 3',
     notes: 'Flight and travel inventory',
+  },
+  {
+    id: 'tickettailor',
+    category: 'Travel',
+    name: 'Ticket Tailor',
+    purpose: 'Action / Search',
+    exampleUsage: 'Browse and book event tickets at a destination',
+    status: 'Done',
+    priority: 'Tier 2',
+    notes: 'Self-serve ticketing API for events in a Veda-owned box office. Browsing and box-office management work via API; there is no order/checkout-creation endpoint, so ticket purchase would need to hand off to Ticket Tailor’s own hosted checkout rather than complete natively.',
+    action: {
+      label: 'Open Ticket Tailor test screen',
+      run: getTicketTailorOverviewSample,
+    },
   },
 
   // --- Hotels Booking ---

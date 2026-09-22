@@ -69,6 +69,16 @@ class Settings(BaseSettings):
     def deliveroo_configured(self) -> bool:
         return bool(self.deliveroo_client_id and self.deliveroo_client_secret)
 
+    # Ticket Tailor (optional — event ticketing agent skips API calls if absent).
+    # Self-serve: key is generated directly in the box office dashboard, no partner
+    # approval needed. Note: the API has no order/checkout-creation endpoint — ticket
+    # purchase happens via Ticket Tailor's own hosted checkout page, not this API.
+    tickettailor_api_key: str = ""
+
+    @property
+    def tickettailor_configured(self) -> bool:
+        return bool(self.tickettailor_api_key)
+
     @property
     def deliveroo_api_base_url(self) -> str:
         if self.deliveroo_env == "production":
