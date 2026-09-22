@@ -123,7 +123,7 @@ export const INTEGRATIONS_CATALOG: IntegrationCatalogEntry[] = [
     name: 'Contacts',
     purpose: 'Sync / Read Context',
     exampleUsage: 'Context for communication and relationships',
-    status: 'In Progress',
+    status: 'Done',
     priority: 'Tier 2',
     notes: 'Contact context for communication and relationships',
     action: {
@@ -241,21 +241,6 @@ export const INTEGRATIONS_CATALOG: IntegrationCatalogEntry[] = [
     priority: 'Tier 3',
     notes: 'Flight and travel inventory',
   },
-  {
-    id: 'tickettailor',
-    category: 'Travel',
-    name: 'Ticket Tailor',
-    purpose: 'Action / Search',
-    exampleUsage: 'Browse and book event tickets at a destination',
-    status: 'Done',
-    priority: 'Tier 2',
-    notes: 'Self-serve ticketing API for events in a Veda-owned box office. Browsing and box-office management work via API; there is no order/checkout-creation endpoint, so ticket purchase would need to hand off to Ticket Tailor’s own hosted checkout rather than complete natively.',
-    action: {
-      label: 'Open Ticket Tailor test screen',
-      run: getTicketTailorOverviewSample,
-    },
-  },
-
   // --- Hotels Booking ---
   {
     id: 'booking-com',
@@ -575,6 +560,20 @@ export const INTEGRATIONS_CATALOG: IntegrationCatalogEntry[] = [
     status: 'Not Started',
     priority: 'Tier 3',
     notes: 'No public account API; user-declared subscriptions only',
+  },
+  {
+    id: 'tickettailor',
+    category: 'Subscriptions & Vodafone Account',
+    name: 'Ticket Tailor',
+    purpose: 'Action / Search',
+    exampleUsage: 'Browse and book event tickets at a destination',
+    status: 'Done',
+    priority: 'Tier 2',
+    notes: 'Self-serve ticketing API for events in a Veda-owned box office. Browsing and box-office management work via API; there is no order/checkout-creation endpoint, so ticket purchase would need to hand off to Ticket Tailor’s own hosted checkout rather than complete natively.',
+    action: {
+      label: 'Open Ticket Tailor test screen',
+      run: getTicketTailorOverviewSample,
+    },
   },
 
   // --- AI & Agent Platform ---

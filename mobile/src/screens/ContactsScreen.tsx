@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { Contact, ContactField } from 'expo-contacts';
 import * as Contacts from 'expo-contacts';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
@@ -51,22 +52,20 @@ export default function ContactsScreen(_: Props) {
 
   const loadContacts = useCallback(async () => {
     try {
-      const { data } = await Contacts.getContactsAsync({
-        fields: [
-          Contacts.Fields.Emails,
-          Contacts.Fields.PhoneNumbers,
-          Contacts.Fields.FirstName,
-          Contacts.Fields.LastName,
-        ],
-      });
+      const data = await Contact.getAllDetails([
+        ContactField.EMAILS,
+        ContactField.PHONES,
+        ContactField.GIVEN_NAME,
+        ContactField.FAMILY_NAME,
+      ]);
 
       if (data.length > 0) {
         const formattedContacts: ContactItem[] = data
-          .filter((contact) => contact.firstName || contact.lastName)
+          .filter((contact) => contact.givenName || contact.familyName)
           .map((contact) => ({
             id: contact.id,
-            name: `${contact.firstName || ''} ${contact.lastName || ''}`.trim(),
-            phoneNumbers: contact.phoneNumbers as any,
+            name: `${contact.givenName || ''} ${contact.familyName || ''}`.trim(),
+            phoneNumbers: contact.phones as any,
             emails: contact.emails as any,
           }))
           .sort((a, b) => a.name.localeCompare(b.name));

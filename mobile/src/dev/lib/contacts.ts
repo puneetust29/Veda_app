@@ -1,3 +1,4 @@
+import { Contact, ContactField } from 'expo-contacts';
 import * as Contacts from 'expo-contacts';
 
 export async function getContactsSample(): Promise<{ summary: string }> {
@@ -9,18 +10,16 @@ export async function getContactsSample(): Promise<{ summary: string }> {
     };
   }
 
-  const { data } = await Contacts.getContactsAsync({
-    fields: [Contacts.Fields.Name, Contacts.Fields.PhoneNumbers, Contacts.Fields.Emails],
-  });
+  const data = await Contact.getAllDetails([ContactField.FULL_NAME, ContactField.PHONES, ContactField.EMAILS]);
 
   if (!data || data.length === 0) {
     return { summary: 'Permission granted but no contacts found on this device.' };
   }
 
-  const withPhone = data.filter((c) => c.phoneNumbers && c.phoneNumbers.length > 0);
+  const withPhone = data.filter((c) => c.phones && c.phones.length > 0);
   const sample = withPhone.slice(0, 5).map((c) => {
-    const number = c.phoneNumbers?.[0]?.number ?? 'no number';
-    return `• ${c.name ?? 'Unknown'} — ${number}`;
+    const number = c.phones?.[0]?.number ?? 'no number';
+    return `• ${c.fullName ?? 'Unknown'} — ${number}`;
   });
 
   return {
