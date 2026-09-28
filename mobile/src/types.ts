@@ -447,6 +447,35 @@ export type RootStackParamList = {
   Chat: { event: CalendarEvent };
   VedaChat: { initialMessage?: string } | undefined;
   TaxiChat: undefined;
+  RailSearch: undefined;
+  RailResults: {
+    originUid: string;
+    originName: string;
+    destinationUid: string;
+    destinationName: string;
+    date: string;
+    passengers: number;
+  };
+  RailPassengerDetails: {
+    offerId: string;
+    price: { amount: number; currency: string };
+    originName: string;
+    destinationName: string;
+    departureAt: string;
+    arrivalAt: string;
+    operator: string;
+    passengers: number;
+  };
+  RailBookingConfirmation: {
+    reference: string;
+    price: { amount: number; currency: string };
+    originName: string;
+    destinationName: string;
+    departureAt: string;
+    arrivalAt: string;
+    operator: string;
+    passengerName: string;
+  };
   Subscriptions: undefined;
   RoamingPlans: undefined;
   // Single merged calendar screen: reads every calendar expo-calendar exposes

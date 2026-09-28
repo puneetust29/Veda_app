@@ -16,6 +16,10 @@ import SavedPlacesScreen from '../screens/SavedPlacesScreen';
 import RoamingPlansScreen from '../screens/RoamingPlansScreen';
 import SubscriptionsScreen from '../screens/SubscriptionsScreen';
 import TaxiChatScreen from '../screens/TaxiChatScreen';
+import RailSearchScreen from '../screens/RailSearchScreen';
+import RailResultsScreen from '../screens/RailResultsScreen';
+import RailPassengerDetailsScreen from '../screens/RailPassengerDetailsScreen';
+import RailBookingConfirmationScreen from '../screens/RailBookingConfirmationScreen';
 import VedaChatScreen from '../screens/VedaChatScreen';
 import OnboardingNavigator from './OnboardingNavigator';
 import type { RootStackParamList } from '../types';
@@ -64,6 +68,26 @@ export default function RootNavigator() {
                 headerShown: true,
                 title: 'Book a taxi',
               }}
+            />
+            <Stack.Screen
+              name="RailSearch"
+              component={RailSearchScreen}
+              options={{ headerShown: true, title: 'Book a train', headerBackTitle: '' }}
+            />
+            <Stack.Screen
+              name="RailResults"
+              component={RailResultsScreen}
+              options={{ headerShown: true, title: 'Train results', headerBackTitle: '' }}
+            />
+            <Stack.Screen
+              name="RailPassengerDetails"
+              component={RailPassengerDetailsScreen}
+              options={{ headerShown: true, title: 'Passenger details', headerBackTitle: '' }}
+            />
+            <Stack.Screen
+              name="RailBookingConfirmation"
+              component={RailBookingConfirmationScreen}
+              options={{ headerShown: true, title: 'Booking confirmed', headerBackVisible: false }}
             />
             <Stack.Screen
               name="FlightDetail"
