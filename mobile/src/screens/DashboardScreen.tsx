@@ -174,6 +174,9 @@ export default function DashboardScreen({ navigation }: Props) {
     {
       id: 'taxi', iconXml: tileTaxi, label: 'Book a taxi', onPress: () => navigation.navigate('TaxiChat'),
     },
+    {
+      id: 'train', iconXml: tileMap, label: 'Book a train', onPress: () => navigation.navigate('RailSearch'),
+    },
     { id: 'school-fees', iconXml: tileMap, label: 'Pay school fees', comingSoon: true },
     { id: 'health-checkup', iconXml: tileHealth, label: 'Book annual health checkup', comingSoon: true },
     {
