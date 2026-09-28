@@ -79,6 +79,22 @@ class Settings(BaseSettings):
     def tickettailor_configured(self) -> bool:
         return bool(self.tickettailor_api_key)
 
+    # All Aboard — European rail ticketing GraphQL API.
+    # Wallet client type: createPayment is skipped; Veda charges via Stripe and
+    # finalizes directly with All Aboard (no hosted redirect).
+    allaboard_api_key: str = ""
+    allaboard_test_mode: bool = True  # False → production endpoint
+
+    @property
+    def allaboard_configured(self) -> bool:
+        return bool(self.allaboard_api_key)
+
+    @property
+    def allaboard_endpoint(self) -> str:
+        if self.allaboard_test_mode:
+            return "https://test.api-gateway.allaboard.eu/"
+        return "https://api-gateway.allaboard.eu/"
+
     @property
     def deliveroo_api_base_url(self) -> str:
         if self.deliveroo_env == "production":
