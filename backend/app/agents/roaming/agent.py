@@ -89,13 +89,18 @@ class RoamingAgent(BaseAgent):
 
         # Short-circuit for in-place follow-up replies (not a new recommendation)
         if is_follow_up and final_state.get("followup_route") in ("answered", "off_topic"):
-            ctx.emit(build_done("ok_no_action"))
+            is_off_topic = final_state.get("followup_route") == "off_topic"
+            # An off-topic verdict hands off to the fallback agent instead of ending
+            # the turn here, so it doesn't get its own `done` -- the fallback's does.
+            if not is_off_topic:
+                ctx.emit(build_done("ok_no_action"))
             return AgentResult(
                 agent=self.manifest.name,
                 version=self.manifest.version,
                 status="ok",
                 summary=final_state.get("followup_reply", ""),
                 raw=final_state,
+                handoff=is_off_topic,
             )
 
         if final_state.get("is_home_country"):

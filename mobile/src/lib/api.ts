@@ -12,6 +12,7 @@ import type {
   GoogleCalendarEvent,
   GoogleCalendarStatus,
   GoogleSyncResult,
+  RecommendationCardPayload,
   RecommendResponse,
   RoamingPlan,
   Subscription,
@@ -450,6 +451,22 @@ export const api = {
         method: 'POST',
       },
     ),
+
+  getUberRideCard: (params: {
+    dropoff: string;
+    pickup?: string | null;
+    deviceLocation?: { latitude: number; longitude: number } | null;
+  }) => {
+    const query = new URLSearchParams({ dropoff: params.dropoff });
+    if (params.pickup) query.set('pickup', params.pickup);
+    if (params.deviceLocation) {
+      query.set('pickup_latitude', String(params.deviceLocation.latitude));
+      query.set('pickup_longitude', String(params.deviceLocation.longitude));
+    }
+    return authedFetch<RecommendationCardPayload>(`/places/uber-ride-card?${query.toString()}`, {
+      method: 'GET',
+    });
+  },
 
   // --- Geofence events ---
   reportGeofenceEvent: (event: GeofenceEvent) =>

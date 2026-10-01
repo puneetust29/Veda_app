@@ -9,6 +9,8 @@ import pytest
 from fastapi.testclient import TestClient
 from jose import jwt
 
+from app.agents.master import agent as master_agent_module
+from app.agents.master.schemas import MasterReply
 from app.agents.roaming import graph as graph_module
 from app.agents.roaming.schemas import FollowUpVerdict, JudgeVerdict, PlanRecommendation
 from app.config import get_settings
@@ -49,6 +51,9 @@ class _FakeQuery:
 
     def eq(self, column, value):
         self._filters[column] = value
+        return self
+
+    def gte(self, _column, _value):
         return self
 
     def order(self, *_args):
@@ -97,6 +102,17 @@ class _FakeLLM:
         return _FakeStructuredLLM(
             model_cls, self._recommend_responses, self._judge_responses, self._followup_responses
         )
+
+
+class _FakeMasterLLM:
+    """Stand-in for master_agent's `_llm()` -- always answers with a fixed reply,
+    regardless of the prompt it's invoked with."""
+
+    def __init__(self, reply: str):
+        self._reply = reply
+
+    def with_structured_output(self, _model_cls):
+        return SimpleNamespace(invoke=lambda _prompt: MasterReply(reply=self._reply))
 
 
 @pytest.fixture
@@ -228,7 +244,9 @@ def test_chat_stream_follow_up_on_topic_in_place(fake_supabase, monkeypatch, aut
 
 
 def test_chat_stream_follow_up_off_topic(fake_supabase, monkeypatch, auth_token):
-    """Follow-up question off-topic: emits text refusal, no recommendation."""
+    """Follow-up question off-topic for roaming: roaming stays silent (no refusal
+    text of its own) and hands off; the fallback (master) agent's reply is what
+    actually streams to the client."""
     followup_responses = [
         FollowUpVerdict(
             on_topic=False,
@@ -244,6 +262,11 @@ def test_chat_stream_follow_up_off_topic(fake_supabase, monkeypatch, auth_token)
         lambda: _FakeLLM(recommend_responses, judge_responses, followup_responses),
     )
     monkeypatch.setattr(graph_module, "fetch_roaming_catalog", lambda _country: CATALOG)
+    monkeypatch.setattr(
+        master_agent_module,
+        "_llm",
+        lambda: _FakeMasterLLM("Sure — here's an answer to that."),
+    )
 
     prior_plan = CATALOG[0]
     with TestClient(app) as client:
@@ -253,6 +276,7 @@ def test_chat_stream_follow_up_off_topic(fake_supabase, monkeypatch, auth_token)
             json={
                 "calendar_event_id": "evt-1",
                 "message": "Tell me a joke",
+                "capability": "roaming",  # matches the real roaming chat screen (mobile/src/lib/api.ts)
                 "prior_plan": prior_plan,
                 "prior_reasoning": "Matches the 7-day trip",
                 "prior_judge_feedback": "Duration and data allowance both fit",

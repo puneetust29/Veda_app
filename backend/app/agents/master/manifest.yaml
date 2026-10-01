@@ -1,0 +1,13 @@
+name: master_agent
+version: 0.1.0
+description: Full-context fallback agent. Only dispatched when no specialized agent's manifest matched the request.
+enabled: true
+priority: 100
+capabilities: []
+triggers:
+  events: []
+  rules: []
+required_context: [customer, calendar_event, upcoming_trips, active_insurance, location_context, enriched_location_context]
+tools: []
+actions: []
+fallback: true

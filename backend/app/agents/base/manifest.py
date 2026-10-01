@@ -55,6 +55,7 @@ class AgentManifest:
     tools: List[str]
     actions: List[ActionSpec]
     output_schema: Optional[str] = None
+    fallback: bool = False
 
     def action(self, name: str) -> Optional[ActionSpec]:
         return next((a for a in self.actions if a.name == name), None)
@@ -87,4 +88,5 @@ def load_manifest(path: Union[str, Path]) -> AgentManifest:
         tools=list(raw.get("tools") or []),
         actions=actions,
         output_schema=raw.get("output_schema"),
+        fallback=bool(raw.get("fallback", False)),
     )

@@ -48,7 +48,6 @@ function ChatItemViewImpl({ item, onConfirm, onDecline, onInsurancePurchased, on
         />
       );
     case 'card':
-      if (item.card.kind === 'uber_ride') return null; // dev-only
       return (
         <RecommendationCard
           card={item.card}

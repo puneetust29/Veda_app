@@ -880,12 +880,59 @@ export function useWorkflowChat(event: CalendarEvent) {
 
       appendItems([{ id: nextId(), createdAt: Date.now(), kind: 'text', role: 'user', text }]);
 
-      // Check if user is asking about insurance or roaming
+      // Check if user is asking about insurance, roaming, or a ride
       const insuranceKeywords = ['insurance', 'coverage', 'protect', 'travel insurance', 'claim', 'medical'];
       const roamingKeywords = ['roaming', 'data', 'mobile data', 'internet', 'connection', 'mobile plan', 'connectivity', 'call'];
+      const uberKeywords = ['uber', 'taxi', 'cab', 'ride'];
       const messageText = text.toLowerCase();
       const mentionsInsurance = insuranceKeywords.some((keyword) => messageText.includes(keyword));
       const mentionsRoaming = roamingKeywords.some((keyword) => messageText.includes(keyword));
+      const mentionsUber = uberKeywords.some((keyword) => messageText.includes(keyword));
+
+      // Fast path: skip roaming/master's LLM handoff entirely and build the ride
+      // card straight from the message text (mirrors the insurance/roaming
+      // keyword shortcuts below).
+      if (mentionsUber) {
+        console.log('[useWorkflowChat] User asking about a ride, trying the fast Uber path');
+        const loadingId = nextId();
+        appendItems([
+          { id: loadingId, createdAt: Date.now(), kind: 'text', role: 'agent', text: 'Finding your ride…', transient: true },
+        ]);
+        const clearLoading = () => {
+          commitItems(itemsRef.current.filter((item) => item.id !== loadingId));
+        };
+
+        api
+          .extractDestination(text)
+          .then((extraction) => {
+            if (!extraction.is_relevant || !extraction.destination) {
+              // Not a clear point-to-point ride request -- fall through to the
+              // normal chat flow so master's flight-based fallback can still help.
+              clearLoading();
+              abortControllerRef.current?.abort();
+              const controller = new AbortController();
+              abortControllerRef.current = controller;
+              startStream(controller, { message: text });
+              return;
+            }
+            return api
+              .getUberRideCard({
+                dropoff: extraction.destination,
+                pickup: extraction.pickup_location,
+                deviceLocation: deviceLocationRef.current,
+              })
+              .then((card) => {
+                clearLoading();
+                appendItems([{ id: nextId(), createdAt: Date.now(), kind: 'card', card }]);
+              });
+          })
+          .catch((err) => {
+            clearLoading();
+            if (__DEV__) console.warn('[useWorkflowChat] Failed to build uber ride card', err);
+            pushErrorItem("I couldn't find that ride. Please try again.", true);
+          });
+        return;
+      }
 
       // Get trip prep card to check initial status
       const tripPrepCard = itemsRef.current.find((item) => item.kind === 'trip_preparation');

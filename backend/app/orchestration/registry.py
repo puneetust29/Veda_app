@@ -86,6 +86,14 @@ class AgentRegistry:
     def all(self) -> List[RegisteredAgent]:
         return list(self._agents.values())
 
+    def get_fallback(self) -> Optional[RegisteredAgent]:
+        """The one enabled agent (if any) whose manifest declares `fallback: true` --
+        dispatched by the orchestrator only when no other agent matched at all."""
+        for entry in self._agents.values():
+            if entry.manifest.enabled and entry.manifest.fallback:
+                return entry
+        return None
+
     def discover(self) -> None:
         """pkgutil-discover every subpackage of app.agents (skipping `base` and any
         `_`-prefixed package), import its `agent` module, and register the module-level
@@ -144,15 +152,22 @@ class AgentRegistry:
             if manifest.output_schema:
                 _import_output_schema(manifest.output_schema)
 
+        fallback_count = sum(1 for e in self._agents.values() if e.manifest.fallback)
+        if fallback_count > 1:
+            raise ValueError("more than one agent manifest declares 'fallback: true'")
+
     def match(self, intent: Intent, context: Optional[dict] = None) -> List[RegisteredAgent]:
         """Coarse filter by capabilities/triggers.events (match ALL enabled agents if
         the intent has neither) -> refine by evaluating triggers.rules against
         `context` (a dotted-key lookup, e.g. "calendar_event.event_type" ->
-        context["calendar_event"]["event_type"])."""
+        context["calendar_event"]["event_type"]).
+
+        Agents with `fallback: true` never compete here -- they're only reachable via
+        `get_fallback()`, dispatched by the orchestrator when this returns empty."""
         candidates: List[RegisteredAgent] = []
         for entry in self._agents.values():
             manifest = entry.manifest
-            if not manifest.enabled:
+            if not manifest.enabled or manifest.fallback:
                 continue
             if intent.capability is None and intent.event is None:
                 candidates.append(entry)

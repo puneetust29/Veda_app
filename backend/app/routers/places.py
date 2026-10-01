@@ -339,3 +339,26 @@ def extract_destination(
             "error": str(e),
             "redirect_message": "I can only help with taxi/ride bookings. Please tell me where you'd like to go."
         }
+
+
+@router.get("/uber-ride-card")
+def get_uber_ride_card(
+    dropoff: str = Query(..., description="Destination text, e.g. 'Hebbal'"),
+    pickup: Optional[str] = Query(None, description="Pickup text, e.g. 'Bangalore airport'; omit to use current location"),
+    pickup_latitude: Optional[float] = Query(None),
+    pickup_longitude: Optional[float] = Query(None),
+    _customer: dict = Depends(get_current_customer),
+):
+    """Build an Uber ride card straight from pickup/dropoff text -- the fast path the
+    mobile client calls directly once it's keyword-matched a ride request, instead of
+    going through /chat/stream (roaming -> master handoff) at all."""
+    from app.agents.uber.ride_card import build_ride_card
+
+    device_location = None
+    if pickup_latitude is not None and pickup_longitude is not None:
+        device_location = {"latitude": pickup_latitude, "longitude": pickup_longitude}
+
+    card = build_ride_card(pickup, dropoff, device_location)
+    if card is None:
+        raise HTTPException(status_code=422, detail=f"Could not find a location for '{dropoff}'")
+    return card

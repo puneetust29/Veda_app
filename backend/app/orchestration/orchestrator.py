@@ -46,6 +46,64 @@ class Orchestrator:
         matched.sort(key=lambda entry: entry.manifest.priority)
         return matched, resolved_context
 
+    def _dispatch(
+        self,
+        entry,
+        resolved_context: dict,
+        request: OrchestratorRequest,
+        run_id: str,
+        emit: Callable[[dict], None],
+    ) -> AgentResult:
+        logger.info("[orchestrator] dispatching agent=%s", entry.manifest.name)
+        ctx_slice = {k: resolved_context.get(k) for k in entry.manifest.required_context}
+        agent_ctx = AgentContext(
+            run_id=run_id,
+            principal=request.principal,
+            context=ctx_slice,
+            conversation_id=request.conversation_id,
+            subject=request.subject,
+            mode=request.mode,
+            emit=emit,
+            user_message=request.user_message,
+        )
+        agent_crashed = False
+        try:
+            result = entry.agent.execute(agent_ctx, request.mode)
+            logger.info("[orchestrator] agent=%s status=%s summary=%s", entry.manifest.name, result.status, result.summary)
+        except Exception as exc:  # one agent's failure never aborts the run
+            logger.exception("[orchestrator] agent=%s crashed: %s", entry.manifest.name, exc)
+            agent_crashed = True
+            import traceback
+            print(f"[AGENT ERROR] {entry.manifest.name}: {exc}")
+            print(traceback.format_exc())
+            result = AgentResult(
+                agent=entry.manifest.name,
+                version=entry.manifest.version,
+                status="failed",
+                error=str(exc),
+            )
+
+        # A well-behaved agent always emits its own terminal `done` event (with
+        # agent-specific status semantics) before execute() returns. That only
+        # happens on the agent's normal control-flow paths though, so if it raised
+        # instead, emit a generic fallback here to guarantee the stream still
+        # terminates with error+done.
+        if agent_crashed:
+            emit({"type": "error", "data": {"code": "agent_error", "retryable": False}})
+            emit({"type": "done", "data": {"status": "failed"}})
+
+        for action in result.proposed_actions:
+            action_name = action.get("name")
+            if action_name:
+                policy.evaluate(
+                    entry.manifest,
+                    action_name,
+                    action.get("params", {}),
+                    request.principal,
+                    approved=False,
+                )
+        return result
+
     def run(
         self,
         request: OrchestratorRequest,
@@ -59,63 +117,26 @@ class Orchestrator:
         logger.info("[orchestrator] run_id=%s matched_agents=%s", run_id, agent_names)
         emit({"type": "run_started", "data": {"run_id": run_id, "agents": agent_names}})
 
-        results: List[AgentResult] = []
-        for entry in matched:
-            logger.info("[orchestrator] dispatching agent=%s", entry.manifest.name)
-            ctx_slice = {k: resolved_context.get(k) for k in entry.manifest.required_context}
-            agent_ctx = AgentContext(
-                run_id=run_id,
-                principal=request.principal,
-                context=ctx_slice,
-                conversation_id=request.conversation_id,
-                subject=request.subject,
-                mode=request.mode,
-                emit=emit,
-                user_message=request.user_message,
-            )
-            agent_crashed = False
-            try:
-                result = entry.agent.execute(agent_ctx, request.mode)
-                logger.info("[orchestrator] agent=%s status=%s summary=%s", entry.manifest.name, result.status, result.summary)
-            except Exception as exc:  # one agent's failure never aborts the run
-                logger.exception("[orchestrator] agent=%s crashed: %s", entry.manifest.name, exc)
-                agent_crashed = True
-                import traceback
-                print(f"[AGENT ERROR] {entry.manifest.name}: {exc}")
-                print(traceback.format_exc())
-                result = AgentResult(
-                    agent=entry.manifest.name,
-                    version=entry.manifest.version,
-                    status="failed",
-                    error=str(exc),
+        results: List[AgentResult] = [
+            self._dispatch(entry, resolved_context, request, run_id, emit) for entry in matched
+        ]
+
+        # Either nothing matched at all, or every matched agent declined (handoff=True,
+        # e.g. an off-topic follow-up) -- `all([])` is True, so this covers both.
+        if all(r.handoff for r in results):
+            fallback_entry = self._registry.get_fallback()
+            if fallback_entry is not None:
+                logger.info("[orchestrator] run_id=%s no agent handled this, falling back to agent=%s", run_id, fallback_entry.manifest.name)
+                fallback_context = self._context_resolver.resolve(
+                    set(fallback_entry.manifest.required_context), request.principal, request.subject
                 )
-            results.append(result)
-
-            # A well-behaved agent always emits its own terminal `done` event (with
-            # agent-specific status semantics) before execute() returns. That only
-            # happens on the agent's normal control-flow paths though, so if it raised
-            # instead, emit a generic fallback here to guarantee the stream still
-            # terminates with error+done.
-            if agent_crashed:
-                emit({"type": "error", "data": {"code": "agent_error", "retryable": False}})
-                emit({"type": "done", "data": {"status": "failed"}})
-
-            for action in result.proposed_actions:
-                action_name = action.get("name")
-                if action_name:
-                    policy.evaluate(
-                        entry.manifest,
-                        action_name,
-                        action.get("params", {}),
-                        request.principal,
-                        approved=False,
-                    )
-
-        if not matched:
-            # No agent matched this run at all (e.g. no trigger rule applied) -- still
-            # guarantee the stream terminates with an event rather than just closing.
-            emit({"type": "error", "data": {"code": "no_agent_matched", "retryable": False}})
-            emit({"type": "done", "data": {"status": "ok_no_action"}})
+                results = [self._dispatch(fallback_entry, fallback_context, request, run_id, emit)]
+            else:
+                # No agent matched (or all declined) this run, and no fallback is
+                # registered -- still guarantee the stream terminates with an event
+                # rather than just closing.
+                emit({"type": "error", "data": {"code": "no_agent_matched", "retryable": False}})
+                emit({"type": "done", "data": {"status": "ok_no_action"}})
 
         return OrchestratorResult(run_id=run_id, results=results)
 

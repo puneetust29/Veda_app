@@ -106,8 +106,6 @@ export function applyStreamEvent(items: ChatItem[], event: AgentStreamEvent): Ch
     }
 
     case 'recommendation_ready': {
-      // uber_ride is dev-only — ignore in the main chat flow
-      if (event.data.card.kind === 'uber_ride') return items;
       const clean = removeTransient(removeAllStatuses(items));
       return [...clean, { id: nextId(), createdAt: Date.now(), kind: 'card', card: event.data.card }];
     }

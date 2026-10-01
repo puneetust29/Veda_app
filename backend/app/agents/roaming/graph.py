@@ -196,7 +196,10 @@ def node_handle_follow_up(state: RoamingAgentState, writer: StreamWriter) -> dic
 
     verdict = llm.invoke(prompt)
 
-    if verdict.reply:
+    # Off-topic replies aren't streamed here -- the orchestrator hands an off-topic
+    # follow-up to the full-context fallback agent instead, which produces the reply
+    # the customer actually sees.
+    if verdict.reply and verdict.on_topic:
         writer({"kind": "text", "role": "agent", "text": verdict.reply})
 
     if verdict.on_topic and verdict.target_country:

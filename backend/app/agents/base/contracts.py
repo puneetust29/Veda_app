@@ -39,6 +39,10 @@ class AgentResult:
     proposed_actions: List[dict] = dataclasses.field(default_factory=list)
     raw: dict = dataclasses.field(default_factory=dict)
     error: Optional[str] = None
+    # Set by an agent that recognized the request wasn't for it, rather than actually
+    # answering. When every agent matched on a turn sets this, the orchestrator
+    # re-dispatches to the registered fallback agent and that result replaces these.
+    handoff: bool = False
 
 
 class UnsupportedActionError(NotImplementedError):
