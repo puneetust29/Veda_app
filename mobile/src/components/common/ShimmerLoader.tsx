@@ -11,7 +11,7 @@ import { colors, spacing } from '../../theme';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 type Props = {
-  width?: number;
+  width?: number | string;
   height: number;
   borderRadius?: number;
   style?: any;

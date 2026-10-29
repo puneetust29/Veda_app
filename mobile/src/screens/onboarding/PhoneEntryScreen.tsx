@@ -265,7 +265,7 @@ const styles = StyleSheet.create({
   },
   flag: { fontSize: 20 },
   countryCode: { color: '#111', fontSize: 14, fontWeight: '600', fontFamily: fonts.semiBold },
-  input: { flex: 1, paddingVertical: 0, fontSize: 14, color: colors.textPrimary, fontWeight: '400', fontFamily: fonts.body, paddingHorizontal: spacing.md, placeholderTextColor: '#808080' },
+  input: { flex: 1, paddingVertical: 0, fontSize: 14, color: colors.textPrimary, fontWeight: '400', fontFamily: fonts.body, paddingHorizontal: spacing.md },
   helpLink: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.md },
   helper: { color: colors.brandText, fontWeight: '600', fontFamily: fonts.semiBold, fontSize: 14, lineHeight: 16 },
   termsRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.xl },

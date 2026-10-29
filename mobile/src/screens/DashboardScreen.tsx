@@ -83,7 +83,7 @@ export default function DashboardScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const autoSyncIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const autoSyncIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const loadEvents = useCallback(async () => {
     const calendarEvents = await api.listCalendarEvents();

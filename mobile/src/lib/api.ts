@@ -49,23 +49,21 @@ async function rawFetch<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 async function authedFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  try {
-    const token = await loadToken();
-    if (!token) {
-      throw new Error('Not authenticated');
-    }
-
-    return await rawFetch<T>(path, {
-      ...init,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        ...init?.headers,
-      },
-    });
-  } catch (error) {
-    if (__DEV__) console.error('[authedFetch] Error:', error);
-    throw error;
+  const token = await loadToken();
+  if (!token) {
+    // Expected before sign-in (e.g. providers that prefetch on mount); callers
+    // decide whether to surface or swallow this. rawFetch logs real HTTP/network
+    // failures, so this isn't double-logged as an error here.
+    throw new Error('Not authenticated');
   }
+
+  return rawFetch<T>(path, {
+    ...init,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      ...init?.headers,
+    },
+  });
 }
 
 export const api = {

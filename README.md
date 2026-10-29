@@ -315,6 +315,67 @@ The backend is deployed on [Railway](https://railway.app):
 | Dependencies not installing | Try deleting `node_modules` and `package-lock.json`, then run `npm install` again |
 | Expo app not connecting | For local: make sure backend and mobile are on same network. For Railway: check internet connection and `https://vedaapp-production.up.railway.app/health` |
 | Environment not switching | Run `npm run start:local` or `npm run start:dev` before starting the app (not just `npm start`) |
+| Buttons/taps don't do anything in Expo Go (app renders fine, nothing is clickable) | See [Known Issue: Unresponsive UI in Expo Go](#known-issue-unresponsive-ui-in-expo-go-silent-nativejs-version-mismatch) below — usually an Expo Go / native dependency version mismatch, not an app bug. |
+
+---
+
+## Known Issue: Unresponsive UI in Expo Go (silent native/JS version mismatch)
+
+**Symptom:** The app loads and renders normally — animations keep running,
+the JS thread stays responsive (Expo Go's own performance monitor shows a
+steady 60fps UI / 60fps JS) — but **no touch does anything**. Buttons, links,
+and even a bare `Pressable` wrapping the whole screen never fire `onPress`.
+There are no JS errors, no crashes, and the native OS reports the touch
+hardware events as normal. It looks exactly like a frozen UI, but the app
+isn't frozen at all.
+
+**Root cause:** Expo Go ships as a single native binary matching one Expo
+SDK version. If the project's installed native dependencies (`expo-task-manager`,
+`@stripe/stripe-react-native`, `expo-notifications`, etc.) drift out of sync
+with the SDK version Expo Go on the device/simulator was built for, the
+native view/touch-event plumbing between the OS and the JS bridge silently
+breaks — even though the JS runtime itself keeps executing fine. Expo will
+print a warning about this on every `expo start`, e.g.:
+
+```
+The following packages should be updated for best compatibility with the installed expo version:
+  expo-task-manager@11.8.2 - expected version: ~14.0.9
+```
+
+That warning is easy to miss or dismiss as non-fatal — it is not. A **major**
+version mismatch there (as opposed to a minor/patch one) is a strong signal
+this is the cause.
+
+**Fix:**
+
+```bash
+cd mobile
+npx expo-doctor          # confirms the exact mismatched packages
+npx expo install --fix   # realigns native deps to the installed Expo SDK
+```
+
+Run `expo install --fix` twice if the first run bumps `expo` itself to a new
+SDK — version expectations shift once `expo`'s own version changes, so a
+second pass is needed to fully converge. Expo Go will then prompt to
+auto-update itself to match on the next `expo start --ios`/`--android`; let it.
+Confirm the fix by checking the installed Expo Go version against what the
+Metro log reports as recommended:
+
+```bash
+xcrun simctl listapps <device-udid> | grep -A1 host.exp.Exponent   # iOS Simulator
+```
+
+**How this was diagnosed** (useful if the symptom recurs in a different
+shape): a `View` wrapping the entire app with
+`onStartShouldSetResponderCapture` / `onTouchStart` logging was added
+temporarily at the root of `App.tsx` to check whether touches reached React
+Native's responder system *at all*, independent of any specific
+button/component. Before the dependency fix, that root-level log never
+fired — proving the break was below the JS layer (native bridge), not a
+`zIndex`/`pointerEvents`/provider-ordering bug in app code. After running
+`expo install --fix` and letting Expo Go self-update, the same log fired
+immediately and taps worked normally. Don't waste time adjusting component
+styles or touch-handling logic for this symptom — check `expo-doctor` first.
 
 ---
 

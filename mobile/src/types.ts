@@ -697,6 +697,6 @@ export type ChatItem =
       destination: string;
     })
   | (ChatItemBase & { kind: 'transport'; transport: TransportResultPayload })
-  | (ChatItemBase & { kind: 'error'; message: string; retryable: boolean })
+  | (ChatItemBase & { kind: 'error'; message: string; retryable: boolean; code?: string })
   | (ChatItemBase & { kind: 'location_action'; action: LocationAction; result?: string })
   | (ChatItemBase & { kind: 'nearby_places'; places: NearbyPlaceResult[]; category: PlaceCategory; searchLabel: string });
