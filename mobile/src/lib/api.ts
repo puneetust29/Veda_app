@@ -27,25 +27,19 @@ if (!API_BASE_URL) {
 }
 
 async function rawFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  try {
-    const response = await fetch(`${API_BASE_URL}${path}`, {
-      ...init,
-      headers: {
-        'Content-Type': 'application/json',
-        ...init?.headers,
-      },
-    });
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...init,
+    headers: {
+      'Content-Type': 'application/json',
+      ...init?.headers,
+    },
+  });
 
-    if (!response.ok) {
-      const body = await response.text();
-      throw new Error(`${response.status} ${path}: ${body}`);
-    }
-    const json = await response.json() as T;
-    return json;
-  } catch (error) {
-    if (__DEV__) console.error('[rawFetch] Error fetching', path, ':', error);
-    throw error;
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`${response.status} ${path}: ${body}`);
   }
+  return response.json() as Promise<T>;
 }
 
 async function authedFetch<T>(path: string, init?: RequestInit): Promise<T> {
