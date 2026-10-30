@@ -18,12 +18,12 @@ run-mobile:
 
 dev:
 	xcrun simctl boot "iPhone 16 Plus" 2>/dev/null || true
-	cd backend && .venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload &
-	cd mobile && npx expo start --ios
+	cd backend && .venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload 2>&1 | tee /tmp/backend.log &
+	cd mobile && REACT_NATIVE_PACKAGER_HOSTNAME=$$(ipconfig getifaddr en0) npx expo start --lan
 
 stop:
-	-kill $$(pgrep -f "expo start") 2>/dev/null
-	-kill $$(pgrep -f "uvicorn app.main") 2>/dev/null
+	-lsof -ti :8000 -ti :8081 -ti :19000 -ti :19001 | xargs kill -9 2>/dev/null
+	-pkill -f "uvicorn|expo start|metro" 2>/dev/null
 	-xcrun simctl shutdown all 2>/dev/null
 	@echo "✅ Stopped"
 
