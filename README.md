@@ -379,6 +379,41 @@ styles or touch-handling logic for this symptom — check `expo-doctor` first.
 
 ---
 
+## Known Issue: Device Calendar crashes with `TypeError: undefined is not a function` in Expo Go
+
+**Symptom:** Any screen that checks or requests calendar permission (Dashboard
+menu → **Calendars**, and the onboarding **"Choose permissions"** step) shows
+an `Alert` reading `Could not load permission status` / `Could not read
+device calendars` with the body `TypeError: undefined is not a function`,
+instead of the calendar UI.
+
+**Root cause:** `expo-calendar`'s new "Calendar Next" API
+(`Calendar.getCalendarPermissions()` / `Calendar.requestCalendarPermissions()`)
+is not implemented in Expo Go — it requires a development build. In Expo Go,
+`expo-calendar` swaps in a stub module (`ExpoGoCalendarNextStub`), but the
+package exports that stub **class itself** rather than an instance of it, and
+`getCalendarPermissions`/`requestCalendarPermissions` are defined as instance
+methods. So the call resolves to `undefined` and throws
+`TypeError: undefined is not a function` instead of the stub's intended
+friendly "not available in Expo Go" error. This is an upstream `expo-calendar`
+bug compounding a real, by-design Expo Go limitation (calendar access always
+needs a dev build, stub bug or not).
+
+**Fix (app-side):** Calendar permission checks/requests are now wrapped in
+`try/catch` in `mobile/src/screens/DeviceCalendarScreen.tsx` and
+`mobile/src/screens/onboarding/AppPermissionsScreen.tsx`. On failure, the
+Device Calendar toggle/button is disabled and shows "Requires a development
+build" / "Calendar access unavailable in Expo Go" instead of crashing.
+`mobile/src/screens/DashboardScreen.tsx`'s background sync already used
+`Promise.allSettled` and was unaffected (calendar sync there just silently
+no-ops in Expo Go).
+
+**This is a library limitation, not a bug to "fix" further** — real calendar
+access in Expo Go isn't possible regardless; only a development build
+(`expo run:ios` / EAS build) can grant it.
+
+---
+
 ## Useful Links
 
 - [FastAPI Documentation](https://fastapi.tiangolo.com/)

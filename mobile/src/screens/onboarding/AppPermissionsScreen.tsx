@@ -224,6 +224,7 @@ export default function AppPermissionsScreen({ navigation }: Props) {
   const [devicePermission, setDevicePermission] = useState<PermissionStatus | null>(null);
   const [locationPermission, setLocationPermission] = useState<Location.PermissionStatus | null>(null);
   const [contactsPermission, setContactsPermission] = useState<Contacts.PermissionStatus | null>(null);
+  const [calendarUnavailable, setCalendarUnavailable] = useState(false);
   const [loading, setLoading] = useState(true);
   const [deviceBusy, setDeviceBusy] = useState(false);
   const [locationBusy, setLocationBusy] = useState(false);
@@ -238,14 +239,38 @@ export default function AppPermissionsScreen({ navigation }: Props) {
   const allConnected = enabledCount === totalApps && totalApps > 0;
 
   const loadPermissions = useCallback(async () => {
-    const [devicePermissions, locationPermissions, contactsPermissions] = await Promise.all([
-      Calendar.getCalendarPermissions(),
-      Location.getForegroundPermissionsAsync(),
-      Contacts.getPermissionsAsync(),
+    // expo-calendar's "Calendar Next" API isn't available in Expo Go (it requires a
+    // development build): calling it there throws synchronously (the Expo Go stub
+    // module exports its class rather than an instance, so the method resolves to
+    // undefined). Each call is wrapped in its own async IIFE so that synchronous
+    // throw becomes a rejected promise -- otherwise it would escape Promise.allSettled
+    // entirely, since array literal elements are evaluated eagerly before the Promise
+    // machinery ever runs, and fail the other two permission checks too.
+    const [deviceResult, locationResult, contactsResult] = await Promise.allSettled([
+      (async () => Calendar.getCalendarPermissions())(),
+      (async () => Location.getForegroundPermissionsAsync())(),
+      (async () => Contacts.getPermissionsAsync())(),
     ]);
-    setDevicePermission(devicePermissions.status);
-    setLocationPermission(locationPermissions.status);
-    setContactsPermission(contactsPermissions.status);
+
+    if (deviceResult.status === 'fulfilled') {
+      setDevicePermission(deviceResult.value.status);
+      setCalendarUnavailable(false);
+    } else {
+      setDevicePermission(null);
+      setCalendarUnavailable(true);
+    }
+
+    if (locationResult.status === 'fulfilled') {
+      setLocationPermission(locationResult.value.status);
+    } else {
+      throw locationResult.reason;
+    }
+
+    if (contactsResult.status === 'fulfilled') {
+      setContactsPermission(contactsResult.value.status);
+    } else {
+      throw contactsResult.reason;
+    }
   }, []);
 
   useFocusEffect(
@@ -258,9 +283,16 @@ export default function AppPermissionsScreen({ navigation }: Props) {
   );
 
   const handleGrantDeviceCalendar = async () => {
+    if (calendarUnavailable) {
+      Alert.alert(
+        'Not available in Expo Go',
+        'Calendar access requires a development build and can’t be granted inside Expo Go.',
+      );
+      return;
+    }
     setDeviceBusy(true);
     try {
-      const { status } = await Calendar.requestCalendarPermissions();
+      const { status } = await (async () => Calendar.requestCalendarPermissions())();
       setDevicePermission(status);
       if (status === PermissionStatus.GRANTED) {
         try {
@@ -280,7 +312,11 @@ export default function AppPermissionsScreen({ navigation }: Props) {
         );
       }
     } catch (err) {
-      Alert.alert('Could not request access', err instanceof Error ? err.message : String(err));
+      setCalendarUnavailable(true);
+      Alert.alert(
+        'Not available in Expo Go',
+        'Calendar access requires a development build and can’t be granted inside Expo Go.',
+      );
     } finally {
       setDeviceBusy(false);
     }
@@ -500,14 +536,19 @@ export default function AppPermissionsScreen({ navigation }: Props) {
                 <View style={[styles.appIconChip, { backgroundColor: brandIcons.deviceCalendarBlue }]}>
                   <Ionicons name="calendar-outline" size={16} color={colors.white} />
                 </View>
-                <Text style={styles.appText}>Device Calendar</Text>
+                <View>
+                  <Text style={styles.appText}>Device Calendar</Text>
+                  {calendarUnavailable && (
+                    <Text style={styles.appSubtext}>Requires a development build</Text>
+                  )}
+                </View>
               </View>
               {deviceBusy ? (
                 <ActivityIndicator />
               ) : (
                 <AnimatedToggle
                   value={devicePermission === PermissionStatus.GRANTED}
-                  onValueChange={handleToggleDeviceCalendar}
+                  onValueChange={calendarUnavailable ? handleGrantDeviceCalendar : handleToggleDeviceCalendar}
                 />
               )}
             </View>
@@ -743,6 +784,13 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     fontFamily: fonts.medium,
     color: '#222',
+  },
+
+  appSubtext: {
+    fontSize: 12,
+    fontFamily: fonts.bodyLight,
+    color: '#9ca3af',
+    marginTop: 2,
   },
 
   footerNote: {

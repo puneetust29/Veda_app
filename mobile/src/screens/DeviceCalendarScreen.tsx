@@ -42,6 +42,7 @@ const SOURCE_COLORS: Record<DeviceCalendarSource, string> = {
 // reads, same as Apple Calendar.
 export default function DeviceCalendarScreen({ navigation }: Props) {
   const [permission, setPermission] = useState<PermissionStatus | null>(null);
+  const [calendarUnavailable, setCalendarUnavailable] = useState(false);
   const [events, setEvents] = useState<DeviceCalendarEvent[]>([]);
   const [sourceCounts, setSourceCounts] = useState<Record<DeviceCalendarSource, number>>({
     google: 0,
@@ -53,7 +54,19 @@ export default function DeviceCalendarScreen({ navigation }: Props) {
   const [lastSyncSummary, setLastSyncSummary] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const { status } = await Calendar.getCalendarPermissions();
+    // expo-calendar's "Calendar Next" API isn't available in Expo Go (it requires
+    // a development build), so getCalendarPermissions() throws there -- not a
+    // permission denial, a hard unavailability that must not look like a crash.
+    let status: PermissionStatus;
+    try {
+      ({ status } = await Calendar.getCalendarPermissions());
+      setCalendarUnavailable(false);
+    } catch {
+      setCalendarUnavailable(true);
+      setPermission(null);
+      setEvents([]);
+      return;
+    }
     setPermission(status);
     if (status !== PermissionStatus.GRANTED) {
       setEvents([]);
@@ -74,6 +87,13 @@ export default function DeviceCalendarScreen({ navigation }: Props) {
   );
 
   const handleRequestPermission = async () => {
+    if (calendarUnavailable) {
+      Alert.alert(
+        'Not available in Expo Go',
+        'Calendar access requires a development build and can’t be granted inside Expo Go.',
+      );
+      return;
+    }
     setBusy(true);
     try {
       const { status } = await Calendar.requestCalendarPermissions();
@@ -84,7 +104,11 @@ export default function DeviceCalendarScreen({ navigation }: Props) {
         setSourceCounts(countDeviceEventsBySource(fresh));
       }
     } catch (err) {
-      Alert.alert('Could not request permission', String(err));
+      setCalendarUnavailable(true);
+      Alert.alert(
+        'Not available in Expo Go',
+        'Calendar access requires a development build and can’t be granted inside Expo Go.',
+      );
     } finally {
       setBusy(false);
     }
@@ -124,11 +148,13 @@ export default function DeviceCalendarScreen({ navigation }: Props) {
     return (
       <View style={styles.container}>
         <View style={styles.notice}>
-          <Text style={styles.noticeTitle}>Calendar access needed</Text>
+          <Text style={styles.noticeTitle}>
+            {calendarUnavailable ? 'Calendar access unavailable in Expo Go' : 'Calendar access needed'}
+          </Text>
           <Text style={styles.noticeBody}>
-            Veda reads your device calendars locally to detect upcoming flights -- Apple
-            Calendar, plus Google, Outlook or any other calendar account you've added in
-            Settings. Nothing leaves your phone except the flights Veda finds.
+            {calendarUnavailable
+              ? 'Reading device calendars requires a development build -- this feature can\'t run inside Expo Go.'
+              : 'Veda reads your device calendars locally to detect upcoming flights -- Apple Calendar, plus Google, Outlook or any other calendar account you\'ve added in Settings. Nothing leaves your phone except the flights Veda finds.'}
           </Text>
         </View>
         <View style={styles.actions}>
