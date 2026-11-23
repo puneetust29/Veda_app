@@ -334,15 +334,9 @@ class CdpBrowser(BetaAbstractBrowserToolset20260801):
     ) -> None:
         text = input.text
         self._on_step(f"⌨️ Typing '{text[:30]}{'...' if len(text) > 30 else ''}'")
+        # Use insertText for reliable character entry — handles periods, @, etc.
         for char in text:
-            self._send(
-                "Input.dispatchKeyEvent",
-                {"type": "keyDown", "text": char, "key": char, "windowsVirtualKeyCode": ord(char)},
-            )
-            self._send(
-                "Input.dispatchKeyEvent",
-                {"type": "keyUp", "key": char, "windowsVirtualKeyCode": ord(char)},
-            )
+            self._send("Input.insertText", {"text": char})
             time.sleep(0.02)
 
     @override

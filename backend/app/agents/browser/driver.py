@@ -129,6 +129,11 @@ class VedaBrowserDriver(BetaAbstractBrowserToolset20260801):
                 "--disable-extensions",
                 "--disable-sync",
                 "--window-size=1280,800",
+                # Anti-bot-detection flags
+                "--disable-blink-features=AutomationControlled",
+                "--disable-features=IsolateOrigins,site-per-process",
+                "--disable-infobars",
+                f"--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
                 *(["--no-sandbox"] if hasattr(os, "geteuid") and os.geteuid() == 0 else []),
                 "about:blank",
             ],
@@ -156,6 +161,15 @@ class VedaBrowserDriver(BetaAbstractBrowserToolset20260801):
         self._send("Page.enable")
         self._send("Page.setLifecycleEventsEnabled", {"enabled": True})
         self._send("Runtime.enable")
+        # Remove navigator.webdriver flag that bot detectors check
+        self._send("Page.addScriptToEvaluateOnNewDocument", {
+            "source": """
+                Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+                Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
+                Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] });
+                window.chrome = { runtime: {} };
+            """
+        })
 
     @override
     def close(self) -> None:
@@ -281,9 +295,10 @@ class VedaBrowserDriver(BetaAbstractBrowserToolset20260801):
     def type(self, context: BetaToolsetCallContext, input: BetaBrowserTypeInput) -> None:
         text = input.text
         self._on_step(f"Typing '{text[:30]}{'...' if len(text) > 30 else ''}'")
+        # Use insertText for reliable character entry — handles all characters
+        # including periods, @, special chars that keyDown/keyUp may drop
         for char in text:
-            self._send("Input.dispatchKeyEvent", {"type": "keyDown", "text": char, "key": char, "windowsVirtualKeyCode": ord(char)})
-            self._send("Input.dispatchKeyEvent", {"type": "keyUp", "key": char, "windowsVirtualKeyCode": ord(char)})
+            self._send("Input.insertText", {"text": char})
             time.sleep(0.02)
 
     @override

@@ -32,7 +32,7 @@ const CATEGORY_LABELS: Record<PlaceCategory, string> = {
   unknown: 'places',
 };
 
-const BROWSER_KEYWORDS = /\b(browse|priceline|search\s+(?:for|on|the\s+web)|go\s+to\s+\w+\.(?:com|org|net|io)|open\s+(?:the\s+)?(?:website|site|page)|book\s+(?:on|at|via)|find\s+(?:on|at)\s+\w+\.(?:com|org|net)|check\s+(?:on|at)\s+\w+\.(?:com|org|net)|hotels?\s+on|flights?\s+on|compare\s+prices?)\b/i;
+const BROWSER_KEYWORDS = /\b(browse|priceline|medium\.com|medium\b.*login|medium\b.*sign.?in|booking\.com|kayak|expedia|search\s+(?:for|on|the\s+web)|go\s+to\s+\w+\.(?:com|org|net|io)|go\s+to\s+(?:medium|priceline|booking|kayak|expedia)|open\s+(?:the\s+)?(?:website|site|page)|log\s*in\s+(?:to|on)\s+\w+|sign\s*in\s+(?:to|on)\s+\w+|book\s+(?:on|at|via)|find\s+(?:on|at)\s+\w+\.(?:com|org|net)|check\s+(?:on|at)\s+\w+\.(?:com|org|net)|hotels?\s+on|flights?\s+on|compare\s+prices?)\b/i;
 
 function isBrowserTask(message: string): boolean {
   return BROWSER_KEYWORDS.test(message);
@@ -53,6 +53,7 @@ export function useVedaChat() {
     { id: nextId(), createdAt: Date.now(), kind: 'text', role: 'agent', text: greetingText() },
   ]);
   const [phase, setPhase] = useState<ChatPhase>('idle');
+  const browserSessionActiveRef = useRef(false);
 
   const itemsRef = useRef(items);
   itemsRef.current = items;
@@ -270,6 +271,8 @@ export function useVedaChat() {
                   ...withoutStatus,
                   { id: nextId(), createdAt: Date.now(), kind: 'text', role: 'agent', text: event.text || 'Done.' },
                 ]);
+                // Keep browser session active for follow-up messages
+                browserSessionActiveRef.current = !!(event as any).session_active;
               } else if (event.kind === 'error') {
                 const withoutStatus = itemsRef.current.filter((item) => item.kind !== 'status');
                 commitItems([
@@ -381,8 +384,8 @@ export function useVedaChat() {
       const controller = new AbortController();
       abortControllerRef.current = controller;
 
-      if (isBrowserTask(text)) {
-        if (__DEV__) console.log('[useVedaChat] Detected browser task, routing to browser agent');
+      if (isBrowserTask(text) || browserSessionActiveRef.current) {
+        if (__DEV__) console.log('[useVedaChat] Browser agent:', isBrowserTask(text) ? 'keyword match' : 'active session');
         startBrowserStream(controller, text);
       } else {
         startStream(controller, text);
