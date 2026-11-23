@@ -32,8 +32,14 @@ const CATEGORY_LABELS: Record<PlaceCategory, string> = {
   unknown: 'places',
 };
 
+const BROWSER_KEYWORDS = /\b(browse|priceline|search\s+(?:for|on|the\s+web)|go\s+to\s+\w+\.(?:com|org|net|io)|open\s+(?:the\s+)?(?:website|site|page)|book\s+(?:on|at|via)|find\s+(?:on|at)\s+\w+\.(?:com|org|net)|check\s+(?:on|at)\s+\w+\.(?:com|org|net)|hotels?\s+on|flights?\s+on|compare\s+prices?)\b/i;
+
+function isBrowserTask(message: string): boolean {
+  return BROWSER_KEYWORDS.test(message);
+}
+
 function greetingText(): string {
-  return "Hi, I'm Veda — ask me about your travel plans, nearby places, or the Veda app.";
+  return "Hi, I'm Veda — ask me about your travel plans, nearby places, or say 'browse' to search the web for you.";
 }
 
 function formatGeofenceList(geofences: { label: string; type: string; enabled: boolean }[]): string {
@@ -231,6 +237,68 @@ export function useVedaChat() {
     [clearWatchdog, pushErrorItem],
   );
 
+  const startBrowserStream = useCallback(
+    (controller: AbortController, message: string) => {
+      setPhase('streaming');
+      resetWatchdog();
+
+      appendItems([{ id: nextId(), createdAt: Date.now(), kind: 'status', label: '🌐 Starting browser agent…', state: 'active' }]);
+
+      void (async () => {
+        try {
+          await api.streamBrowserTask({
+            task: message,
+            signal: controller.signal,
+            onEvent: (event) => {
+              resetWatchdog();
+              if (__DEV__) console.log('[browser] event:', event.kind, event.text?.slice(0, 80));
+
+              if (event.kind === 'status') {
+                // Replace the last status item
+                const current = itemsRef.current;
+                const withoutOldStatus = current.filter(
+                  (item, idx) => !(item.kind === 'status' && idx === current.length - 1)
+                );
+                commitItems([
+                  ...withoutOldStatus,
+                  { id: nextId(), createdAt: Date.now(), kind: 'status', label: `🌐 ${event.text}`, state: 'active' },
+                ]);
+              } else if (event.kind === 'result') {
+                // Remove last status, add the final result as agent text
+                const withoutStatus = itemsRef.current.filter((item) => item.kind !== 'status');
+                commitItems([
+                  ...withoutStatus,
+                  { id: nextId(), createdAt: Date.now(), kind: 'text', role: 'agent', text: event.text || 'Done.' },
+                ]);
+              } else if (event.kind === 'error') {
+                const withoutStatus = itemsRef.current.filter((item) => item.kind !== 'status');
+                commitItems([
+                  ...withoutStatus,
+                  { id: nextId(), createdAt: Date.now(), kind: 'error', message: event.text || 'Browser agent failed.', retryable: true },
+                ]);
+                setPhase('failed');
+              } else if (event.kind === 'done') {
+                clearWatchdog();
+                setPhase('complete');
+              }
+            },
+            onError: (err) => {
+              if (controller.signal.aborted) return;
+              handleStreamError(err);
+            },
+            onClose: () => {
+              clearWatchdog();
+            },
+          });
+        } catch (err) {
+          if (controller.signal.aborted) return;
+          handleStreamError(err);
+        }
+      })();
+    },
+    [clearWatchdog, handleStreamError, resetWatchdog, appendItems, commitItems],
+  );
+
   const startStream = useCallback(
     (controller: AbortController, message: string) => {
       setPhase('streaming');
@@ -312,9 +380,15 @@ export function useVedaChat() {
       abortControllerRef.current?.abort();
       const controller = new AbortController();
       abortControllerRef.current = controller;
-      startStream(controller, text);
+
+      if (isBrowserTask(text)) {
+        if (__DEV__) console.log('[useVedaChat] Detected browser task, routing to browser agent');
+        startBrowserStream(controller, text);
+      } else {
+        startStream(controller, text);
+      }
     },
-    [phase, appendItems, startStream],
+    [phase, appendItems, startStream, startBrowserStream],
   );
 
   const retry = useCallback(() => {

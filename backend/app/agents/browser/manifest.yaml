@@ -1,0 +1,7 @@
+name: browser_agent
+version: 0.1.0
+description: AI browser agent that navigates real websites on behalf of the user using Claude Browser Use SDK
+enabled: true
+priority: 25
+capabilities: [browser]
+required_context: [customer]

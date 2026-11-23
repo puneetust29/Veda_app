@@ -451,6 +451,39 @@ export const api = {
       },
     ),
 
+  // --- Browser Agent ---
+  streamBrowserTask: async (params: {
+    task: string;
+    signal: AbortSignal;
+    onEvent: (event: { kind: string; text?: string; steps?: number; elapsed?: number }) => void;
+    onError: (err: unknown) => void;
+    onClose: () => void;
+  }): Promise<void> => {
+    const token = await loadToken();
+    if (!token) throw new Error('Not authenticated');
+
+    return streamSse({
+      url: `${API_BASE_URL}/browser/task`,
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        Accept: 'text/event-stream',
+      },
+      body: JSON.stringify({ task: params.task }),
+      signal: params.signal,
+      onFrame: (frame) => {
+        try {
+          params.onEvent(JSON.parse(frame.data));
+        } catch {
+          if (__DEV__) console.warn('[browser] bad frame', frame);
+        }
+      },
+      onError: params.onError,
+      onClose: params.onClose,
+    });
+  },
+
   // --- Geofence events ---
   reportGeofenceEvent: (event: GeofenceEvent) =>
     authedFetch<{ recorded: boolean; id: string | null }>('/geofence/event', {

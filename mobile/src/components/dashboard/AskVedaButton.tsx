@@ -8,8 +8,8 @@ type Props = {
 
 export default function AskVedaButton({ onPress }: Props) {
   return (
-    <TouchableOpacity style={[styles.button, styles.disabled]} onPress={onPress} activeOpacity={1} disabled>
-      <Text style={[styles.label, styles.disabledLabel]}>Tap to ask Veda</Text>
+    <TouchableOpacity style={styles.button} onPress={onPress} activeOpacity={0.8}>
+      <Text style={styles.label}>Tap to ask Veda</Text>
     </TouchableOpacity>
   );
 }
