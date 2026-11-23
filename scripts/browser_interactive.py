@@ -2,7 +2,7 @@
 
 Usage:
     cd backend
-    .venv-browser/bin/python browser_agent/interactive.py
+    .venv-browser/bin/python ../scripts/browser_interactive.py
 
 The browser stays open between turns. When Claude needs input (like an OTP code),
 it asks you in the terminal. You reply, and Claude continues in the same browser.
@@ -22,9 +22,9 @@ from urllib.parse import urlsplit
 from dotenv import load_dotenv
 
 # Add backend to path so we can import the real driver
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "backend"))
 
-env_path = Path(__file__).resolve().parent.parent / ".env"
+env_path = Path(__file__).resolve().parent.parent / "backend" / ".env"
 if env_path.exists():
     load_dotenv(env_path)
 

@@ -427,9 +427,11 @@ backend/
 │   ├── routers/
 │   │   └── browser.py             ~250 ln  #   POST /browser/task (SSE), session management
 │   └── main.py                             #   Router registration
-├── browser_agent/                          # --- TEST SCRIPTS (import from app/agents/browser/) ---
-│   ├── run.py                     ~100 ln  #   CLI test: python browser_agent/run.py "task"
-│   └── interactive.py             ~120 ln  #   Multi-turn interactive terminal test
+scripts/
+├── browser_test.py                ~100 ln  #   CLI test: python scripts/browser_test.py "task"
+├── browser_interactive.py         ~120 ln  #   Multi-turn interactive terminal test
+├── start.sh                                #   Start all servers
+└── stop.sh                                 #   Stop all servers
 
 mobile/src/
 ├── hooks/
@@ -463,8 +465,8 @@ The test scripts in `browser_agent/` import from it — no code duplication.
 | `app/routers/browser.py` | ~250 | `POST /browser/task` SSE endpoint, `POST /browser/end-session`, persistent session management (`BrowserSession` dataclass), health check + auto-recovery, stale session cleanup |
 | `app/agents/browser/agent.py` | ~30 | Stub `BrowserAgent(BaseAgent)` for orchestrator auto-discovery. Actual work happens in the router, not through the orchestrator dispatch |
 | `app/agents/browser/manifest.yaml` | ~8 | Agent registration: `name: browser_agent`, `capability: browser`, `priority: 25` |
-| `browser_agent/run.py` | ~100 | CLI test script. Imports `VedaBrowserDriver` from `app.agents.browser.driver`. No duplicate driver code. |
-| `browser_agent/interactive.py` | ~120 | Multi-turn interactive terminal test. Same import. |
+| `scripts/browser_test.py` | ~100 | CLI test script. Imports `VedaBrowserDriver` from `app.agents.browser.driver`. No duplicate driver code. |
+| `scripts/browser_interactive.py` | ~120 | Multi-turn interactive terminal test. Same import. |
 
 ### Mobile Modules — Detail
 

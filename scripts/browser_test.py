@@ -2,7 +2,7 @@
 
 Usage:
     cd backend
-    .venv-browser/bin/python browser_agent/run.py "Go to example.com and tell me what you see"
+    .venv-browser/bin/python ../scripts/browser_test.py "Go to example.com and tell me what you see"
 
 Set HEADLESS=0 to watch the browser.
 Set ANTHROPIC_API_KEY in .env or environment.
@@ -20,12 +20,12 @@ from urllib.parse import urlsplit
 from dotenv import load_dotenv
 
 # Load .env from backend directory
-env_path = Path(__file__).resolve().parent.parent / ".env"
+env_path = Path(__file__).resolve().parent.parent / "backend" / ".env"
 if env_path.exists():
     load_dotenv(env_path)
 
 # Add backend to path so we can import the real driver
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "backend"))
 
 from anthropic import Anthropic
 from anthropic.tools import ToolError
