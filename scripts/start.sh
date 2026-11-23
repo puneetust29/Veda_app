@@ -38,26 +38,14 @@ done
 echo ""
 echo "📱 Booting simulator..."
 
-# Try iPhone 17 Pro (iOS 26.5) first, then any iOS 26.5 device, then fallback
-SIM_NAME_PREFERENCE=("iPhone 17 Pro" "iPhone 17" "iPhone Air")
-SIM_ID=""
+# Find an iOS 26.5 simulator (required for Xcode 26.x touch support + Expo Go 57)
+# The device list groups by runtime, so we grep within the iOS 26.5 section
+SIM_ID=$(xcrun simctl list devices available 2>/dev/null | sed -n '/-- iOS 26/,/^--/p' | grep "iPhone" | head -1 | grep -oE '[A-F0-9-]{36}' || true)
 
-for name in "${SIM_NAME_PREFERENCE[@]}"; do
-    SIM_ID=$(xcrun simctl list devices available 2>/dev/null | grep -E "$name.*26\." | head -1 | grep -oE '[A-F0-9-]{36}' || true)
-    if [ -n "$SIM_ID" ]; then
-        break
-    fi
-done
-
-# Fallback: any iOS 26.x iPhone
-if [ -z "$SIM_ID" ]; then
-    SIM_ID=$(xcrun simctl list devices available 2>/dev/null | grep -B5 "26\." | grep "iPhone" | head -1 | grep -oE '[A-F0-9-]{36}' || true)
-fi
-
-# Last resort: any iPhone
+# Last resort: any iPhone (will likely have wrong Expo Go version)
 if [ -z "$SIM_ID" ]; then
     SIM_ID=$(xcrun simctl list devices available 2>/dev/null | grep "iPhone.*Shutdown" | head -1 | grep -oE '[A-F0-9-]{36}' || true)
-    echo "   ⚠️  No iOS 26.5 simulator found — touch input may not work"
+    echo "   ⚠️  No iOS 26.5 simulator found — Expo Go version may be incompatible"
 fi
 
 if [ -n "$SIM_ID" ]; then
