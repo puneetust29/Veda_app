@@ -419,17 +419,16 @@ needing to use a keyword.
 backend/
 ├── app/
 │   ├── agents/
-│   │   └── browser/                        # --- BROWSER AGENT ---
+│   │   └── browser/                        # --- BROWSER AGENT (core) ---
 │   │       ├── __init__.py                 #   Package marker
 │   │       ├── agent.py                    #   BrowserAgent stub for orchestrator discovery
-│   │       ├── driver.py          ~350 ln  #   VedaBrowserDriver — CDP browser driver (10 tools)
+│   │       ├── driver.py          ~390 ln  #   VedaBrowserDriver — THE single CDP browser driver
 │   │       └── manifest.yaml               #   Agent registration (capability: browser)
 │   ├── routers/
-│   │   └── browser.py             ~220 ln  #   POST /browser/task (SSE), session management
+│   │   └── browser.py             ~250 ln  #   POST /browser/task (SSE), session management
 │   └── main.py                             #   Router registration
-├── browser_agent/                          # --- STANDALONE TEST SCRIPTS ---
-│   ├── cdp_browser.py             ~350 ln  #   CdpBrowser — same driver, standalone version
-│   ├── run.py                     ~100 ln  #   CLI test: python run.py "task"
+├── browser_agent/                          # --- TEST SCRIPTS (import from app/agents/browser/) ---
+│   ├── run.py                     ~100 ln  #   CLI test: python browser_agent/run.py "task"
 │   └── interactive.py             ~120 ln  #   Multi-turn interactive terminal test
 
 mobile/src/
@@ -453,14 +452,19 @@ research/
     └── SETUP_LOG.md                        #   Build journal — every challenge & resolution
 ```
 
+**Single source of truth:** The browser driver lives in `app/agents/browser/driver.py`.
+The test scripts in `browser_agent/` import from it — no code duplication.
+
 ### Backend Modules — Detail
 
 | File | Lines | Purpose |
 |---|---|---|
-| `driver.py` | ~350 | `VedaBrowserDriver(BetaAbstractBrowserToolset20260801)` — launches Chrome, connects via CDP WebSocket, implements 10 browser tools, anti-bot stealth flags, element reference tracking via injected JS |
-| `browser.py` (router) | ~220 | `POST /browser/task` SSE endpoint, `POST /browser/end-session`, persistent session management (`BrowserSession` dataclass), health check + auto-recovery, stale session cleanup |
-| `agent.py` | ~30 | Stub `BrowserAgent(BaseAgent)` for orchestrator auto-discovery. Actual work happens in the router, not through the orchestrator dispatch |
-| `manifest.yaml` | ~8 | Agent registration: `name: browser_agent`, `capability: browser`, `priority: 25` |
+| `app/agents/browser/driver.py` | ~390 | `VedaBrowserDriver(BetaAbstractBrowserToolset20260801)` — launches Chrome, connects via CDP WebSocket, implements 10 browser tools, anti-bot stealth flags, element reference tracking via injected JS. **Single source** — used by both the Veda backend and the standalone test scripts. |
+| `app/routers/browser.py` | ~250 | `POST /browser/task` SSE endpoint, `POST /browser/end-session`, persistent session management (`BrowserSession` dataclass), health check + auto-recovery, stale session cleanup |
+| `app/agents/browser/agent.py` | ~30 | Stub `BrowserAgent(BaseAgent)` for orchestrator auto-discovery. Actual work happens in the router, not through the orchestrator dispatch |
+| `app/agents/browser/manifest.yaml` | ~8 | Agent registration: `name: browser_agent`, `capability: browser`, `priority: 25` |
+| `browser_agent/run.py` | ~100 | CLI test script. Imports `VedaBrowserDriver` from `app.agents.browser.driver`. No duplicate driver code. |
+| `browser_agent/interactive.py` | ~120 | Multi-turn interactive terminal test. Same import. |
 
 ### Mobile Modules — Detail
 

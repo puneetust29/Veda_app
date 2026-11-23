@@ -1,11 +1,13 @@
-"""Standalone test for the Priceline browser agent.
+"""Standalone test for the browser agent.
 
 Usage:
     cd backend
-    .venv-browser/bin/python browser_agent/run.py "Find hotels in Tokyo on Priceline for Dec 15-22"
+    .venv-browser/bin/python browser_agent/run.py "Go to example.com and tell me what you see"
 
 Set HEADLESS=0 to watch the browser.
 Set ANTHROPIC_API_KEY in .env or environment.
+
+Uses the same VedaBrowserDriver as the Veda backend (app/agents/browser/driver.py).
 """
 from __future__ import annotations
 
@@ -22,11 +24,14 @@ env_path = Path(__file__).resolve().parent.parent / ".env"
 if env_path.exists():
     load_dotenv(env_path)
 
+# Add backend to path so we can import the real driver
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from anthropic import Anthropic
 from anthropic.tools import ToolError
 from anthropic.tools.browser import BetaURLContext, BetaURLPolicy
 
-from cdp_browser import CdpBrowser
+from app.agents.browser.driver import VedaBrowserDriver
 
 # ── Configuration ─────────────────────────────────────────────────────────
 
@@ -96,7 +101,7 @@ def main() -> None:
     print("🚀 Launching Chrome...", flush=True)
     try:
         client = Anthropic()
-        browser = CdpBrowser(
+        browser = VedaBrowserDriver(
             headless=HEADLESS,
             url_policy=priceline_policy(ALLOWED_DOMAINS),
             on_step=on_step,

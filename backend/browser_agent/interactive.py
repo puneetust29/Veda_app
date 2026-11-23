@@ -7,6 +7,8 @@ Usage:
 The browser stays open between turns. When Claude needs input (like an OTP code),
 it asks you in the terminal. You reply, and Claude continues in the same browser.
 
+Uses the same VedaBrowserDriver as the Veda backend (app/agents/browser/driver.py).
+
 Type 'quit' or 'exit' to stop.
 """
 from __future__ import annotations
@@ -19,6 +21,9 @@ from urllib.parse import urlsplit
 
 from dotenv import load_dotenv
 
+# Add backend to path so we can import the real driver
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 env_path = Path(__file__).resolve().parent.parent / ".env"
 if env_path.exists():
     load_dotenv(env_path)
@@ -27,7 +32,7 @@ from anthropic import Anthropic
 from anthropic.tools import ToolError
 from anthropic.tools.browser import BetaURLContext, BetaURLPolicy
 
-from cdp_browser import CdpBrowser
+from app.agents.browser.driver import VedaBrowserDriver
 
 MODEL = os.environ.get("MODEL", "claude-sonnet-5-5")
 HEADLESS = os.environ.get("HEADLESS", "1") != "0"
@@ -97,7 +102,7 @@ def main() -> None:
 
     print("🚀 Launching Chrome...", flush=True)
     client = Anthropic()
-    browser = CdpBrowser(
+    browser = VedaBrowserDriver(
         headless=HEADLESS,
         url_policy=make_policy(domains),
         on_step=on_step,
