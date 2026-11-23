@@ -4,22 +4,46 @@ A telecom AI roaming companion POC with a FastAPI backend and React Native mobil
 
 ## Prerequisites
 
-- **Python 3.9+** (for backend)
+- **Python 3.9+** (for backend; **Python 3.12+** required for browser agent)
 - **Node.js 18+** (for mobile app)
 - **npm** or **yarn** (for package management)
+- **Google Chrome** (for browser agent — headless mode, no UI needed)
+
+## Quick Start — One Command
+
+```bash
+# Start everything (backend + simulator + mobile app)
+./scripts/start.sh
+
+# Stop everything
+./scripts/stop.sh
+```
+
+`start.sh` launches the backend (port 8000), boots the iOS simulator, starts
+Expo Metro bundler (port 8081), and opens the app in the simulator.
+
+`stop.sh` kills all processes and verifies ports are free.
 
 ## Project Structure
 
 ```
 Veda_app/
-├── backend/          # FastAPI application
+├── backend/              # FastAPI application
 │   ├── app/
+│   │   ├── agents/       # AI agents (roaming, uber, browser, etc.)
+│   │   ├── routers/      # API endpoints
+│   │   └── orchestration/ # Agent dispatch
+│   ├── browser_agent/    # Standalone browser agent test scripts
 │   ├── requirements.txt
 │   └── tests/
-└── mobile/           # Expo/React Native app
-    ├── src/
-    ├── package.json
-    └── .env.example
+├── mobile/               # Expo/React Native app
+│   ├── src/
+│   ├── package.json
+│   └── .env.example
+├── scripts/              # Start/stop scripts
+│   ├── start.sh          # Start all servers
+│   └── stop.sh           # Stop all servers
+└── research/             # Architecture docs & build journals
 ```
 
 ---
@@ -119,22 +143,37 @@ See [ENVIRONMENTS.md](mobile/ENVIRONMENTS.md) for all available scripts.
 
 ## Signing In (POC Dev Login)
 
-This is a POC, so real Supabase phone/OTP verification is stubbed out. The sign-in screen calls a
-`dev-login` endpoint that skips OTP entirely.
+The sign-in screen calls the backend's `POST /auth/dev-login` endpoint. The app
+requires a phone number **and** a 6-digit OTP code. The backend checks the OTP
+against the customer's `otp` column in Supabase — if the customer has an OTP set,
+it must match; if the customer has no OTP set (NULL), any code is accepted.
 
-1. On the sign-in screen, enter any phone number (e.g. `+15550001111`, matching the field's
-   placeholder).
-2. Tap **Sign in** — no OTP code is required.
-3. The backend looks up a customer with that phone number and, if none exists yet, auto-creates
-   one on the fly with placeholder details (`full_name: "New Customer"`, `telecom_plan: "Standard
-   Mobile"`). Use the same number again later to sign back into that same dummy customer.
+### Test Accounts
+
+| Name | Phone Number | OTP | Notes |
+|------|-------------|-----|-------|
+| Irfan | `+15550001111` | `500005` | Primary test account |
+| Alex Morgan | `+15550001111` | _NULL_ | No OTP set — uses Supabase Auth directly |
+| Ranadheer G | `+15550005555` | `500005` | Secondary test account |
+
+### Sign-in steps
+
+1. On the phone entry screen, select the country code (e.g. `+1`) and enter the
+   number (e.g. `5550001111`).
+2. Tap **Continue** — the app navigates to the OTP verification screen.
+3. Enter the 6-digit OTP for that account (e.g. `500005`).
+4. The backend verifies the OTP, mints a JWT, and the app proceeds to onboarding /
+   dashboard.
 
 Notes:
 
-- This only works because the backend's dev-login route (`POST /auth/dev-login`) is disabled
-  whenever `ENVIRONMENT=production` — it's a dev/POC-only shortcut, not a real auth bypass.
-- Any phone number works; there's no single fixed "seed" user, each unique number gets its own
-  auto-created customer record.
+- The dev-login route is disabled when `ENVIRONMENT=production` — it is a
+  dev/POC-only shortcut, not a real auth bypass.
+- If a phone number has no matching customer record, the backend auto-creates one
+  with placeholder details (`full_name: "New Customer"`,
+  `telecom_plan: "Standard Mobile"`).
+- Accounts with a NULL OTP skip OTP validation entirely on the backend side, but
+  the mobile app UI still requires entering 6 digits (any value will work).
 
 ---
 
@@ -304,15 +343,80 @@ The backend is deployed on [Railway](https://railway.app):
 
 ---
 
+## Browser Agent
+
+Veda includes a browser agent that drives a real headless Chrome via
+[Claude's Browser Use SDK](https://platform.claude.com/docs/en/agents-and-tools/tool-use/browser-use-sdk).
+Claude navigates, reads, clicks, and types on real websites — the user sees
+only chat messages, never a browser window.
+
+### How it works
+
+```
+User (VedaChat)  →  POST /browser/task (SSE)  →  Headless Chrome (CDP)
+                                                       ↑
+                                                 Claude decides:
+                                                 navigate, click,
+                                                 type, read, etc.
+```
+
+### Try it
+
+In VedaChat, type any of these:
+- `Go to example.com and tell me what you see`
+- `Browse medium.com and find trending articles`
+- `Go to medium.com and sign in with my@email.com`
+
+### Multi-turn sessions
+
+Browser sessions persist between messages. If Claude asks for a verification
+code, the browser stays open. Reply with the code and Claude enters it in the
+same browser — no restart, no expired codes.
+
+### Requirements
+
+| Requirement | Notes |
+|---|---|
+| Python 3.12+ | Browser toolset requires `anthropic >= 2.0` which needs Python 3.10+ |
+| `anthropic` SDK >= 2.0 | Install in `.venv-browser`: `pip install "anthropic>=2.0"` |
+| Google Chrome | Headless mode — no UI. Auto-detected on macOS |
+| Model | `claude-sonnet-5-5` (the only model supporting `browser_toolset_20260801`) |
+
+### Standalone test (no Veda needed)
+
+```bash
+cd backend
+.venv-browser/bin/python browser_agent/run.py "Go to example.com and tell me what you see"
+```
+
+### Known limitations
+
+| Site | Status |
+|---|---|
+| example.com | ✅ Works fully |
+| medium.com | ✅ Works — login with OTP flow tested |
+| priceline.com | ⚠️ Cloudflare bot detection blocks headless Chrome |
+| google.com | ⚠️ "Unusual traffic" detection |
+
+Sites with aggressive bot detection require [Browserbase](https://www.browserbase.com/)
+(Anthropic partner) for production use.
+
+---
+
 ## Quick Troubleshooting
 
 | Issue | Solution |
 |-------|----------|
 | Backend won't start | Check Python version is 3.9+, verify all dependencies installed with `pip install -r requirements.txt` |
-| Port 8000 already in use | Kill the process or specify a different port: `uvicorn app.main:app --port 8001` |
+| Port 8000 already in use | Kill the process: `./scripts/stop.sh` or `pkill -f uvicorn` |
 | Mobile app can't connect to backend | Use `npm run start:local` for localhost or `npm run start:dev` for Railway. Check `.env` file content. |
 | Wrong API URL in mobile app | The `.env` file is auto-generated. Use `npm run start:local` or `npm run start:dev` (don't edit `.env` manually) |
 | Dependencies not installing | Try deleting `node_modules` and `package-lock.json`, then run `npm install` again |
+| Expo Go incompatible version | Run `npm ci` to reinstall from lockfile — do **not** use `npm install` which may resolve newer versions |
+| `No development build` error | Use `npx expo start --go` to run in Expo Go mode instead of requiring a native dev build |
+| Simulator touch not working | Use the iOS simulator runtime matching your Xcode version (iOS 26.5 for Xcode 26.x) |
+| Browser agent: model error | Use `claude-sonnet-5-5` — other models don't support `browser_toolset_20260801` |
+| Browser agent: bot detection | Expected for Priceline/Google. Try example.com or medium.com. Use Browserbase for production |
 | Expo app not connecting | For local: make sure backend and mobile are on same network. For Railway: check internet connection and `https://vedaapp-production.up.railway.app/health` |
 | Environment not switching | Run `npm run start:local` or `npm run start:dev` before starting the app (not just `npm start`) |
 
