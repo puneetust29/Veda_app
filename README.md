@@ -24,6 +24,61 @@ Expo Metro bundler (port 8081), and opens the app in the simulator.
 
 `stop.sh` kills all processes and verifies ports are free.
 
+### Simulator & Expo Go Version Requirements
+
+**This is critical.** The project uses Expo SDK 57 (`expo@~57.0.x`). The iOS
+simulator must have **Expo Go 57** installed, and must run on a compatible iOS
+runtime.
+
+| Xcode Version | Required Simulator Runtime | Why |
+|---|---|---|
+| Xcode 26.x | **iOS 26.5** (e.g. iPhone 17 Pro) | Older iOS runtimes (18.2, 18.4) have touch-input bugs on Xcode 26 |
+| Xcode 16.x | iOS 18.x | Native runtime for that Xcode version |
+
+**"Project is incompatible with this version of Expo Go"** means the simulator
+has an older Expo Go (e.g. 54) that doesn't match the project's SDK 57. Fix:
+
+```bash
+# 1. Boot the correct simulator (iOS 26.5 for Xcode 26)
+xcrun simctl shutdown all
+xcrun simctl boot "iPhone 17 Pro"   # iOS 26.5 device
+open -a Simulator
+
+# 2. Let Expo install the right Expo Go version
+cd mobile
+NODE_TLS_REJECT_UNAUTHORIZED=0 npx expo start --go --ios --clear
+```
+
+The `NODE_TLS_REJECT_UNAUTHORIZED=0` is needed because the Expo Go download
+may fail with an SSL certificate error on some networks.
+
+**If Expo Go auto-install fails**, copy it from a simulator that already has it:
+```bash
+# Find Expo Go on the source simulator
+xcrun simctl listapps <SOURCE_DEVICE_ID> | grep -A2 "host.exp.Exponent"
+
+# Install on the target
+xcrun simctl install booted "/path/to/Expo-Go.app"
+```
+
+### node_modules Version Drift
+
+**Always use `npm ci`** (not `npm install`) when setting up from a fresh clone.
+`npm install` can resolve newer versions that break Expo Go compatibility.
+If `node_modules` gets out of sync:
+
+```bash
+cd mobile
+rm -rf node_modules
+npm ci
+```
+
+Verify versions match:
+```bash
+node -e "console.log('expo:', require('expo/package.json').version)"
+node -e "console.log('react-native:', require('react-native/package.json').version)"
+```
+
 ## Project Structure
 
 ```
@@ -412,6 +467,7 @@ Sites with aggressive bot detection require [Browserbase](https://www.browserbas
 | Mobile app can't connect to backend | Use `npm run start:local` for localhost or `npm run start:dev` for Railway. Check `.env` file content. |
 | Wrong API URL in mobile app | The `.env` file is auto-generated. Use `npm run start:local` or `npm run start:dev` (don't edit `.env` manually) |
 | Dependencies not installing | Try deleting `node_modules` and `package-lock.json`, then run `npm install` again |
+| "Project is incompatible with this version of Expo Go" | Boot the correct simulator runtime (iOS 26.5 for Xcode 26.x) and let Expo install Expo Go 57. See "Simulator & Expo Go Version Requirements" above |
 | Expo Go incompatible version | Run `npm ci` to reinstall from lockfile — do **not** use `npm install` which may resolve newer versions |
 | `No development build` error | Use `npx expo start --go` to run in Expo Go mode instead of requiring a native dev build |
 | Simulator touch not working | Use the iOS simulator runtime matching your Xcode version (iOS 26.5 for Xcode 26.x) |

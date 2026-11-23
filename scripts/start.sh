@@ -32,21 +32,41 @@ for i in {1..20}; do
 done
 
 # 2. iOS Simulator
+# IMPORTANT: Must use iOS 26.5 runtime on Xcode 26.x for touch input to work.
+# Older runtimes (18.2, 18.4) have touch-handling bugs on Xcode 26.
+# The simulator also needs Expo Go 57 installed (matching SDK 57).
 echo ""
 echo "📱 Booting simulator..."
-# Prefer iOS 26.5 (Xcode 26.x compatible touch support)
-SIM_ID=$(xcrun simctl list devices available 2>/dev/null | grep -E "iPhone.*(26\.)" | head -1 | grep -oE '[A-F0-9-]{36}' || true)
+
+# Try iPhone 17 Pro (iOS 26.5) first, then any iOS 26.5 device, then fallback
+SIM_NAME_PREFERENCE=("iPhone 17 Pro" "iPhone 17" "iPhone Air")
+SIM_ID=""
+
+for name in "${SIM_NAME_PREFERENCE[@]}"; do
+    SIM_ID=$(xcrun simctl list devices available 2>/dev/null | grep -E "$name.*26\." | head -1 | grep -oE '[A-F0-9-]{36}' || true)
+    if [ -n "$SIM_ID" ]; then
+        break
+    fi
+done
+
+# Fallback: any iOS 26.x iPhone
 if [ -z "$SIM_ID" ]; then
-    # Fall back to any iPhone
-    SIM_ID=$(xcrun simctl list devices available 2>/dev/null | grep -E "iPhone.*Shutdown" | head -1 | grep -oE '[A-F0-9-]{36}' || true)
+    SIM_ID=$(xcrun simctl list devices available 2>/dev/null | grep -B5 "26\." | grep "iPhone" | head -1 | grep -oE '[A-F0-9-]{36}' || true)
 fi
+
+# Last resort: any iPhone
+if [ -z "$SIM_ID" ]; then
+    SIM_ID=$(xcrun simctl list devices available 2>/dev/null | grep "iPhone.*Shutdown" | head -1 | grep -oE '[A-F0-9-]{36}' || true)
+    echo "   ⚠️  No iOS 26.5 simulator found — touch input may not work"
+fi
+
 if [ -n "$SIM_ID" ]; then
     xcrun simctl boot "$SIM_ID" 2>/dev/null || true
     open -a Simulator
     SIM_NAME=$(xcrun simctl list devices 2>/dev/null | grep "$SIM_ID" | sed 's/(.*//' | xargs || echo "Unknown")
     echo "   Simulator: $SIM_NAME ✅"
 else
-    echo "   ⚠️  No simulator found — start one manually"
+    echo "   ❌ No simulator found — install an iOS 26.5 runtime via Xcode"
 fi
 
 # 3. Mobile (Expo)
