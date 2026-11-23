@@ -91,22 +91,43 @@ def _cleanup_stale_sessions() -> None:
             del _sessions[cid]
 
 
+def _is_session_alive(session: BrowserSession) -> bool:
+    """Check if the browser's CDP connection is still alive."""
+    try:
+        if session.browser._socket is None:
+            return False
+        if session.browser._process is not None and session.browser._process.poll() is not None:
+            return False
+        # Quick health check: ask the browser for page info
+        session.browser._page_info()
+        return True
+    except Exception as e:
+        logger.warning("[browser] session health check failed | customer=%s | %r", session.customer_id, e)
+        return False
+
+
 def _get_or_create_session(
     customer_id: str,
     api_key: str,
     domains: list[str],
     on_step: Any,
 ) -> BrowserSession:
-    """Get existing session or create a new one."""
+    """Get existing session or create a new one. Auto-recovers dead sessions."""
     _cleanup_stale_sessions()
 
     with _sessions_lock:
         session = _sessions.get(customer_id)
 
     if session:
-        session.last_used = time.time()
-        logger.info("[browser] reusing session | customer=%s | messages=%d", customer_id, len(session.messages))
-        return session
+        if _is_session_alive(session):
+            session.last_used = time.time()
+            logger.info("[browser] reusing session | customer=%s | messages=%d", customer_id, len(session.messages))
+            return session
+        else:
+            # Session is dead — close it and create a new one
+            logger.warning("[browser] dead session detected, recycling | customer=%s", customer_id)
+            on_step("Previous browser session expired. Starting fresh...")
+            _close_session(customer_id)
 
     from anthropic import Anthropic
     from app.agents.browser.driver import VedaBrowserDriver
@@ -241,9 +262,16 @@ async def browser_task(
             })
 
         except Exception as e:
+            error_msg = str(e)
             logger.error("[browser/task] ERROR | customer=%s | %r", customer_id, e)
-            emit({"kind": "error", "text": str(e)})
-            _close_session(customer_id)
+            # If it's a connection error, close the dead session so next request starts fresh
+            if "closed" in error_msg.lower() or "timeout" in error_msg.lower() or "websocket" in error_msg.lower() or "keepalive" in error_msg.lower():
+                logger.info("[browser/task] connection error detected, closing session | customer=%s", customer_id)
+                _close_session(customer_id)
+                emit({"kind": "error", "text": "Browser session expired. Please try again — a fresh browser will start."})
+            else:
+                _close_session(customer_id)
+                emit({"kind": "error", "text": error_msg})
 
         emit({"kind": "done"})
         loop.call_soon_threadsafe(event_queue.put_nowait, None)
