@@ -2,7 +2,6 @@
 # Start all Veda servers for local development
 # Usage: ./scripts/start.sh
 
-set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 echo "============================================"
@@ -35,18 +34,19 @@ done
 # 2. iOS Simulator
 echo ""
 echo "📱 Booting simulator..."
-# Prefer iOS 26.5 (Xcode 26.x compatible), fall back to any available
-SIM_ID=$(xcrun simctl list devices available | grep "iPhone.*26\." | head -1 | grep -oE '[A-F0-9-]{36}')
+# Prefer iOS 26.5 (Xcode 26.x compatible touch support)
+SIM_ID=$(xcrun simctl list devices available 2>/dev/null | grep -E "iPhone.*(26\.)" | head -1 | grep -oE '[A-F0-9-]{36}' || true)
 if [ -z "$SIM_ID" ]; then
-    SIM_ID=$(xcrun simctl list devices available | grep "iPhone.*Shutdown" | head -1 | grep -oE '[A-F0-9-]{36}')
+    # Fall back to any iPhone
+    SIM_ID=$(xcrun simctl list devices available 2>/dev/null | grep -E "iPhone.*Shutdown" | head -1 | grep -oE '[A-F0-9-]{36}' || true)
 fi
 if [ -n "$SIM_ID" ]; then
     xcrun simctl boot "$SIM_ID" 2>/dev/null || true
     open -a Simulator
-    SIM_NAME=$(xcrun simctl list devices | grep "$SIM_ID" | sed 's/(.*//' | xargs)
+    SIM_NAME=$(xcrun simctl list devices 2>/dev/null | grep "$SIM_ID" | sed 's/(.*//' | xargs || echo "Unknown")
     echo "   Simulator: $SIM_NAME ✅"
 else
-    echo "   ⚠️  No simulator found"
+    echo "   ⚠️  No simulator found — start one manually"
 fi
 
 # 3. Mobile (Expo)
@@ -54,18 +54,24 @@ echo ""
 echo "📲 Starting Expo..."
 cd "$ROOT/mobile"
 NODE_TLS_REJECT_UNAUTHORIZED=0 npx expo start --go --clear > /tmp/veda-expo.log 2>&1 &
-echo "   Expo PID: $!"
+EXPO_PID=$!
+echo "   Expo PID: $EXPO_PID"
 
 # Wait for Metro to be ready
 echo -n "   Waiting for Metro"
+METRO_READY=0
 for i in {1..30}; do
     if curl -s http://localhost:8081/status 2>/dev/null | grep -q "running"; then
         echo " ✅"
+        METRO_READY=1
         break
     fi
     echo -n "."
     sleep 1
 done
+if [ $METRO_READY -eq 0 ]; then
+    echo " ⚠️  Metro may still be starting — check /tmp/veda-expo.log"
+fi
 
 # 4. Open app in simulator
 echo ""
