@@ -119,22 +119,37 @@ See [ENVIRONMENTS.md](mobile/ENVIRONMENTS.md) for all available scripts.
 
 ## Signing In (POC Dev Login)
 
-This is a POC, so real Supabase phone/OTP verification is stubbed out. The sign-in screen calls a
-`dev-login` endpoint that skips OTP entirely.
+The sign-in screen calls the backend's `POST /auth/dev-login` endpoint. The app
+requires a phone number **and** a 6-digit OTP code. The backend checks the OTP
+against the customer's `otp` column in Supabase — if the customer has an OTP set,
+it must match; if the customer has no OTP set (NULL), any code is accepted.
 
-1. On the sign-in screen, enter any phone number (e.g. `+15550001111`, matching the field's
-   placeholder).
-2. Tap **Sign in** — no OTP code is required.
-3. The backend looks up a customer with that phone number and, if none exists yet, auto-creates
-   one on the fly with placeholder details (`full_name: "New Customer"`, `telecom_plan: "Standard
-   Mobile"`). Use the same number again later to sign back into that same dummy customer.
+### Test Accounts
+
+| Name | Phone Number | OTP | Notes |
+|------|-------------|-----|-------|
+| Irfan | `+15550001111` | `500005` | Primary test account |
+| Alex Morgan | `+15550001111` | _NULL_ | No OTP set — uses Supabase Auth directly |
+| Ranadheer G | `+15550005555` | `500005` | Secondary test account |
+
+### Sign-in steps
+
+1. On the phone entry screen, select the country code (e.g. `+1`) and enter the
+   number (e.g. `5550001111`).
+2. Tap **Continue** — the app navigates to the OTP verification screen.
+3. Enter the 6-digit OTP for that account (e.g. `500005`).
+4. The backend verifies the OTP, mints a JWT, and the app proceeds to onboarding /
+   dashboard.
 
 Notes:
 
-- This only works because the backend's dev-login route (`POST /auth/dev-login`) is disabled
-  whenever `ENVIRONMENT=production` — it's a dev/POC-only shortcut, not a real auth bypass.
-- Any phone number works; there's no single fixed "seed" user, each unique number gets its own
-  auto-created customer record.
+- The dev-login route is disabled when `ENVIRONMENT=production` — it is a
+  dev/POC-only shortcut, not a real auth bypass.
+- If a phone number has no matching customer record, the backend auto-creates one
+  with placeholder details (`full_name: "New Customer"`,
+  `telecom_plan: "Standard Mobile"`).
+- Accounts with a NULL OTP skip OTP validation entirely on the backend side, but
+  the mobile app UI still requires entering 6 digits (any value will work).
 
 ---
 
@@ -304,6 +319,142 @@ The backend is deployed on [Railway](https://railway.app):
 
 ---
 
+## Building & Running Locally — Known Issues & Fixes
+
+This section documents the actual build process, the problems encountered, and
+how each was resolved. If you are setting up the project for the first time,
+read this before running anything.
+
+### 1. node_modules vs. package-lock.json version drift
+
+**Problem:** `package.json` pins `expo@~54.0.37` and `react-native@0.81.5`, but
+a previous `npm install` (or manual upgrade) left `node_modules` on expo 57 /
+react-native 0.86.3. This caused:
+- Expo Go 54 on the simulator rejecting the app: *"Project is incompatible with
+  this version of Expo Go."*
+- `expo run:ios` failing with *"Downloaded file
+  reactnative-dependencies-0.86.3-debug.tar.gz failed SHA verification"* because
+  CocoaPods was pulling prebuilt binaries for the wrong React Native version.
+
+**Fix:** Reinstall from the lockfile to get the correct versions:
+```bash
+cd mobile
+rm -rf node_modules
+npm ci            # installs exactly what package-lock.json specifies
+```
+Verify afterwards:
+```bash
+node -e "console.log(require('expo/package.json').version)"         # → 54.0.37
+node -e "console.log(require('react-native/package.json').version)" # → 0.81.5
+```
+**Rule of thumb:** always use `npm ci` (not `npm install`) when setting up from
+a fresh clone. If you intentionally upgrade Expo/RN, update `package.json` *and*
+the lockfile together, and install matching Expo Go on the simulator.
+
+### 2. CocoaPods SHA verification failure (expo run:ios)
+
+**Problem:** Running `npx expo run:ios` to build a development client failed
+during `pod install`:
+```
+[ReactNativeDependencies] Downloaded file reactnative-dependencies-0.86.3-debug.tar.gz
+failed SHA verification. Aborting.
+```
+
+**Root cause:** `node_modules` contained react-native 0.86.3 (SDK 57) while the
+project targets SDK 54 / RN 0.81.5. The mismatch caused CocoaPods to download
+the wrong prebuilt binary, which then failed its checksum.
+
+**Fix:** Resolve the version drift first (see above). Once `node_modules` has
+the correct RN version, `pod install` succeeds. If the error persists after
+fixing versions, clear caches:
+```bash
+cd mobile/ios
+pod cache clean --all
+rm -rf Pods Podfile.lock build
+cd .. && npx expo run:ios
+```
+
+### 3. Expo Go vs. Development Build confusion
+
+**Problem:** The project has `expo-dev-client` in its dependencies. When you run
+`npm run ios:local` (which calls `expo start --ios`), Expo looks for a native
+development build (`com.ust.veda`) on the simulator. If none is installed, it
+fails with:
+```
+CommandError: No development build (com.ust.veda) for this project is installed.
+```
+
+**Fix:** Use the `--go` flag to force Expo Go mode instead of requiring a dev
+build:
+```bash
+npx expo start --go --clear
+```
+Then open the app in Expo Go on the simulator:
+```bash
+xcrun simctl openurl booted "exp://127.0.0.1:8081"
+```
+Alternatively, build a full native dev client with `npx expo run:ios` (slower,
+but gives access to native modules that Expo Go doesn't support).
+
+### 4. iOS Simulator touch input not working (Xcode 26.x)
+
+**Problem:** On **Xcode 26.6**, booting an iOS 18.2 or 18.4 simulator results
+in touch events not registering — the app renders correctly but tapping buttons
+does nothing. This is a known compatibility issue: Xcode 26's simulator
+runtime has touch-handling bugs when running older iOS versions.
+
+**Fix:** Use the **iOS 26.5** simulator runtime — the native runtime for
+Xcode 26.x:
+```bash
+# Shut down any running simulators
+xcrun simctl shutdown all
+
+# Boot an iOS 26.5 device (e.g. iPhone 17 Pro)
+xcrun simctl boot "iPhone 17 Pro"
+open -a Simulator
+```
+If Expo Go is not installed on the new simulator, copy it from another
+simulator that has it:
+```bash
+# Find the .app path on the source simulator
+xcrun simctl listapps <SOURCE_DEVICE_ID> | grep -A2 "host.exp.Exponent"
+
+# Install on the target
+xcrun simctl install booted "/path/to/Expo-Go-54.0.7.tar.app"
+```
+Touch input works correctly on iOS 26.5 simulators with Xcode 26.
+
+### 5. Complete local startup sequence (what actually works)
+
+```bash
+# 1. Backend
+cd backend
+.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload &
+curl -s http://localhost:8000/health   # → {"status":"ok"}
+
+# 2. Simulator (use iOS 26.5 on Xcode 26.x)
+xcrun simctl boot "iPhone 17 Pro"      # or whichever iOS 26.5 device
+open -a Simulator
+# Install Expo Go if needed (see step 4 above)
+
+# 3. Mobile (Expo Go mode)
+cd mobile
+npm ci                                 # only needed on first setup or after version drift
+npx expo start --go --clear &
+
+# 4. Open in simulator
+xcrun simctl openurl booted "exp://127.0.0.1:8081"
+```
+
+To stop everything:
+```bash
+pkill -f uvicorn
+pkill -f expo
+xcrun simctl shutdown all
+```
+
+---
+
 ## Quick Troubleshooting
 
 | Issue | Solution |
@@ -313,6 +464,10 @@ The backend is deployed on [Railway](https://railway.app):
 | Mobile app can't connect to backend | Use `npm run start:local` for localhost or `npm run start:dev` for Railway. Check `.env` file content. |
 | Wrong API URL in mobile app | The `.env` file is auto-generated. Use `npm run start:local` or `npm run start:dev` (don't edit `.env` manually) |
 | Dependencies not installing | Try deleting `node_modules` and `package-lock.json`, then run `npm install` again |
+| Expo Go incompatible version | Run `npm ci` to reinstall from lockfile — do **not** use `npm install` which may resolve newer versions |
+| `No development build` error | Use `npx expo start --go` to run in Expo Go mode instead of requiring a native dev build |
+| Simulator touch not working | Use the iOS simulator runtime matching your Xcode version (iOS 26.5 for Xcode 26.x) |
+| CocoaPods SHA verification failure | Fix `node_modules` version drift first (`npm ci`), then `pod cache clean --all` |
 | Expo app not connecting | For local: make sure backend and mobile are on same network. For Railway: check internet connection and `https://vedaapp-production.up.railway.app/health` |
 | Environment not switching | Run `npm run start:local` or `npm run start:dev` before starting the app (not just `npm start`) |
 
